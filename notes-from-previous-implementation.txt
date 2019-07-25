@@ -1,0 +1,174 @@
+Projects have ...
+Users have ...
+Projects <-> Users is a many-to-many relation called Members
+
+
+
+API:
+
+GET("/project/private", "project.controller:getAllPrivate");
+GET("/project/private/{id}", "project.controller:getPrivate");
+GET("/project", "project.controller:getAll");
+GET("/project/{id}", "project.controller:get");
+GET("/project/exists/{projectCode}", "project.controller:projectCodeIsAvailable");
+POST("/users/{login}/projects", "user.controller:getProjectsAccess");
+GET("/users/exists/{username}", "user.controller:usernameIsAvailable");
+POST("/users", "user.controller:create");
+PUT("/users", "user.controller:update");
+
+
+
+Saturn controllers:
+
+index = GET /
+show = GET /:id
+add = GET /add
+edit = GET /:id/edit
+create = POST /
+update = POST /:id -and- PUT /:id
+patch = PATCH /:id
+delete = DELETE /:id
+delete_all = DELETE /
+
+
+Controller for /project/private
+Controller for /project
+
+
+401 unauthorized should have "Scheme": "Bearer" and "Realm": "Language Depot"  (or perhaps without space)
+
+
+I would add
+
+/projects/:id/members
+/projects/:id/managers
+
+/users/:id/projects (already there - getProjectsAccess)
+
+I would add:
+
+PATCH /projects/:id/users -> {"add": ["rmunn"]} or {"remove": ["rmunn"]}
+
+
+type User = {
+    Id : int
+    Login : string
+    HashedPassword : string
+    FirstName : string
+    LastName : string
+    Mail : string
+    MailNotification : bool // default true
+    Admin : bool // default false
+    Status : int // default 1
+    LastLoginOn : DateTime option
+    Language : string option // 5 chars
+    AuthSourceId : int option
+    CreatedOn : DateTime option
+    UpdatedOn : DateTime option
+    Type : string option
+}
+
+type Role = {
+    Id : int
+    Name : string
+    Position : int option // Default 1
+    Assignable : bool option // Default true
+    Builtin : int // Default 0
+    Permissions : string option // Long
+}
+
+type Projects = {
+    Id : int
+    Name : string
+    Description : string option // Long
+    Homepage : string option
+    IsPublic : bool // default true
+    ParentId : int option
+    Projects_Count : int option // default 0
+    CreatedOn : DateTime option
+    UpdatedOn : DateTime option
+    Identifier : string option // 20 chars
+    Status : int // default 1
+}
+
+type Members = {
+    Id : int
+    UserId : int // default 0
+    ProjectId : int // default 0
+    RoleId : int // default 0
+    CreatedOn : DateTime option
+    MailNotification : bool // default false
+}
+
+
+Desired:
+
+Project types:
+
+unknown
+lift
+flex
+ourword
+onestory
+test
+bloom
+adaptit
+school
+
+
+==== MySQL schema ====
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `login` varchar(30) NOT NULL DEFAULT '',
+  `hashed_password` varchar(40) NOT NULL DEFAULT '',
+  `firstname` varchar(30) NOT NULL DEFAULT '',
+  `lastname` varchar(30) NOT NULL DEFAULT '',
+  `mail` varchar(60) NOT NULL DEFAULT '',
+  `mail_notification` tinyint(1) NOT NULL DEFAULT '1',
+  `admin` tinyint(1) NOT NULL DEFAULT '0',
+  `status` int(11) NOT NULL DEFAULT '1',
+  `last_login_on` datetime DEFAULT NULL,
+  `language` varchar(5) DEFAULT '',
+  `auth_source_id` int(11) DEFAULT NULL,
+  `created_on` datetime DEFAULT NULL,
+  `updated_on` datetime DEFAULT NULL,
+  `type` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4159 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `roles` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(30) NOT NULL DEFAULT '',
+  `position` int(11) DEFAULT '1',
+  `assignable` tinyint(1) DEFAULT '1',
+  `builtin` int(11) NOT NULL DEFAULT '0',
+  `permissions` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `projects` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(30) NOT NULL DEFAULT '',
+  `description` text,
+  `homepage` varchar(255) DEFAULT '',
+  `is_public` tinyint(1) NOT NULL DEFAULT '1',
+  `parent_id` int(11) DEFAULT NULL,
+  `projects_count` int(11) DEFAULT '0',
+  `created_on` datetime DEFAULT NULL,
+  `updated_on` datetime DEFAULT NULL,
+  `identifier` varchar(20) DEFAULT NULL,
+  `status` int(11) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2096 DEFAULT CHARSET=utf8;
+
+CREATE TABLE `members` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL DEFAULT '0',
+  `project_id` int(11) NOT NULL DEFAULT '0',
+  `role_id` int(11) NOT NULL DEFAULT '0',
+  `created_on` datetime DEFAULT NULL,
+  `mail_notification` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8050 DEFAULT CHARSET=utf8;
+
