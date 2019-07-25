@@ -108,10 +108,6 @@ Target.create "Run" (fun _ ->
     |> ignore
 )
 
-let runDocker tag =
-    let args = sprintf "run %s" tag
-    runTool "docker" args __SOURCE_DIRECTORY__
-
 let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runTool "docker" args __SOURCE_DIRECTORY__
@@ -135,32 +131,6 @@ Target.create "Docker" (fun _ ->
     buildDocker dockerFullName
 )
 
-Target.create "RunDocker" (fun _ ->
-    let server = async {
-        runDocker dockerFullName
-    }
-    let client = async {
-        runTool yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
-    }
-    let browser = async {
-        do! Async.Sleep 5000
-        openBrowser "http://localhost:8080"
-    }
-
-    let vsCodeSession = Environment.hasEnvironVar "vsCodeSession"
-    let safeClientOnly = Environment.hasEnvironVar "safeClientOnly"
-
-    let tasks =
-        [ if not safeClientOnly then yield server
-          yield client
-          if not vsCodeSession then yield browser ]
-
-    tasks
-    |> Async.Parallel
-    |> Async.RunSynchronously
-    |> ignore
-)
-
 
 
 
@@ -178,9 +148,5 @@ open Fake.Core.TargetOperators
 "Clean"
     ==> "InstallClient"
     ==> "Run"
-
-"Clean"
-    ==> "InstallClient"
-    ==> "RunDocker"
 
 Target.runOrDefaultWithArguments "Build"
