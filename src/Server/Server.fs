@@ -17,12 +17,23 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
+let projects = controller {
+    version "1"
+
+    index (fun ctx -> task {
+        let! project = Controller.getJson<Model.Project> ctx
+        return! Controller.text ctx (sprintf "got project %s" project.Name)
+    })
+}
+
 let webApp = router {
     get "/api/init" (fun next ctx ->
         task {
             let counter = {Value = 42}
             return! json counter next ctx
         })
+
+    forward "/api/projects" projects
 }
 
 let app = application {
