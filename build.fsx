@@ -123,8 +123,8 @@ Target.create "Bundle" (fun _ ->
     Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
 )
 
-let dockerUser = "safe-template"
-let dockerImageName = "safe-template"
+let dockerUser = "rmunn"
+let dockerImageName = "ldapi"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
 Target.create "Docker" (fun _ ->
