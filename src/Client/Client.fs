@@ -1,7 +1,9 @@
 module Client
 
+open Browser
 open Elmish
 open Elmish.React
+open Fable.Core.JsInterop
 open Fable.FontAwesome
 open Fable.FontAwesome.Free
 open Fable.React
@@ -17,40 +19,47 @@ open Shared
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { Counter: Counter option }
+type Model = { User: Shared.SharedUser option }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
 type Msg =
-| Increment
-| Decrement
-| InitialCountLoaded of Counter
-
-let initialCounter () = Fetch.fetchAs<Counter> "/api/init"
+| AddProject of string
+| DelProject of string
+| UserProjectsUpdated of Shared.SharedUser
+| FindUser of string
+| UserNotFound
+| LogResult of Result<string,string>
+| UserFound of Shared.SharedUser
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
-    let initialModel = { Counter = None }
-    let loadCountCmd =
-        Cmd.OfPromise.perform initialCounter () InitialCountLoaded
-    initialModel, loadCountCmd
+    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] } }
+    initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
 // It can also run side-effects (encoded as commands) like calling the server via Http.
 // these commands in turn, can dispatch messages to which the update function will react.
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
-    match currentModel.Counter, msg with
-    | Some counter, Increment ->
-        let nextModel = { currentModel with Counter = Some { Value = counter.Value + 1 } }
-        nextModel, Cmd.none
-    | Some counter, Decrement ->
-        let nextModel = { currentModel with Counter = Some { Value = counter.Value - 1 } }
-        nextModel, Cmd.none
-    | _, InitialCountLoaded initialCount->
-        let nextModel = { Counter = Some initialCount }
-        nextModel, Cmd.none
-    | _ -> currentModel, Cmd.none
+    match currentModel, msg with
+    | { User = Some user }, AddProject projCode ->
+        let foo = { Name = user.Name; Projects = [ projCode ] }
+        let bar = Remove { Remove = foo }
+        let json = Encode.Auto.toString(4, bar)
+        let url = sprintf "/api/projects/%s" user.Name
+        let promise = Fetch.patch(url, bar) |> Promise.map LogResult
+        currentModel, Cmd.OfPromise.result promise
+    | { User = Some user },  DelProject projCode ->
+        currentModel, Cmd.none
+    | _, UserProjectsUpdated _ ->
+        currentModel, Cmd.none
+    | _, LogResult result ->
+        match result with
+        | Ok s -> console.log("Success: " + s)
+        | Error s -> console.log("Error: " + s)
+        currentModel, Cmd.none
 
+// TODO: Look into Fetch.patch and test the JSON stuff in it
 
 let safeComponents =
     let components =
@@ -76,10 +85,6 @@ let safeComponents =
           strong [ ] [ str Version.app ]
           str " powered by: "
           components ]
-
-let show = function
-| { Counter = Some counter } -> string counter.Value
-| { Counter = None   } -> "Loading..."
 
 let navBrand =
     Navbar.navbar [ Navbar.Color IsWhite ]
@@ -190,26 +195,53 @@ let info =
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Exceptions" ] ] ] ] ] ]
 
-let counter (model : Model) (dispatch : Msg -> unit) =
-    Field.div [ Field.IsGrouped ]
-        [ Control.p [ Control.IsExpanded ]
-            [ Input.text
-                [ Input.Disabled true
-                  Input.Value (show model) ] ]
-          Control.p [ ]
-            [ Button.a
-                [ Button.Color IsInfo
-                  Button.OnClick (fun _ -> dispatch Increment) ]
-                [ str "+" ] ]
-          Control.p [ ]
-            [ Button.a
-                [ Button.Color IsInfo
-                  Button.OnClick (fun _ -> dispatch Decrement) ]
-                [ str "-" ] ] ]
+type TextInputProps = { placeholder : string; value : string; btn : ReactElement; dispatch : Dispatch<string> }
+let TextInputComponent =
+    FunctionComponent.Of (fun (props : TextInputProps) ->
+        let state = Hooks.useState(props.value)
+        Control.div
+           [ Control.HasIconRight ]
+           [ Field.div
+               [ Field.HasAddons ]
+               [ Input.text
+                   [ Input.Placeholder props.placeholder
+                     Input.Value state.current
+                     Input.OnChange (fun ev -> state.update (!!ev.target?value : string)) ]
+                 Button.a
+                   [ Button.Color IsInfo
+                     Button.OnClick (fun _ -> props.dispatch state.current) ]
+                   [ props.btn ] ] ]
+    )
+
+let textInputComponent placeholder initialValue btn dispatch =
+    TextInputComponent { placeholder = placeholder; value = initialValue; btn = btn; dispatch = dispatch; }
 
 let columns (model : Model) (dispatch : Msg -> unit) =
     Columns.columns [ ]
         [ Column.column [ Column.Width (Screen.All, Column.Is6) ]
+              [ Card.card [ ]
+                  [ Card.header [ ]
+                      [ Card.Header.title [ ]
+                          [ str "Username/Email Search" ]
+                        Card.Header.icon [ ]
+                            [ Icon.icon [ ]
+                                [ Fa.i [Fa.Solid.AngleDown] [] ] ] ]
+                    Card.content [ ]
+                        [ Content.content [ ]
+                            [ Control.div
+                                [ Control.HasIconLeft
+                                  Control.HasIconRight ]
+                                [ Input.text
+                                      [ Input.Size IsLarge ]
+                                  Icon.icon
+                                      [ Icon.Size IsMedium
+                                        Icon.IsLeft ]
+                                      [ Fa.i [Fa.Solid.Search] [] ]
+                                  Icon.icon
+                                      [ Icon.Size IsMedium
+                                        Icon.IsRight ]
+                                      [ Fa.i [Fa.Solid.Check] [] ] ] ] ] ]  ]
+          Column.column [ Column.Width (Screen.All, Column.Is6) ]
             [ Card.card [ CustomClass "events-card" ]
                 [ Card.header [ ]
                     [ Card.Header.title [ ]
@@ -238,40 +270,7 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                                     [ str "Action" ] ] ] ] ] ] ]
                   Card.footer [ ]
                       [ Card.Footer.div [ ]
-                          [ str "View All" ] ] ] ]
-          Column.column [ Column.Width (Screen.All, Column.Is6) ]
-              [ Card.card [ ]
-                  [ Card.header [ ]
-                      [ Card.Header.title [ ]
-                          [ str "Inventory Search" ]
-                        Card.Header.icon [ ]
-                            [ Icon.icon [ ]
-                                [ Fa.i [Fa.Solid.AngleDown] [] ] ] ]
-                    Card.content [ ]
-                        [ Content.content [ ]
-                            [ Control.div
-                                [ Control.HasIconLeft
-                                  Control.HasIconRight ]
-                                [ Input.text
-                                      [ Input.Size IsLarge ]
-                                  Icon.icon
-                                      [ Icon.Size IsMedium
-                                        Icon.IsLeft ]
-                                      [ Fa.i [Fa.Solid.Search] [] ]
-                                  Icon.icon
-                                      [ Icon.Size IsMedium
-                                        Icon.IsRight ]
-                                      [ Fa.i [Fa.Solid.Check] [] ] ] ] ] ]
-                Card.card [ ]
-                    [ Card.header [ ]
-                        [ Card.Header.title [ ]
-                              [ str "Counter" ]
-                          Card.Header.icon [ ]
-                              [ Icon.icon [ ]
-                                  [ Fa.i [Fa.Solid.AngleDown] [] ] ] ]
-                      Card.content [ ]
-                        [ Content.content   [ ]
-                            [ counter model dispatch ] ] ]   ] ]
+                          [ textInputComponent "Project code" "" (str "+") (dispatch << AddProject) ] ] ] ] ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ]
