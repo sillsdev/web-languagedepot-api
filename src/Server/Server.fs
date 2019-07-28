@@ -18,14 +18,43 @@ let port =
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
 let webApp = router {
-    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (function
-        | Add input ->
-            let result = Ok <| sprintf "Added %s to %s" input.Add.Name input.Add.Projects.Head
-            json result
-        | Remove input ->
-            let result = Ok <| sprintf "Removed %s from %s" input.Remove.Name input.Remove.Projects.Head
-            json result
-    ))
+    get "/api/project/private" (fun next ctx ->
+        json "Would get all private projects" next ctx
+    )
+
+    getf "/api/project/private/%s" (fun projId next ctx ->
+        json (sprintf "Would get private project with ID %s" projId) next ctx
+    )
+
+    get "/api/project" (fun next ctx ->
+        json "Would get all public projects" next ctx
+    )
+
+    getf "/api/project/%s" (fun projId next ctx ->
+        json (sprintf "Would get public project with ID %s" projId) next ctx
+    )
+
+    getf "/api/project/exists/%s" (fun projId next ctx ->
+        // Would return true if project exists (NOTE: This is the INVERSE of what the old API did!)
+        json true next ctx
+    )
+
+    getf "/api/users/exists/%s" (fun login next ctx ->
+        // Would return true if username exists (NOTE: This is the INVERSE of what the old API did!)
+        json true next ctx
+    )
+
+    postf "/api/users/%s/projects" (fun login next ctx ->
+        json "Would verify password, then return list of projects user is member of (optionally filtered by role in project)" next ctx
+    )
+
+    post "/api/users" (fun next ctx ->
+        json "Would create new user account" next ctx
+    )
+
+    put "/api/users" (fun next ctx ->
+        json "Would update existing user account" next ctx
+    )
 }
 
 let app = application {
