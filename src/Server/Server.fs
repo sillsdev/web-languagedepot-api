@@ -3,6 +3,7 @@ open System.Threading.Tasks
 
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Saturn
@@ -12,6 +13,16 @@ open Shared
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
 let publicPath = Path.GetFullPath "../Client/public"
+
+let errorHandler : Giraffe.Core.ErrorHandler = fun ex logger ->
+    logger.LogError(ex, "")
+    // Unfortunately the Thoth library just throws generic System.Exceptions, so we have to
+    // inspect the message to detect JSON parsing failures
+    if ex.Message.StartsWith("Error at: `$`") then
+        // JSON parsing failure
+        setStatusCode 400 >=> json {| status = "error"; message = ex.Message |}
+    else
+        setStatusCode 500 >=> json "Internal Server Error"
 
 let port =
     "SERVER_PORT"
@@ -81,6 +92,7 @@ let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
+    error_handler errorHandler
     use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
