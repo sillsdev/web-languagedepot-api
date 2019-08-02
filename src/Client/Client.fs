@@ -19,7 +19,7 @@ open Shared
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { User: Shared.SharedUser option }
+type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -31,10 +31,16 @@ type Msg =
 | UserNotFound
 | LogResult of Result<string,string>
 | UserFound of Shared.SharedUser
+| ListAllUsers
+| UserListRetrieved of string list
+| ListAllProjects
+| ProjectListRetrieved of string list
+| GetProjectsForUser of string
+| ProjectsListRetrieved of string list
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
-    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] } }
+    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = [] }
     initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -53,6 +59,26 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | _, UserProjectsUpdated _ ->
         currentModel, Cmd.none
+    | _, ListAllUsers ->
+        let url = "/api/users"
+        currentModel, Cmd.OfPromise.perform Fetch.get url UserListRetrieved
+    | _, UserListRetrieved users ->
+        let nextModel = { currentModel with UserList = users }
+        nextModel, Cmd.none
+    | _, ListAllProjects ->
+        let url = "/api/project"
+        currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
+    | _, ProjectListRetrieved projects ->
+        let nextModel = { currentModel with ProjectList = projects }
+        nextModel, Cmd.none
+    | _, GetProjectsForUser user ->
+        let url = sprintf "/api/users/%s/projects" user
+        let data = []
+        let promise = Fetch.post(url, data) |> Promise.map ProjectsListRetrieved
+        currentModel, Cmd.OfPromise.result promise
+    | _, ProjectsListRetrieved projects ->
+        let nextModel = { currentModel with ProjectList = projects }
+        nextModel, Cmd.none
     | _, LogResult result ->
         match result with
         | Ok s -> console.log("Success: " + s)
@@ -240,12 +266,33 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                   Icon.icon
                                       [ Icon.Size IsMedium
                                         Icon.IsRight ]
-                                      [ Fa.i [Fa.Solid.Check] [] ] ] ] ] ]  ]
+                                      [ Fa.i [Fa.Solid.Check] [] ] ] ] ]
+                    Card.footer [ ]
+                        [ Button.button
+                            [ Button.Color IsInfo
+                              Button.OnClick (fun _ -> dispatch ListAllUsers) ]
+                            [ str "All users" ]
+                          Button.button
+                            [ Button.Color IsInfo
+                              Button.OnClick (fun _ -> dispatch ListAllProjects) ]
+                            [ str "All projects" ] ] ]
+                Card.card [ ]
+                  [ Card.header [ ]
+                      [ Card.Header.title [ ]
+                          [ str "Projects" ]
+                        Card.Header.icon [ ]
+                            [ Icon.icon [ ]
+                                [ Fa.i [Fa.Solid.AngleDown] [] ] ] ]
+                    Card.content [ ]
+                      [ Content.content [ ]
+                          [ ul [ ]
+                               [ for project in model.ProjectList ->
+                                    li [ ] [ str project ] ] ] ] ] ]
           Column.column [ Column.Width (Screen.All, Column.Is6) ]
             [ Card.card [ CustomClass "events-card" ]
                 [ Card.header [ ]
                     [ Card.Header.title [ ]
-                        [ str "Events" ]
+                        [ str "Users" ]
                       Card.Header.icon [ ]
                           [ Icon.icon [ ]
                               [ Fa.i [ Fa.Solid.AngleDown ] [] ] ] ]
@@ -255,19 +302,20 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                               [ Table.IsFullWidth
                                 Table.IsStriped ]
                               [ tbody [ ]
-                                  [ for _ in 1..10 ->
+                                  [ for user in model.UserList ->
                                       tr [ ]
                                           [ td [ Style [ Width "5%" ] ]
                                               [ Icon.icon
                                                   [ ]
-                                                  [ Fa.i [ Fa.Regular.Bell ] [] ] ]
+                                                  [ Fa.i [ Fa.Solid.User ] [] ] ]
                                             td [ ]
-                                                [ str "Lorem ipsum dolor aire" ]
+                                                [ str user ]
                                             td [ ]
                                                 [ Button.a
                                                     [ Button.Size IsSmall
-                                                      Button.Color IsPrimary ]
-                                                    [ str "Action" ] ] ] ] ] ] ]
+                                                      Button.Color IsPrimary
+                                                      Button.OnClick (fun _ -> dispatch (GetProjectsForUser user)) ]
+                                                    [ str "Projects" ] ] ] ] ] ] ]
                   Card.footer [ ]
                       [ Card.Footer.div [ ]
                           [ textInputComponent "Project code" "" (str "+") (dispatch << AddProject) ] ] ] ] ]

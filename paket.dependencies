@@ -6,6 +6,13 @@ group Server
     nuget FSharp.Core
     nuget Saturn
     nuget Thoth.Json.Giraffe
+    nuget SQLProvider
+
+group Sql
+    source https://api.nuget.org/v3/index.json
+    framework: netcoreapp2.2
+    storage: packages
+    nuget MySqlConnector
 
 group Client
     source https://api.nuget.org/v3/index.json

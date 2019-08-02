@@ -2,3 +2,7 @@ group Server
     FSharp.Core
     Saturn
     Thoth.Json.Giraffe
+    SQLProvider
+
+group Sql
+    MySqlConnector

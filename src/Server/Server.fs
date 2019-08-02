@@ -19,33 +19,50 @@ let port =
 
 let webApp = router {
     get "/api/project/private" (fun next ctx ->
-        json "Would get all private projects" next ctx
+        json ["Would get all private projects"] next ctx
     )
 
     getf "/api/project/private/%s" (fun projId next ctx ->
-        json (sprintf "Would get private project with ID %s" projId) next ctx
+        json [(sprintf "Would get private project with ID %s" projId)] next ctx
     )
 
     get "/api/project" (fun next ctx ->
-        json "Would get all public projects" next ctx
+        task {
+            let! x = Model.projectsQueryAsync |> Async.StartAsTask
+            let logins = x |> Seq.map (fun project -> project.Identifier) |> List.ofSeq
+            return! json logins next ctx
+        }
     )
 
     getf "/api/project/%s" (fun projId next ctx ->
-        json (sprintf "Would get public project with ID %s" projId) next ctx
+        json [(sprintf "Would get public project with ID %s" projId)] next ctx
     )
 
     getf "/api/project/exists/%s" (fun projId next ctx ->
-        // Would return true if project exists (NOTE: This is the INVERSE of what the old API did!)
-        json true next ctx
+        // Returns true if project exists (NOTE: This is the INVERSE of what the old API did!)
+        json (Model.projectExists projId) next ctx
     )
 
     getf "/api/users/exists/%s" (fun login next ctx ->
-        // Would return true if username exists (NOTE: This is the INVERSE of what the old API did!)
-        json true next ctx
+        // Returns true if username exists (NOTE: This is the INVERSE of what the old API did!)
+        json (Model.userExists login) next ctx
+    )
+
+    get "/api/users" (fun next ctx ->
+        // DEMO ONLY. Enumerates all users
+        task {
+            let! x = Model.usersQueryAsync |> Async.StartAsTask
+            let logins = x |> Seq.map (fun user -> user.Login) |> List.ofSeq
+            return! json logins next ctx
+        }
     )
 
     postf "/api/users/%s/projects" (fun login next ctx ->
-        json "Would verify password, then return list of projects user is member of (optionally filtered by role in project)" next ctx
+        // TODO: Verify password
+        task {
+            let! userlist = Model.projectsByUser login
+            return! json (userlist |> List.ofSeq) next ctx
+        }
     )
 
     post "/api/users" (fun next ctx ->

@@ -11,6 +11,7 @@ open System
 open Fake.Core
 open Fake.DotNet
 open Fake.IO
+open Fake.IO.FileSystemOperators
 
 Target.initEnvironment ()
 
@@ -18,6 +19,8 @@ let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
 let clientDeployPath = Path.combine clientPath "deploy"
 let deployDir = Path.getFullName "./deploy"
+
+let testSqlPath = Path.getFullName "./testlanguagedepot.sql"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
@@ -131,7 +134,16 @@ Target.create "Docker" (fun _ ->
     buildDocker dockerFullName
 )
 
-
+Target.create "RestoreSql" (fun _ ->
+    let arguments = Arguments.Empty
+    let cmd = __SOURCE_DIRECTORY__ @@ "restoretestdata.sh"
+    let proc =
+        Command.RawCommand (cmd, arguments)
+        |> CreateProcess.fromCommand
+        |> CreateProcess.withWorkingDirectory __SOURCE_DIRECTORY__
+        |> CreateProcess.ensureExitCode
+    Proc.run proc |> ignore
+)
 
 
 
@@ -147,6 +159,7 @@ open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
+    ==> "RestoreSql"
     ==> "Run"
 
 Target.runOrDefaultWithArguments "Build"
