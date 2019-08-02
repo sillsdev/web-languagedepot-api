@@ -67,6 +67,42 @@ let projectsByUser username =
 let projectsByUserRole username role =
     raise (NotImplementedException("TODO"))
 
+let hexStrToBytes (hexStr : string) =
+    let len = hexStr.Length
+    if len % 2 <> 0 then
+        raise (ArgumentException("hexStr", "Hex-encoded byte strings must have an even length"))
+    let result = Array.zeroCreate (len / 2)
+    for i in 0..2..len - 1 do
+        result.[i/2] <- System.Convert.ToByte(hexStr.[i..i+1], 16)
+    result
+
+let verifyPass (clearPass : string) (hashPass : string) =
+    if hashPass.StartsWith("$2") then
+        // Bcrypt
+        false  // TODO: Implement
+    elif hashPass.Length = 32 then
+        // MD5
+        false  // TODO: Implement? Or just reject that one bit of test data?
+    elif hashPass.Length = 40 then
+        // SHA1
+        let utf8 = System.Text.UTF8Encoding(false)
+        let clearBytes = utf8.GetBytes(clearPass)
+        let hashBytes = hexStrToBytes hashPass
+        use sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider()
+        sha1.ComputeHash(clearBytes) = hashBytes
+    else
+        false
+
+let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
+    if not (userExists loginInfo.username) then
+        false
+    else
+        let user = query { for user in ctx.Testldapi.Users do
+                               where (user.Login = loginInfo.username)
+                               select user
+                               exactlyOne }
+        verifyPass loginInfo.password user.HashedPassword
+
 // TODO: Decide whether all these fields are actually needed
 
 type Project = {
