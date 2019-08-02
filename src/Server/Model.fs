@@ -22,14 +22,14 @@ let usersQueryAsync =
         for user in ctx.Testldapi.Users do
             select user
     }
-    |> Seq.executeQueryAsync
+    |> List.executeQueryAsync
 
 let projectsQueryAsync =
     query {
         for project in ctx.Testldapi.Projects do
             select project
     }
-    |> Seq.executeQueryAsync
+    |> List.executeQueryAsync
 
 let userExists username =
     query {
@@ -47,7 +47,7 @@ let projectExists projectCode =
 
 let projectsByUser username =
     if not (userExists username) then
-        async { return Seq.empty }
+        async { return [] }
     else
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -62,7 +62,7 @@ let projectsByUser username =
                 where (user.UserId = requestedUser.Id)
                 select project.Identifier
         }
-        |> Seq.executeQueryAsync
+        |> List.executeQueryAsync
 
 let projectsByUserRole username role =
     raise (NotImplementedException("TODO"))

@@ -29,7 +29,7 @@ let webApp = router {
     get "/api/project" (fun next ctx ->
         task {
             let! x = Model.projectsQueryAsync |> Async.StartAsTask
-            let logins = x |> Seq.map (fun project -> project.Identifier) |> List.ofSeq
+            let logins = x |> List.map (fun project -> project.Identifier)
             return! json logins next ctx
         }
     )
@@ -52,17 +52,20 @@ let webApp = router {
         // DEMO ONLY. Enumerates all users
         task {
             let! x = Model.usersQueryAsync |> Async.StartAsTask
-            let logins = x |> Seq.map (fun user -> user.Login) |> List.ofSeq
+            let logins = x |> List.map (fun user -> user.Login)
             return! json logins next ctx
         }
     )
 
-    postf "/api/users/%s/projects" (fun login next ctx ->
-        // TODO: Verify password
-        task {
-            let! userlist = Model.projectsByUser login
-            return! json (userlist |> List.ofSeq) next ctx
-        }
+    postf "/api/users/%s/projects" (fun login ->
+        bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
+            eprintfn "Got username %s and password %s" logininfo.username logininfo.password
+            // TODO: Verify password
+            task {
+                let! userList = Model.projectsByUser login |> Async.StartAsTask
+                return! json userList next ctx
+            }
+        )
     )
 
     post "/api/users" (fun next ctx ->
