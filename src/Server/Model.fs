@@ -8,7 +8,7 @@ let connString  = "Server=localhost;Database=testldapi;User=rmunn"
 // TODO: Create constants that the build script can replace from a Config.fs file
 
 [<Literal>]
-let resolutionPath = __SOURCE_DIRECTORY__ + "../../packages/sql/MySqlConnector/lib/netstandard2.0/MySqlConnector.dll"
+let resolutionPath = __SOURCE_DIRECTORY__
 
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            connString,
