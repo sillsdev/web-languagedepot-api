@@ -134,6 +134,10 @@ Target.create "Docker" (fun _ ->
     buildDocker dockerFullName
 )
 
+// NOTE: Before this will work, you must run "sudo mysql" and do something like:
+// CREATE DATABASE testldapi;
+// CREATE USER 'foo'@'localhost' IDENTIFIED BY '';
+// GRANT ALL PRIVILEGES ON testldapi.* TO 'foo'@'localhost' IDENTIFIED BY '';
 Target.create "RestoreSql" (fun _ ->
     let arguments = Arguments.Empty
     let cmd = __SOURCE_DIRECTORY__ @@ "restoretestdata.sh"

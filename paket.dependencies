@@ -13,6 +13,12 @@ group Sql
     framework: netcoreapp2.2
     storage: packages
     nuget MySqlConnector
+    // MySqlConnector needs explicit transitive dependencies since it's loaded at runtime via reflection
+    nuget System.Buffers
+    nuget System.Runtime.InteropServices.RuntimeInformation
+    nuget System.Threading.Tasks.Extensions
+    nuget System.Memory
+    nuget System.Runtime.CompilerServices.Unsafe
 
 group Client
     source https://api.nuget.org/v3/index.json

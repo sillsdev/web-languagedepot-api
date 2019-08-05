@@ -94,14 +94,14 @@ let verifyPass (clearPass : string) (hashPass : string) =
         false
 
 let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
-    if not (userExists loginInfo.username) then
-        false
-    else
-        let user = query { for user in ctx.Testldapi.Users do
-                               where (user.Login = loginInfo.username)
-                               select user
-                               exactlyOne }
-        verifyPass loginInfo.password user.HashedPassword
+    async {
+        let! user = query { for user in ctx.Testldapi.Users do
+                                where (user.Login = loginInfo.username)
+                                select user } |> Seq.tryHeadAsync
+        match user with
+        | None -> return false
+        | Some user -> return verifyPass loginInfo.password user.HashedPassword
+    }
 
 // TODO: Decide whether all these fields are actually needed
 

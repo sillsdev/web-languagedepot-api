@@ -71,13 +71,14 @@ let webApp = router {
     postf "/api/users/%s/projects" (fun login ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password
-            if Model.verifyLoginInfo logininfo then
-                task {
+            task {
+                let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
+                if goodLogin then
                     let! userList = Model.projectsByUser login |> Async.StartAsTask
                     return! json userList next ctx
-                }
-            else
-                RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
+                else
+                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
+            }
         )
     )
 
