@@ -134,6 +134,10 @@ Target.create "Docker" (fun _ ->
     buildDocker dockerFullName
 )
 
+// NOTE: Before this will work, you must run "sudo mysql" and do something like:
+// CREATE DATABASE testldapi;
+// CREATE USER 'foo'@'localhost' IDENTIFIED BY '';
+// GRANT ALL PRIVILEGES ON testldapi.* TO 'foo'@'localhost' IDENTIFIED BY '';
 Target.create "RestoreSql" (fun _ ->
     let arguments = Arguments.Empty
     let cmd = __SOURCE_DIRECTORY__ @@ "restoretestdata.sh"
@@ -145,13 +149,25 @@ Target.create "RestoreSql" (fun _ ->
     Proc.run proc |> ignore
 )
 
-
-
+Target.create "CopyNeededMySqlDlls" (fun _ ->
+    let dllsNeeded = [
+        "packages/sql/MySqlConnector/lib/netstandard2.0/MySqlConnector.dll"
+        "packages/sql/System.Buffers/lib/netstandard2.0/System.Buffers.dll"
+        "packages/sql/System.Runtime.InteropServices.RuntimeInformation/lib/netstandard1.1/System.Runtime.InteropServices.RuntimeInformation.dll"
+        "packages/sql/System.Threading.Tasks.Extensions/lib/netstandard2.0/System.Threading.Tasks.Extensions.dll"
+        "packages/sql/System.Memory/lib/netstandard2.0/System.Memory.dll"
+        "packages/sql/System.Runtime.CompilerServices.Unsafe/lib/netstandard2.0/System.Runtime.CompilerServices.Unsafe.dll"
+    ]
+    dllsNeeded
+    // |> List.map (fun dllName -> __SOURCE_DIRECTORY__ @@ sprintf "packages/sql/%s/lib/netstandard2.0/%s.dll" dllName dllName)
+    |> Shell.copy serverPath
+)
 
 open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
+    ==> "CopyNeededMySqlDlls"
     ==> "Build"
     ==> "Bundle"
     ==> "Docker"

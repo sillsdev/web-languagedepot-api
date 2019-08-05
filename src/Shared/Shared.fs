@@ -5,6 +5,11 @@ type SharedUser = {
     Projects : string list
 }
 
+type LoginInfo = {
+    username : string
+    password : string
+}
+
 type AddUserToProjects = {
     Add : SharedUser
 }

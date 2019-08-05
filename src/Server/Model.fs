@@ -8,7 +8,7 @@ let connString  = "Server=localhost;Database=testldapi;User=rmunn"
 // TODO: Create constants that the build script can replace from a Config.fs file
 
 [<Literal>]
-let resolutionPath = __SOURCE_DIRECTORY__ + "../../packages/sql/MySqlConnector/lib/netstandard2.0/MySqlConnector.dll"
+let resolutionPath = __SOURCE_DIRECTORY__
 
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            connString,
@@ -22,14 +22,14 @@ let usersQueryAsync =
         for user in ctx.Testldapi.Users do
             select user
     }
-    |> Seq.executeQueryAsync
+    |> List.executeQueryAsync
 
 let projectsQueryAsync =
     query {
         for project in ctx.Testldapi.Projects do
             select project
     }
-    |> Seq.executeQueryAsync
+    |> List.executeQueryAsync
 
 let userExists username =
     query {
@@ -47,7 +47,7 @@ let projectExists projectCode =
 
 let projectsByUser username =
     if not (userExists username) then
-        async { return Seq.empty }
+        async { return [] }
     else
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -62,10 +62,46 @@ let projectsByUser username =
                 where (user.UserId = requestedUser.Id)
                 select project.Identifier
         }
-        |> Seq.executeQueryAsync
+        |> List.executeQueryAsync
 
 let projectsByUserRole username role =
     raise (NotImplementedException("TODO"))
+
+let hexStrToBytes (hexStr : string) =
+    let len = hexStr.Length
+    if len % 2 <> 0 then
+        raise (ArgumentException("hexStr", "Hex-encoded byte strings must have an even length"))
+    let result = Array.zeroCreate (len / 2)
+    for i in 0..2..len - 1 do
+        result.[i/2] <- System.Convert.ToByte(hexStr.[i..i+1], 16)
+    result
+
+let verifyPass (clearPass : string) (hashPass : string) =
+    if hashPass.StartsWith("$2") then
+        // Bcrypt
+        false  // TODO: Implement
+    elif hashPass.Length = 32 then
+        // MD5
+        false  // TODO: Implement? Or just reject that one bit of test data?
+    elif hashPass.Length = 40 then
+        // SHA1
+        let utf8 = System.Text.UTF8Encoding(false)
+        let clearBytes = utf8.GetBytes(clearPass)
+        let hashBytes = hexStrToBytes hashPass
+        use sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider()
+        sha1.ComputeHash(clearBytes) = hashBytes
+    else
+        false
+
+let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
+    async {
+        let! user = query { for user in ctx.Testldapi.Users do
+                                where (user.Login = loginInfo.username)
+                                select user } |> Seq.tryHeadAsync
+        match user with
+        | None -> return false
+        | Some user -> return verifyPass loginInfo.password user.HashedPassword
+    }
 
 // TODO: Decide whether all these fields are actually needed
 

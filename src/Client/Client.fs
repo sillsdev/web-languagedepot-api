@@ -73,7 +73,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         nextModel, Cmd.none
     | _, GetProjectsForUser user ->
         let url = sprintf "/api/users/%s/projects" user
-        let data = []
+        let data = { username = user; password = "s3kr3t" }
         let promise = Fetch.post(url, data) |> Promise.map ProjectsListRetrieved
         currentModel, Cmd.OfPromise.result promise
     | _, ProjectsListRetrieved projects ->
