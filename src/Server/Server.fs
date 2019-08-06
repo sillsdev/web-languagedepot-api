@@ -45,6 +45,12 @@ let webApp = router {
         }
     )
 
+    get "/api/collections" (fun next ctx ->
+        task {
+            let! names = Mongo.getCollectionNames("live-sf")
+            return! json (names |> List.ofSeq) next ctx
+        })
+
     getf "/api/project/%s" (fun projId next ctx ->
         json [(sprintf "Would get public project with ID %s" projId)] next ctx
     )
