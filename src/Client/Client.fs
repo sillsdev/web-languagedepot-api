@@ -66,8 +66,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = { currentModel with UserList = users }
         nextModel, Cmd.none
     | _, ListAllProjects ->
-        let url = "/api/collections"  // Just to test the new Mongo connection
-        // let url = "/api/project"
+        let url = "/api/project"
         currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
     | _, ProjectListRetrieved projects ->
         let nextModel = { currentModel with ProjectList = projects }
