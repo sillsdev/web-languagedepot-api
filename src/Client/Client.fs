@@ -2,6 +2,7 @@ module Client
 
 open Browser
 open Elmish
+open Elmish.Navigation
 open Elmish.React
 open Fable.Core.JsInterop
 open Fable.FontAwesome
@@ -15,11 +16,34 @@ open Thoth.Json
 
 open Shared
 
+module Nav =
+    open Elmish.UrlParser
+
+    type Route =
+        | UserPage of string
+        | ProjectPage of string
+        | RootPage
+        | LoginPage
+
+    let route =
+        oneOf [
+            s "user" </> str |> map UserPage
+            s "project" </> str |> map ProjectPage
+            s "login" |> map LoginPage
+            top |> map RootPage
+        ]
+
+    let toRoute = function
+        | UserPage username -> sprintf "#user/%s" username
+        | ProjectPage projectCode -> sprintf "#project/%s" projectCode
+        | LoginPage -> "#login"
+        | RootPage -> "#"
+
 // The model holds data that you want to keep track of while the application is running
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list }
+type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -39,8 +63,8 @@ type Msg =
 | ProjectsListRetrieved of string list
 
 // defines the initial state and initial command (= side-effect) of the application
-let init () : Model * Cmd<Msg> =
-    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = [] }
+let init page : Model * Cmd<Msg> =
+    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage }
     initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -333,12 +357,28 @@ let view (model : Model) (dispatch : Msg -> unit) =
                         info
                         columns model dispatch ] ] ] ]
 
+let urlUpdate (result : Nav.Route option) model =
+  match result with
+  | Some page ->
+      { model with Page = page }, Cmd.none
+
+  | None ->
+      model, Navigation.modifyUrl (Nav.toRoute Nav.RootPage)
+
+let routingView (model : Model) (dispatch : Msg -> unit) =
+    match model.Page with
+    | Nav.RootPage -> str "Root page"
+    | Nav.LoginPage -> str "Login page"
+    | Nav.ProjectPage code -> str ("Project page for " + code)
+    | Nav.UserPage username -> str ("User page for " + username)
+
 #if DEBUG
 open Elmish.Debug
 open Elmish.HMR
 #endif
 
-Program.mkProgram init update view
+Program.mkProgram init update routingView
+|> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
 #if DEBUG
 |> Program.withConsoleTrace
 #endif
