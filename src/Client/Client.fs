@@ -384,11 +384,11 @@ open Elmish.HMR
 #endif
 
 Program.mkProgram init update routingView
-|> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
-|> Toast.Program.withToast Notifications.renderToastWithFulma
 #if DEBUG
 |> Program.withConsoleTrace
 #endif
+|> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
+|> Toast.Program.withToast Notifications.renderToastWithFulma
 |> Program.withReactBatched "elmish-app"
 #if DEBUG
 |> Program.withDebugger
