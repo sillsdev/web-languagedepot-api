@@ -66,9 +66,21 @@ type Msg =
 | ProjectPageMsg of ProjectPage.Msg
 | UserPageMsg of UserPage.Msg
 
+let msgsWhenRootModelUpdates = [
+    LoginPage.Msg.RootModelUpdated >> LoginPageMsg
+    ProjectPage.Msg.RootModelUpdated >> ProjectPageMsg
+    UserPage.Msg.RootModelUpdated >> UserPageMsg
+]
+
 // defines the initial state and initial command (= side-effect) of the application
 let init page : Model * Cmd<Msg> =
-    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage; RootModel = RootPage.init(); LoginModel = LoginPage.init(); ProjectModel = ProjectPage.init(); UserModel = UserPage.init() }
+    let initialRootModel = RootPage.init()
+    let initialModel = { Page = defaultArg page Nav.RootPage
+                         User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []
+                         RootModel = initialRootModel
+                         LoginModel = LoginPage.init initialRootModel
+                         ProjectModel = ProjectPage.init initialRootModel
+                         UserModel = UserPage.init initialRootModel }
     initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -116,7 +128,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
         let nextModel = { currentModel with RootModel = nextRootModel }
-        nextModel, Cmd.map RootPageMsg nextRootCmds
+        let otherPageMsgs = msgsWhenRootModelUpdates |> List.map (fun f -> f nextRootModel |> Cmd.ofMsg) |> Cmd.batch
+        nextModel, Cmd.batch [Cmd.map RootPageMsg nextRootCmds; otherPageMsgs]
     | { LoginModel = loginModel }, LoginPageMsg loginMsg ->
         let nextLoginModel, nextLoginCmds = loginModel |> LoginPage.update loginMsg
         let nextModel = { currentModel with LoginModel = nextLoginModel }
