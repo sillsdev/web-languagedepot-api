@@ -395,6 +395,8 @@ let urlUpdate (result : Nav.Route option) model =
   match result with
   | Some (Nav.UserPage username as page) ->
       { model with Page = page }, Cmd.ofMsg (UserPage.Msg.NewUserPageNav username |> UserPageMsg)
+  | Some (Nav.ProjectPage projectCode as page) ->
+      { model with Page = page }, Cmd.ofMsg (ProjectPage.Msg.NewProjectPageNav projectCode |> ProjectPageMsg)
   | Some page ->
       { model with Page = page }, Cmd.none
 
@@ -405,8 +407,7 @@ let routingView (model : Model) (dispatch : Msg -> unit) =
     match model.Page with
     | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
     | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
-    // TODO: Do something with `code` (as we did with user page)
-    | Nav.ProjectPage code -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
+    | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
     | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
 
 #if DEBUG
