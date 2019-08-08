@@ -43,7 +43,7 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route }
+type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -61,10 +61,11 @@ type Msg =
 | ProjectListRetrieved of string list
 | GetProjectsForUser of string
 | ProjectsListRetrieved of string list
+| RootPageMsg of RootPage.Msg
 
 // defines the initial state and initial command (= side-effect) of the application
 let init page : Model * Cmd<Msg> =
-    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage }
+    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage; RootModel = RootPage.init() }
     initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -108,6 +109,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Ok s -> console.log("Success: " + s)
         | Error s -> console.log("Error: " + s)
         currentModel, Cmd.none
+    // Sub pages
+    | { RootModel = rootModel }, RootPageMsg rootMsg ->
+        let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
+        let nextModel = { currentModel with RootModel = nextRootModel }
+        nextModel, Cmd.map RootPageMsg nextRootCmds
 
 // TODO: Look into Fetch.patch and test the JSON stuff in it
 
@@ -367,7 +373,7 @@ let urlUpdate (result : Nav.Route option) model =
 
 let routingView (model : Model) (dispatch : Msg -> unit) =
     match model.Page with
-    | Nav.RootPage -> str "Root page"
+    | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
     | Nav.LoginPage -> str "Login page"
     | Nav.ProjectPage code -> str ("Project page for " + code)
     | Nav.UserPage username -> str ("User page for " + username)
