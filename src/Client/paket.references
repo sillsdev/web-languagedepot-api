@@ -4,6 +4,7 @@ group Client
     Fable.Elmish.Debugger
     Fable.Elmish.React
     Fable.Elmish.HMR
+    Thoth.Elmish.Toast
     Thoth.Fetch
     Fulma
     Fable.FontAwesome.Free

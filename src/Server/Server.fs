@@ -74,6 +74,15 @@ let webApp = router {
         }
     )
 
+    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (function
+        | Add input ->
+            let result = Ok <| sprintf "Added %s to %s" input.Add.Name projId
+            json result
+        | Remove input ->
+            let result = Ok <| sprintf "Removed %s from %s" input.Remove.Name projId
+            json result
+    ))
+
     postf "/api/users/%s/projects" (fun login ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password

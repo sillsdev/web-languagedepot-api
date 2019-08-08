@@ -10,10 +10,12 @@ open Fable.FontAwesome.Free
 open Fable.React
 open Fable.React.Props
 open Fetch.Types
+open Thoth.Elmish
 open Thoth.Fetch
 open Fulma
 open Thoth.Json
 
+open TextInput
 open Shared
 
 module Nav =
@@ -43,13 +45,11 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
+type Model = { UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
 type Msg =
-| AddProject of string
-| DelProject of string
 | UserProjectsUpdated of Shared.SharedUser
 | FindUser of string
 | UserNotFound
@@ -76,7 +76,7 @@ let msgsWhenRootModelUpdates = [
 let init page : Model * Cmd<Msg> =
     let initialRootModel = RootPage.init()
     let initialModel = { Page = defaultArg page Nav.RootPage
-                         User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []
+                         UserList = []; ProjectList = []
                          RootModel = initialRootModel
                          LoginModel = LoginPage.init initialRootModel
                          ProjectModel = ProjectPage.init initialRootModel
@@ -88,15 +88,6 @@ let init page : Model * Cmd<Msg> =
 // these commands in turn, can dispatch messages to which the update function will react.
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match currentModel, msg with
-    | { User = Some user }, AddProject projCode ->
-        let foo = { Name = user.Name; Projects = [ projCode ] }
-        let bar = Remove { Remove = foo }
-        let json = Encode.Auto.toString(4, bar)
-        let url = sprintf "/api/projects/%s" user.Name
-        let promise = Fetch.patch(url, bar) |> Promise.map LogResult
-        currentModel, Cmd.OfPromise.result promise
-    | { User = Some user },  DelProject projCode ->
-        currentModel, Cmd.none
     | _, UserProjectsUpdated _ ->
         currentModel, Cmd.none
     | _, ListAllUsers ->
@@ -120,10 +111,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = { currentModel with ProjectList = projects }
         nextModel, Cmd.none
     | _, LogResult result ->
-        match result with
-        | Ok s -> console.log("Success: " + s)
-        | Error s -> console.log("Error: " + s)
-        currentModel, Cmd.none
+        let cmd = result |> Notifications.notifyStrResult
+        currentModel, cmd
     // Sub pages
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
@@ -279,27 +268,6 @@ let info =
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Exceptions" ] ] ] ] ] ]
 
-type TextInputProps = { placeholder : string; value : string; btn : ReactElement; dispatch : Dispatch<string> }
-let TextInputComponent =
-    FunctionComponent.Of (fun (props : TextInputProps) ->
-        let state = Hooks.useState(props.value)
-        Control.div
-           [ Control.HasIconRight ]
-           [ Field.div
-               [ Field.HasAddons ]
-               [ Input.text
-                   [ Input.Placeholder props.placeholder
-                     Input.Value state.current
-                     Input.OnChange (fun ev -> state.update (!!ev.target?value : string)) ]
-                 Button.a
-                   [ Button.Color IsInfo
-                     Button.OnClick (fun _ -> props.dispatch state.current) ]
-                   [ props.btn ] ] ]
-    )
-
-let textInputComponent placeholder initialValue btn dispatch =
-    TextInputComponent { placeholder = placeholder; value = initialValue; btn = btn; dispatch = dispatch; }
-
 let columns (model : Model) (dispatch : Msg -> unit) =
     Columns.columns [ ]
         [ Column.column [ Column.Width (Screen.All, Column.Is6) ]
@@ -376,7 +344,7 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                                     [ str "Projects" ] ] ] ] ] ] ]
                   Card.footer [ ]
                       [ Card.Footer.div [ ]
-                          [ textInputComponent "Project code" "" (str "+") (dispatch << AddProject) ] ] ] ] ]
+                          [ ] ] ] ] ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ]
@@ -417,6 +385,7 @@ open Elmish.HMR
 
 Program.mkProgram init update routingView
 |> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
+|> Toast.Program.withToast Notifications.renderToastWithFulma
 #if DEBUG
 |> Program.withConsoleTrace
 #endif
