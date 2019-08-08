@@ -43,7 +43,7 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model }
+type Model = { User: Shared.SharedUser option; UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -62,10 +62,13 @@ type Msg =
 | GetProjectsForUser of string
 | ProjectsListRetrieved of string list
 | RootPageMsg of RootPage.Msg
+| LoginPageMsg of LoginPage.Msg
+| ProjectPageMsg of ProjectPage.Msg
+| UserPageMsg of UserPage.Msg
 
 // defines the initial state and initial command (= side-effect) of the application
 let init page : Model * Cmd<Msg> =
-    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage; RootModel = RootPage.init() }
+    let initialModel = { User = Some { Name = "Robin"; Projects = ["ldapi"] }; UserList = []; ProjectList = []; Page = defaultArg page Nav.RootPage; RootModel = RootPage.init(); LoginModel = LoginPage.init(); ProjectModel = ProjectPage.init(); UserModel = UserPage.init() }
     initialModel, Cmd.none
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -114,6 +117,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
         let nextModel = { currentModel with RootModel = nextRootModel }
         nextModel, Cmd.map RootPageMsg nextRootCmds
+    | { LoginModel = loginModel }, LoginPageMsg loginMsg ->
+        let nextLoginModel, nextLoginCmds = loginModel |> LoginPage.update loginMsg
+        let nextModel = { currentModel with LoginModel = nextLoginModel }
+        nextModel, nextLoginCmds |> Cmd.map LoginPageMsg
+    | { ProjectModel = projectModel }, ProjectPageMsg projectMsg ->
+        let nextProjectModel, nextProjectCmds = projectModel |> ProjectPage.update projectMsg
+        let nextModel = { currentModel with ProjectModel = nextProjectModel }
+        nextModel, nextProjectCmds |> Cmd.map ProjectPageMsg
+    | { UserModel = userModel }, UserPageMsg userMsg ->
+        let nextUserModel, nextUserCmds = userModel |> UserPage.update userMsg
+        let nextModel = { currentModel with UserModel = nextUserModel }
+        nextModel, nextUserCmds |> Cmd.map UserPageMsg
 
 // TODO: Look into Fetch.patch and test the JSON stuff in it
 
@@ -374,9 +389,11 @@ let urlUpdate (result : Nav.Route option) model =
 let routingView (model : Model) (dispatch : Msg -> unit) =
     match model.Page with
     | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
-    | Nav.LoginPage -> str "Login page"
-    | Nav.ProjectPage code -> str ("Project page for " + code)
-    | Nav.UserPage username -> str ("User page for " + username)
+    | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
+    // TODO: Do something with `code`
+    | Nav.ProjectPage code -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
+    // TODO: Do something with `username`
+    | Nav.UserPage username -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
 
 #if DEBUG
 open Elmish.Debug
