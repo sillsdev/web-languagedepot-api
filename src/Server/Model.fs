@@ -45,7 +45,7 @@ let projectExists projectCode =
         contains projectCode
     }
 
-let projectsByUser username =
+let projectsByUserQuery username (role : int option) =
     if not (userExists username) then
         async { return [] }
     else
@@ -55,17 +55,27 @@ let projectsByUser username =
                 select user
                 exactlyOneOrDefault
         }
-        query {
-            for project in ctx.Testldapi.Projects do
-                join user in ctx.Testldapi.Members
-                    on (project.Id = user.ProjectId)
-                where (user.UserId = requestedUser.Id)
-                select project.Identifier
-        }
+        if role.IsSome then
+            query {
+                for project in ctx.Testldapi.Projects do
+                    join user in ctx.Testldapi.Members
+                        on (project.Id = user.ProjectId)
+                    where (user.UserId = requestedUser.Id && user.RoleId = role.Value)
+                    select project.Identifier
+            }
+        else
+            query {
+                for project in ctx.Testldapi.Projects do
+                    join user in ctx.Testldapi.Members
+                        on (project.Id = user.ProjectId)
+                    where (user.UserId = requestedUser.Id)
+                    select project.Identifier
+            }
         |> List.executeQueryAsync
 
-let projectsByUserRole username role =
-    raise (NotImplementedException("TODO"))
+let projectsByUser username = projectsByUserQuery username None
+
+let projectsByUserRole username roleId = projectsByUserQuery username (Some roleId)
 
 let hexStrToBytes (hexStr : string) =
     let len = hexStr.Length

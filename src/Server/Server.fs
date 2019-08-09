@@ -89,8 +89,22 @@ let webApp = router {
             task {
                 let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! userList = Model.projectsByUser login |> Async.StartAsTask
-                    return! json userList next ctx
+                    let! projectList = Model.projectsByUser login |> Async.StartAsTask
+                    return! json projectList next ctx
+                else
+                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
+            }
+        )
+    )
+
+    postf "/api/users/%s/projects/withRole/%d" (fun (login, roleId) ->
+        bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
+            eprintfn "Got username %s and password %s" logininfo.username logininfo.password
+            task {
+                let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
+                if goodLogin then
+                    let! projectList = Model.projectsByUserRole login roleId |> Async.StartAsTask
+                    return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
             }

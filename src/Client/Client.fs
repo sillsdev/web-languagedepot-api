@@ -45,7 +45,7 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { UserList : string list; ProjectList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
+type Model = { UserList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -76,7 +76,7 @@ let msgsWhenRootModelUpdates = [
 let init page : Model * Cmd<Msg> =
     let initialRootModel = RootPage.init()
     let initialModel = { Page = defaultArg page Nav.RootPage
-                         UserList = []; ProjectList = []
+                         UserList = []
                          RootModel = initialRootModel
                          LoginModel = LoginPage.init initialRootModel
                          ProjectModel = ProjectPage.init initialRootModel
@@ -99,17 +99,9 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, ListAllProjects ->
         let url = "/api/project"
         currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
-    | _, ProjectListRetrieved projects ->
-        let nextModel = { currentModel with ProjectList = projects }
-        nextModel, Cmd.none
-    | _, GetProjectsForUser user ->
-        let url = sprintf "/api/users/%s/projects" user
-        let data = { username = user; password = "s3kr3t" }
-        let promise = Fetch.post(url, data) |> Promise.map ProjectsListRetrieved
-        currentModel, Cmd.OfPromise.result promise
-    | _, ProjectsListRetrieved projects ->
-        let nextModel = { currentModel with ProjectList = projects }
-        nextModel, Cmd.none
+    // | _, ProjectListRetrieved projects ->
+    //     let nextModel = { currentModel with ProjectList = projects }
+    //     nextModel, Cmd.none
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
@@ -311,9 +303,7 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                 [ Fa.i [Fa.Solid.AngleDown] [] ] ] ]
                     Card.content [ ]
                       [ Content.content [ ]
-                          [ ul [ ]
-                               [ for project in model.ProjectList ->
-                                    li [ ] [ str project ] ] ] ] ] ]
+                          [ ] ] ] ]
           Column.column [ Column.Width (Screen.All, Column.Is6) ]
             [ Card.card [ CustomClass "events-card" ]
                 [ Card.header [ ]
@@ -337,11 +327,7 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                             td [ ]
                                                 [ str user ]
                                             td [ ]
-                                                [ Button.a
-                                                    [ Button.Size IsSmall
-                                                      Button.Color IsPrimary
-                                                      Button.OnClick (fun _ -> dispatch (GetProjectsForUser user)) ]
-                                                    [ str "Projects" ] ] ] ] ] ] ]
+                                                [ ] ] ] ] ] ]
                   Card.footer [ ]
                       [ Card.Footer.div [ ]
                           [ ] ] ] ] ]
@@ -390,7 +376,7 @@ Program.mkProgram init update routingView
 |> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
 |> Toast.Program.withToast Notifications.renderToastWithFulma
 |> Program.withReactBatched "elmish-app"
-#if DEBUG
-|> Program.withDebugger
-#endif
+// #if DEBUG
+// |> Program.withDebugger
+// #endif
 |> Program.run

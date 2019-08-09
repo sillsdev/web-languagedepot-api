@@ -4,6 +4,7 @@ open Browser
 open Elmish
 open Fable.Core.JsInterop
 open Fable.React
+open Fulma
 // open Thoth.Elmish.Toast
 open Thoth.Fetch
 open Thoth.Json
@@ -17,10 +18,13 @@ type Msg =
     | AddProject of string
     | DelProject of string
     | LogResult of Result<string,string>
+    | GetProjectsForUser
+    | GetProjectsByRole of int
+    | ProjectsListRetrieved of string list
 
-type Model = { RootModel : RootPage.Model; CurrentlyViewedUser : SharedUser option; }
+type Model = { RootModel : RootPage.Model; ProjectList : string list; CurrentlyViewedUser : SharedUser option; }
 
-let init rootModel = { RootModel = rootModel; CurrentlyViewedUser = None }
+let init rootModel = { RootModel = rootModel; ProjectList = []; CurrentlyViewedUser = None }
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -29,6 +33,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         nextModel, Cmd.none
     | NewUserPageNav username ->
         let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username } }
+        nextModel, Cmd.none
+    | GetProjectsForUser ->
+        match currentModel.CurrentlyViewedUser with
+        | None ->
+            currentModel, Cmd.none
+        | Some user ->
+            let url = sprintf "/api/users/%s/projects" user.Name
+            let data = { username = user.Name; password = "s3kr3t" }
+            let promise = Fetch.post(url, data) |> Promise.map ProjectsListRetrieved
+            currentModel, Cmd.OfPromise.result promise
+    | ProjectsListRetrieved projects ->
+        let nextModel = { currentModel with ProjectList = projects }
         nextModel, Cmd.none
     | AddProject projCode ->
         match currentModel.CurrentlyViewedUser with
@@ -58,4 +74,11 @@ let view (model : Model) (dispatch : Msg -> unit) =
               br [ ]
               textInputComponent "Project code" "" (str "+") (dispatch << AddProject)
               br [ ]
-              textInputComponent "Project code" "" (str "-") (dispatch << DelProject) ]
+              textInputComponent "Project code" "" (str "-") (dispatch << DelProject)
+              Button.a
+                [ Button.Size IsSmall
+                  Button.Color IsPrimary
+                  Button.OnClick (fun _ -> dispatch GetProjectsForUser) ]
+                [ str "Projects" ]
+              ul [ ]
+                 [ for project in model.ProjectList -> li [ ] [ str project ] ] ]
