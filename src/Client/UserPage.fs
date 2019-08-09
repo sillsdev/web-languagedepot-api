@@ -21,6 +21,7 @@ type Msg =
     | GetProjectsForUser
     | GetProjectsByRole of int
     | ProjectsListRetrieved of string list
+    | LogException of System.Exception
 
 type Model = { RootModel : RootPage.Model; ProjectList : string list; CurrentlyViewedUser : SharedUser option; }
 
@@ -41,8 +42,15 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Some user ->
             let url = sprintf "/api/users/%s/projects" user.Name
             let data = { username = user.Name; password = "s3kr3t" }
-            let promise = Fetch.post(url, data) |> Promise.map ProjectsListRetrieved
-            currentModel, Cmd.OfPromise.result promise
+            currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
+    | GetProjectsByRole roleId ->
+        match currentModel.CurrentlyViewedUser with
+        | None ->
+            currentModel, Cmd.none
+        | Some user ->
+            let url = sprintf "/api/users/%s/projects/withRole/%d" user.Name roleId
+            let data = { username = user.Name; password = "s3kr3t" }
+            currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
     | ProjectsListRetrieved projects ->
         let nextModel = { currentModel with ProjectList = projects }
         nextModel, Cmd.none
@@ -67,6 +75,9 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
+    | LogException exn ->
+        let cmd = Notifications.notifyError exn.Message
+        currentModel, cmd
 
 let view (model : Model) (dispatch : Msg -> unit) =
     let name = match model.CurrentlyViewedUser with None -> "" | Some user -> user.Name
@@ -81,4 +92,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   Button.OnClick (fun _ -> dispatch GetProjectsForUser) ]
                 [ str "Projects" ]
               ul [ ]
-                 [ for project in model.ProjectList -> li [ ] [ str project ] ] ]
+                 [ for project in model.ProjectList -> li [ ] [ str project ] ]
+              textInputComponent "Role ID (manager = 3, contributor = 4, LDP = 6)" "" (str "By Role") (dispatch << GetProjectsByRole << System.Int32.Parse) ]

@@ -97,7 +97,7 @@ let webApp = router {
         )
     )
 
-    postf "/api/users/%s/projects/withRole/%d" (fun (login, roleId) ->
+    postf "/api/users/%s/projects/withRole/%i" (fun (login, roleId) ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password
             task {
