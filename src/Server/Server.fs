@@ -89,7 +89,7 @@ let webApp = router {
             task {
                 let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! projectList = Model.projectsByUser login |> Async.StartAsTask
+                    let! projectList = Model.projectsAndRolesByUser login |> Async.StartAsTask
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
@@ -103,7 +103,7 @@ let webApp = router {
             task {
                 let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! projectList = Model.projectsByUserRole login roleId |> Async.StartAsTask
+                    let! projectList = Model.projectsAndRolesByUserRole login roleId |> Async.StartAsTask
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx

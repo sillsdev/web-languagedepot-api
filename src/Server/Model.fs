@@ -45,7 +45,7 @@ let projectExists projectCode =
         contains projectCode
     }
 
-let projectsByUserQuery username (role : int option) =
+let projectsByUserRole username (role : int) =
     if not (userExists username) then
         async { return [] }
     else
@@ -55,27 +55,41 @@ let projectsByUserQuery username (role : int option) =
                 select user
                 exactlyOneOrDefault
         }
-        if role.IsSome then
-            query {
-                for project in ctx.Testldapi.Projects do
-                    join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
-                    where (user.UserId = requestedUser.Id && user.RoleId = role.Value)
-                    select project.Identifier
-            }
-        else
-            query {
-                for project in ctx.Testldapi.Projects do
-                    join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
-                    where (user.UserId = requestedUser.Id)
-                    select project.Identifier
-            }
+        query {
+            for project in ctx.Testldapi.Projects do
+                join user in ctx.Testldapi.Members
+                    on (project.Id = user.ProjectId)
+                where (user.UserId = requestedUser.Id &&
+                    (if role < 0 then true else user.RoleId = role))
+                select project.Identifier
+        }
         |> List.executeQueryAsync
 
-let projectsByUser username = projectsByUserQuery username None
+let projectsByUser username = projectsByUserRole username -1
 
-let projectsByUserRole username roleId = projectsByUserQuery username (Some roleId)
+let projectsAndRolesByUserRole username (roleId : int) =
+    if not (userExists username) then
+        async { return [] }
+    else
+        let requestedUser = query {
+            for user in ctx.Testldapi.Users do
+                where (user.Login = username)
+                select user
+                exactlyOneOrDefault
+        }
+        query {
+            for project in ctx.Testldapi.Projects do
+                join user in ctx.Testldapi.Members
+                    on (project.Id = user.ProjectId)
+                join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
+                where (user.UserId = requestedUser.Id &&
+                    (if roleId < 0 then true else user.RoleId = roleId))
+                select (project.Identifier, role.Name)
+        }
+        |> List.executeQueryAsync
+
+let projectsAndRolesByUser username =
+    projectsAndRolesByUserRole username -1
 
 let hexStrToBytes (hexStr : string) =
     let len = hexStr.Length

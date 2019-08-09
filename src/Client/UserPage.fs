@@ -20,10 +20,10 @@ type Msg =
     | LogResult of Result<string,string>
     | GetProjectsForUser
     | GetProjectsByRole of int
-    | ProjectsListRetrieved of string list
+    | ProjectsListRetrieved of (string * string) list
     | LogException of System.Exception
 
-type Model = { RootModel : RootPage.Model; ProjectList : string list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RootModel : RootPage.Model; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
 
 let init rootModel = { RootModel = rootModel; ProjectList = []; CurrentlyViewedUser = None }
 
@@ -92,5 +92,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   Button.OnClick (fun _ -> dispatch GetProjectsForUser) ]
                 [ str "Projects" ]
               ul [ ]
-                 [ for project in model.ProjectList -> li [ ] [ str project ] ]
+                 [ for (project, role) in model.ProjectList -> li [ ] [ str (project + ": " + role) ] ]
               textInputComponent "Role ID (manager = 3, contributor = 4, LDP = 6)" "" (str "By Role") (dispatch << GetProjectsByRole << System.Int32.Parse) ]
