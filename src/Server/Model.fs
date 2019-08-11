@@ -91,6 +91,13 @@ let projectsAndRolesByUserRole username (roleId : int) =
 let projectsAndRolesByUser username =
     projectsAndRolesByUserRole username -1
 
+let roleNames() =
+    query {
+        for role in ctx.Testldapi.Roles do
+            select (role.Id, role.Name)
+    }
+    |> List.executeQueryAsync
+
 let hexStrToBytes (hexStr : string) =
     let len = hexStr.Length
     if len % 2 <> 0 then

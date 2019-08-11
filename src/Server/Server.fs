@@ -111,6 +111,13 @@ let webApp = router {
         )
     )
 
+    get "/api/roles" (fun next ctx ->
+        task {
+            let! roles = Model.roleNames()
+            return! json roles next ctx
+        }
+    )
+
     post "/api/users" (fun next ctx ->
         json "Would create new user account" next ctx
     )

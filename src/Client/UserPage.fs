@@ -4,6 +4,7 @@ open Browser
 open Elmish
 open Fable.Core.JsInterop
 open Fable.React
+open Fable.React.Props
 open Fulma
 // open Thoth.Elmish.Toast
 open Thoth.Fetch
@@ -13,6 +14,7 @@ open TextInput
 open Shared
 
 type Msg =
+    | RoleListUpdated of (int * string) list
     | RootModelUpdated of RootPage.Model
     | NewUserPageNav of string
     | AddProject of string
@@ -23,12 +25,17 @@ type Msg =
     | ProjectsListRetrieved of (string * string) list
     | LogException of System.Exception
 
-type Model = { RootModel : RootPage.Model; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RootModel : RootPage.Model; RoleList : (int * string) list; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
 
-let init rootModel = { RootModel = rootModel; ProjectList = []; CurrentlyViewedUser = None }, Cmd.none
+let init rootModel =
+    { RootModel = rootModel; RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
+    Cmd.OfPromise.perform Fetch.get "/api/roles" RoleListUpdated
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | RoleListUpdated newRoleList ->
+        let nextModel = { currentModel with RoleList = newRoleList }
+        nextModel, Cmd.none
     | RootModelUpdated newRootModel ->
         let nextModel = { currentModel with RootModel = newRootModel }
         nextModel, Cmd.none
@@ -79,6 +86,22 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let cmd = Notifications.notifyError exn.Message
         currentModel, cmd
 
+let RoleSelector =
+    FunctionComponent.Of (fun (props : {| model : Model; dispatch : Msg -> unit |}) ->
+        let selected = Hooks.useState "0"
+        Select.select
+            [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for (roleId, role) in props.model.RoleList -> option [ Value (roleId.ToString()); Key (roleId.ToString()) ] [ str role ] ]
+              Button.a
+                [ Button.Size IsSmall
+                  Button.Color IsPrimary
+                  Button.OnClick (fun _ -> printfn "Selected %A" selected.current; selected.current |> System.Int32.Parse |> GetProjectsByRole |> props.dispatch ) ]
+                [ str "By Role" ] ]
+)
+
+let roleSelector (model : Model) (dispatch : Msg -> unit) =
+    RoleSelector {| model = model; dispatch = dispatch |}
+
 let view (model : Model) (dispatch : Msg -> unit) =
     let name = match model.CurrentlyViewedUser with None -> "" | Some user -> user.Name
     div [ ] [ str ("This is the user page" + if System.String.IsNullOrEmpty name then "" else " for " + name)
@@ -93,4 +116,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ str "Projects" ]
               ul [ ]
                  [ for (project, role) in model.ProjectList -> li [ ] [ str (project + ": " + role) ] ]
-              textInputComponent "Role ID (manager = 3, contributor = 4, LDP = 6)" "" (str "By Role") (dispatch << GetProjectsByRole << System.Int32.Parse) ]
+              roleSelector model dispatch
+            ]
