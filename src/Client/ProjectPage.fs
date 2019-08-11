@@ -9,7 +9,7 @@ type Msg =
 
 type Model = { RootModel : RootPage.Model; CurrentlyViewedProject : string }
 
-let init rootModel = { RootModel = rootModel; CurrentlyViewedProject = "" }
+let init rootModel = { RootModel = rootModel; CurrentlyViewedProject = "" }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with

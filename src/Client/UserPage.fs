@@ -25,7 +25,7 @@ type Msg =
 
 type Model = { RootModel : RootPage.Model; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
 
-let init rootModel = { RootModel = rootModel; ProjectList = []; CurrentlyViewedUser = None }
+let init rootModel = { RootModel = rootModel; ProjectList = []; CurrentlyViewedUser = None }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with

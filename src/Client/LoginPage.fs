@@ -7,7 +7,7 @@ type Msg = RootModelUpdated of RootPage.Model
 
 type Model = { RootModel : RootPage.Model }
 
-let init rootModel = { RootModel = rootModel }
+let init rootModel = { RootModel = rootModel }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with

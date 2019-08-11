@@ -75,13 +75,20 @@ let msgsWhenRootModelUpdates = [
 // defines the initial state and initial command (= side-effect) of the application
 let init page : Model * Cmd<Msg> =
     let initialRootModel = RootPage.init()
+    let loginModel, loginCmds = LoginPage.init initialRootModel
+    let projectModel, projectCmds = ProjectPage.init initialRootModel
+    let userModel, userCmds = UserPage.init initialRootModel
     let initialModel = { Page = defaultArg page Nav.RootPage
                          UserList = []
                          RootModel = initialRootModel
-                         LoginModel = LoginPage.init initialRootModel
-                         ProjectModel = ProjectPage.init initialRootModel
-                         UserModel = UserPage.init initialRootModel }
-    initialModel, Cmd.none
+                         LoginModel = loginModel
+                         ProjectModel = projectModel
+                         UserModel = userModel }
+    initialModel, Cmd.batch [
+        loginCmds |> Cmd.map LoginPageMsg
+        projectCmds |> Cmd.map ProjectPageMsg
+        userCmds |> Cmd.map UserPageMsg
+    ]
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
 // It can also run side-effects (encoded as commands) like calling the server via Http.
