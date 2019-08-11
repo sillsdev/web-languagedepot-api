@@ -2,6 +2,8 @@ namespace Shared
 
 type SharedUser = {
     Name : string
+}
+type SharedProjects = {
     Projects : string list
 }
 

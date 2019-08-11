@@ -74,14 +74,37 @@ let webApp = router {
         }
     )
 
+    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (function
+        | Add input ->
+            let result = Ok <| sprintf "Added %s to %s" input.Add.Name projId
+            json result
+        | Remove input ->
+            let result = Ok <| sprintf "Removed %s from %s" input.Remove.Name projId
+            json result
+    ))
+
     postf "/api/users/%s/projects" (fun login ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password
             task {
                 let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! userList = Model.projectsByUser login |> Async.StartAsTask
-                    return! json userList next ctx
+                    let! projectList = Model.projectsAndRolesByUser login |> Async.StartAsTask
+                    return! json projectList next ctx
+                else
+                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
+            }
+        )
+    )
+
+    postf "/api/users/%s/projects/withRole/%i" (fun (login, roleId) ->
+        bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
+            eprintfn "Got username %s and password %s" logininfo.username logininfo.password
+            task {
+                let! goodLogin =  Model.verifyLoginInfo logininfo |> Async.StartAsTask
+                if goodLogin then
+                    let! projectList = Model.projectsAndRolesByUserRole login roleId |> Async.StartAsTask
+                    return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
             }

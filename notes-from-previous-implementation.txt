@@ -53,6 +53,21 @@ Controller for /project
 401 unauthorized should have "Scheme": "Bearer" and "Realm": "Language Depot"  (or perhaps without space)
 
 
+UI should:
+
+* Let you select a project
+* Project page lists membership, lets you add or remove (remove with a little trashcan button that shows up on hover)
+* Also lets you edit membership (change someone's role)
+* Adding user has a user-search typeahead that searches by name or email
+* Let you select a user
+* User page shows projects they're a member of, and their role in the project
+* You can remove them from a project here as well
+* There's also a button to remove them from *all* projects
+* Can add the user to a project from this page too, with a project search typeahead
+
+Also, looking up users looks in both MySQL and Mongo and says whether they're found in one, the other, or both
+
+
 I would add
 
 /projects/:id/members
