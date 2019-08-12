@@ -45,7 +45,7 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { UserList : string list; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
+type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
 
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
@@ -79,6 +79,7 @@ let init page : Model * Cmd<Msg> =
     let projectModel, projectCmds = ProjectPage.init initialRootModel
     let userModel, userCmds = UserPage.init initialRootModel
     let initialModel = { Page = defaultArg page Nav.RootPage
+                         CurrentUser = None
                          UserList = []
                          RootModel = initialRootModel
                          LoginModel = loginModel
@@ -113,6 +114,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
     // Sub pages
+    | _, LoginPageMsg (LoginPage.Msg.LoggedInAs user) ->
+        // Intercept this one and handle it here
+        let nextModel = { currentModel with CurrentUser = (user |> Option.map (fun name -> { Name = name })) }
+        // TODO: Need to find out how to navigate back with a Cmd and use that instead of just gonig to the root page all the time
+        nextModel, Navigation.jump -1
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
         let nextModel = { currentModel with RootModel = nextRootModel }
@@ -365,11 +371,13 @@ let urlUpdate (result : Nav.Route option) model =
       model, Navigation.modifyUrl (Nav.toRoute Nav.RootPage)
 
 let routingView (model : Model) (dispatch : Msg -> unit) =
-    match model.Page with
-    | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
-    | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
-    | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
-    | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
+    let pageView =
+        match model.Page with
+        | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
+        | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
+        | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
+        | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
+    contextProvider RootPage.userCtx model.CurrentUser [ pageView ]
 
 #if DEBUG
 open Elmish.Debug
