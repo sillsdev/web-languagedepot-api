@@ -37,7 +37,7 @@ group Client
     nuget Fable.Elmish.React ~> 3
     nuget Thoth.Fetch ~> 1
     nuget Thoth.Elmish.Toast ~> 2
-    nuget Fable.React ~> 5
+    nuget Fable.React ~> 6 prerelease
     nuget Fulma ~> 2
     nuget Fable.FontAwesome.Free ~> 2
 
