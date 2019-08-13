@@ -116,7 +116,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     // Sub pages
     | _, LoginPageMsg (LoginPage.Msg.LoggedInAs user) ->
         // Intercept this one and handle it here
-        let nextModel = { currentModel with CurrentUser = (user |> Option.map (fun name -> { Name = name })) }
+        let nextModel = { currentModel with CurrentUser = (user |> Option.map (fun name -> { Name = name; Email = "rmunn@pobox.com" })) }
         // TODO: Need to find out how to navigate back with a Cmd and use that instead of just gonig to the root page all the time
         nextModel, Navigation.jump -1
     | { RootModel = rootModel }, RootPageMsg rootMsg ->

@@ -40,7 +40,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = { currentModel with RootModel = newRootModel }
         nextModel, Cmd.none
     | NewUserPageNav username ->
-        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username } }
+        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username; Email = "rmunn@pobox.com" } }
         nextModel, Cmd.none
     | GetProjectsForUser ->
         match currentModel.CurrentlyViewedUser with

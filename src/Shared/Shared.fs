@@ -2,7 +2,9 @@ namespace Shared
 
 type SharedUser = {
     Name : string
+    Email : string
 }
+
 type SharedProjects = {
     Projects : string list
 }
