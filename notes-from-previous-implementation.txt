@@ -80,6 +80,75 @@ I would add:
 PATCH /projects/:id/users -> {"add": ["rmunn"]} or {"remove": ["rmunn"]}
 
 
+
+
+Content from https://docs.google.com/document/d/1MqXrJPGGF7xhb8WdMYXoyJTJMx-MA1kp8kOF1ki0bMY/edit#heading=h.f1lc5l9dgjcl after discussion today (2019-08-13):
+
+API Methods
+GET /api/v2/project/private - Returns all private projects, but only fields id,identifier,created_on,name,type
+
+GET /api/v2/project/private/{projId} - Returns one private project identified by the project code (all fields included)
+
+GET /api/v2/project - Same as before: Returns all public projects, but only fields id,identifier,created_on,name,type
+
+GET /api/v2/project/{projId} - Same as before: Returns one public project identified by the project code (all fields included)
+
+GET /api/v2/project/exists/{projId} - Returns FALSE if project does NOT exist, returns TRUE if project exists. This is the opposite of what the old API did.
+
+GET /api/v2/users/exists/{username} - Returns FALSE if user does NOT exist, returns TRUE if user exists. This is the opposite of what the old API did.
+
+POST /api/v2/users/{username}/projects - Same as before: Validates user’s password, then returns list of projects user is member of (optionally filtered by role in project)
+
+POST /api/v2/users - Same as before: Creates a new user account from fields in the POST request. Error if user already exists.
+
+
+PUT /api/v2/users/{username} - Almost the same as before: Updates an existing user account from fields in the PUT request. BUT where the old API returned an error if user does not exist, the new API will accept a PUT request for a username that does not exist, as long as enough fields are specified for the user to be valid. See https://stackoverflow.com/questions/630453/put-vs-post-in-rest for why.
+
+PATCH /api/v2/users/{username} - This will be used to update a user’s password
+POST /api/v2/users/{username}/verify-password - Used when LF logs in, to check password against MySQL and Mongo and migrate the user if passwords match (TODO: Flesh out this note and put in the Google doc)
+POST /api/v2/projects - Same as before: Creates a new project from fields in the POST request.
+
+
+PUT /api/v2/users - Almost the same as before: Updates an existing user account from fields in the PUT request. BUT where the old API returned an error if user does not exist, the new API will accept a PUT request for a username that does not exist, as long as enough fields are specified for the user to be valid. See https://stackoverflow.com/questions/630453/put-vs-post-in-rest for why.
+
+POST /api/v2/project/{projId}/add-user/{username} - NEW: Validates a username/password pair in the POST message, which must be of someone with admin rights to the project (either a project manager or a site admin, for example). If validation successful, adds user to project. If user was already a member of the project, no action is taken, but no error is returned: client code sees this as a successful operation.
+
+TASK: Decide whether API should be addUser, or add_user, or adduser, instead of add-user. https://stackoverflow.com/questions/10302179/hyphen-underscore-or-camelcase-as-word-delimiter-in-uris recommends hypens, which is why I went with add-user for this proposal.
+
+NOTE: This is NOT really RESTful. A properly RESTful API would be PATCH /api/project/{projId} with the JSON contents of the PATCH request looking something like:
+
+{ 'addUsers': ['username1', 'username2', 'username3'] }
+
+POST /api/v2/project/{projId}/remove-user/{username} - remove membership
+NEW: Validates a username/password pair in the POST message, which must be of someone with admin rights to the project (either a project manager or a site admin, for example). If validation successful, removes user from project. If user was not a member of the project, no action is taken, but no error is returned: client code sees this as a successful operation.
+
+TASK: Decide whether API should be removeUser, or remove_user, etc., just as with the add-user API endpoint.
+
+NOTE: This is NOT really RESTful. A properly RESTful API would be PATCH /api/project/{projId} with the JSON contents of the PATCH request looking something like:
+
+{ 'removeUsers': ['username1', 'username2', 'username3'] }
+
+Suggestion from Chris:
+DELETE /api/v2/project/{projId}/user/{username} - remove membership
+POST /api/v2/project/{projId}/user/{username} - add membership
+
+GET /api/v2/count/users - NEW: Counts user accounts active on the server.
+
+GET /api/v2/count/projects - NEW: Counts all public projects active on the server.
+
+GET /api/v2/count/non-test-projects - NEW: Counts public projects active on the server, minus any whose name starts with “test” (case-insensitive so “Test” or “TEST” will also be excluded from the final count).
+
+DELETE /api/v2/project/{projId} - NEW: Validates a username/password pair in the body of the DELETE request, which must be of someone with admin rights to the project (either a project manager or a site admin, for example). If validation successful, deletes the project (or perhaps archives it, see TASK section for decisions needed).
+
+NOTE: A request body in DELETE requests is allowed by https://tools.ietf.org/html/rfc7231#section-4.3.5, but the spec warns that “[a] payload within a DELETE request message has no defined semantics; sending a payload body on a DELETE request might cause some existing implementations to reject the request.” So if ASP.NET Core doesn’t allow a body on a DELETE request, we’ll have to rethink this. I suspect it will work, though.
+
+TASK: Decide whether to limit project deletion to site admins only. Decide whether projects should ever be truly deleted, or just archived.
+
+
+
+TODO: Implement all those endpoints.
+
+
 type User = {
     Id : int
     Login : string
