@@ -3,7 +3,6 @@ module RootPage
 open Elmish
 open Fable.React
 open Fable.React.Props
-open Fable.Core.JsInterop
 open Fulma
 
 open Shared
@@ -19,13 +18,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 
 let userCtx : IContext<SharedUser option> = createContext None
 
-let md5 (s : string) : string = importDefault "md5"
-
 let Avatar = FunctionComponent.Of (fun (props : {| user : SharedUser |}) ->
     let name = if isNull props.user.Name then "" else props.user.Name
     let email = if isNull props.user.Email then "" else props.user.Email
     let emailForGravatar = email.Trim().ToLowerInvariant()
-    let hash = md5 emailForGravatar
+    let hash = Hashes.md5 emailForGravatar
     let url = "https://www.gravatar.com/avatar/" + hash + "?d=mp"
     img [ Src url ]
 )
