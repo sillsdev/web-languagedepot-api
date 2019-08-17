@@ -48,7 +48,7 @@ let ShowUser = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
     let userCtx = Hooks.useContext userCtx
     match userCtx with
     | None -> p [ ] [ str "Please "; a [ Href "#login"] [ str "log in" ] ]
-    | Some user -> p [ ] [ str ("Hello, " + user.Name); br [ ]; userCard user ]
+    | Some user -> p [ ] [ str ("Hello, " + user.Name); br [ ]; userCard user; p [ ] [ str "Please "; a [ Href "#login"] [ str "log out" ] ] ]
 )
 
 let view (model : Model) (dispatch : Msg -> unit) =

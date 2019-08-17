@@ -62,6 +62,8 @@ type Msg =
 | GetProjectsForUser of string
 | ProjectsListRetrieved of string list
 | RootPageMsg of RootPage.Msg
+| UserLoggedIn of Shared.SharedUser
+| UserLoggedOut
 | LoginPageMsg of LoginPage.Msg
 | ProjectPageMsg of ProjectPage.Msg
 | UserPageMsg of UserPage.Msg
@@ -85,8 +87,16 @@ let init page : Model * Cmd<Msg> =
                          LoginModel = loginModel
                          ProjectModel = projectModel
                          UserModel = userModel }
+    let loginSub = Cmd.ofSub (fun dispatch ->
+        let onLoggedIn user = dispatch (UserLoggedIn user)
+        dispatch (LoginPageMsg (LoginPage.Msg.ConnectOnLoginHook onLoggedIn)))
+    let logoutSub = Cmd.ofSub (fun dispatch ->
+        let onLoggedOut () = dispatch (UserLoggedOut)
+        dispatch (LoginPageMsg (LoginPage.Msg.ConnectOnLogoutHook onLoggedOut)))
     initialModel, Cmd.batch [
         loginCmds |> Cmd.map LoginPageMsg
+        loginSub
+        logoutSub
         projectCmds |> Cmd.map ProjectPageMsg
         userCmds |> Cmd.map UserPageMsg
     ]
@@ -110,15 +120,16 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     // | _, ProjectListRetrieved projects ->
     //     let nextModel = { currentModel with ProjectList = projects }
     //     nextModel, Cmd.none
+    | _, UserLoggedIn user ->
+        let nextModel = { currentModel with CurrentUser = Some user }
+        nextModel, Navigation.jump -1
+    | _, UserLoggedOut ->
+        let nextModel = { currentModel with CurrentUser = None }
+        nextModel, Navigation.jump -1
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
     // Sub pages
-    | _, LoginPageMsg (LoginPage.Msg.LoggedInAs user) ->
-        // Intercept this one and handle it here
-        let nextModel = { currentModel with CurrentUser = (user |> Option.map (fun name -> { Name = name; Email = "rmunn@pobox.com" })) }
-        // TODO: Need to find out how to navigate back with a Cmd and use that instead of just gonig to the root page all the time
-        nextModel, Navigation.jump -1
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
         let nextModel = { currentModel with RootModel = nextRootModel }
