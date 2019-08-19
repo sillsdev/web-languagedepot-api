@@ -14,14 +14,7 @@ type LoginInfo = {
     password : string
 }
 
-type AddUserToProjects = {
-    Add : SharedUser
+type PatchProjects = {
+    Add : SharedUser option
+    Remove : SharedUser option
 }
-
-type RemoveUserFromProjects = {
-    Remove : SharedUser
-}
-
-type PatchProjects =
-    | Add of AddUserToProjects
-    | Remove of RemoveUserFromProjects

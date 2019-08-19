@@ -6,6 +6,7 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open FSharp.Control.Tasks.V2
 open Giraffe
+open Giraffe.HttpStatusCodeHandlers
 open Saturn
 open Shared
 
@@ -74,13 +75,18 @@ let webApp = router {
         }
     )
 
-    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (function
-        | Add input ->
-            let result = Ok <| sprintf "Added %s to %s" input.Add.Name projId
+    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
+        match patchData.Add with
+        | Some input ->
+            let result = Ok <| sprintf "Added %s to %s" input.Name projId
             json result
-        | Remove input ->
-            let result = Ok <| sprintf "Removed %s from %s" input.Remove.Name projId
-            json result
+        | None ->
+        match patchData.Remove with
+            | Some input ->
+                let result = Ok <| sprintf "Removed %s from %s" input.Name projId
+                json result
+            | None ->
+                RequestErrors.badRequest (json "Specify at least one of Add or Remove")
     ))
 
     postf "/api/users/%s/projects" (fun login ->
