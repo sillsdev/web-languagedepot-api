@@ -17,6 +17,8 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
 
 let ctx = sql.GetDataContext()
 
+// TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
+
 let usersQueryAsync =
     query {
         for user in ctx.Testldapi.Users do

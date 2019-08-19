@@ -75,19 +75,34 @@ let webApp = router {
         }
     )
 
-    patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
+    patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
         match patchData.addUser, patchData.removeUser with
         | Some add, Some remove ->
-            RequestErrors.badRequest (json <| Error "Specify exactly one of addUser or removeUser")
+            RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser"))
         | Some add, None ->
-            let result = Ok <| sprintf "Added %s to %s" add.Name projId
+            // TODO: Actually do the add
+            let result = Ok (sprintf "Added %s to %s" add.Name projId)
             json result
         | None, Some remove ->
-            let result = Ok <| sprintf "Removed %s from %s" remove.Name projId
+            // TODO: Actually do the remove
+            let result = Ok (sprintf "Removed %s from %s" remove.Name projId)
             json result
         | None, None ->
-            RequestErrors.badRequest (json <| Error "Specify exactly one of addUser or removeUser")
+            RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser"))
     ))
+
+    // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
+    postf "/api/project/%s/user/%s" (fun (projId,username) ->
+        // TODO: Actually do the add
+        let result = Ok (sprintf "Added %s to %s" username projId)
+        json result
+    )
+
+    deletef "/api/project/%s/user/%s" (fun (projId,username) ->
+        // TODO: Actually do the remove
+        let result = Ok (sprintf "Removed %s from %s" username projId)
+        json result
+    )
 
     postf "/api/users/%s/projects" (fun login ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
@@ -124,12 +139,32 @@ let webApp = router {
         }
     )
 
-    post "/api/users" (fun next ctx ->
-        json "Would create new user account" next ctx
+    post "/api/users" (json (Error "Not implemented; would create user based on data from POST body (as JSON)"))
+
+    putf "/api/users/%s" (fun login ->
+        json (Error "Not implemented; would update existing user based on data from POST body (as JSON)")
     )
 
-    put "/api/users" (fun next ctx ->
-        json "Would update existing user account" next ctx
+    patchf "/api/users/%s" (fun login ->
+        json (Error "Not implemented; would update individual fields of user (e.g., password) based on data from POST body (as JSON)")
+    )
+
+    postf "/api/users/%s/verify-password" (fun login ->
+        json (Error "Would return true or false, and do some work behind the scenes to reconcile MySQL and Mongo passwords")
+    )
+
+    post "/api/project" (json (Error "Not implemented; would create project based on data from POST body (as JSON)"))
+
+    get "/api/count/users" (json (Error "Not implemented; would count total # of users"))
+
+    get "/api/count/projects" (json (Error "Not implemented; would count total # of projects"))
+
+    get "/api/count/non-test-projects" (json (Error "Not implemented; would count total # of projects, excluding test projects (definition of test TBD)"))
+    // TODO: Determine a definition of a "test project"
+
+    deletef "/api/project/%s" (fun (projId) ->
+        // TODO: Verify admin password before this is allowed
+        (json (Error "Not implemented; would verify admin username/password first, then delete a project (really just archive it)"))
     )
 }
 
