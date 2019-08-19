@@ -66,7 +66,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let data = { Add = Some user; Remove = None }
+            let data = { addUser = Some user; removeUser = None }
             let url = sprintf "/api/projects/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult
             currentModel, Cmd.OfPromise.result promise
@@ -75,7 +75,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let data = { Add = None; Remove = Some user }
+            let data = { addUser = None; removeUser = Some user }
             let url = sprintf "/api/projects/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult
             currentModel, Cmd.OfPromise.result promise

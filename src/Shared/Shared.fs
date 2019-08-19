@@ -15,6 +15,6 @@ type LoginInfo = {
 }
 
 type PatchProjects = {
-    Add : SharedUser option
-    Remove : SharedUser option
+    addUser : SharedUser option
+    removeUser : SharedUser option
 }

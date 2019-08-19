@@ -76,17 +76,17 @@ let webApp = router {
     )
 
     patchf "/api/projects/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
-        match patchData.Add with
-        | Some input ->
-            let result = Ok <| sprintf "Added %s to %s" input.Name projId
+        match patchData.addUser, patchData.removeUser with
+        | Some add, Some remove ->
+            RequestErrors.badRequest (json <| Error "Specify exactly one of addUser or removeUser")
+        | Some add, None ->
+            let result = Ok <| sprintf "Added %s to %s" add.Name projId
             json result
-        | None ->
-        match patchData.Remove with
-            | Some input ->
-                let result = Ok <| sprintf "Removed %s from %s" input.Name projId
-                json result
-            | None ->
-                RequestErrors.badRequest (json "Specify at least one of Add or Remove")
+        | None, Some remove ->
+            let result = Ok <| sprintf "Removed %s from %s" remove.Name projId
+            json result
+        | None, None ->
+            RequestErrors.badRequest (json <| Error "Specify exactly one of addUser or removeUser")
     ))
 
     postf "/api/users/%s/projects" (fun login ->
