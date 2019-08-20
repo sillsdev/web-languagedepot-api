@@ -77,8 +77,8 @@ type ListUsers = unit -> Async<User list>
 type ListProjects = unit -> Async<Project list>
 type ListRoleNamesAndIds = unit -> Async<(int * string) list>
 type ProjectsByUserRole = string -> int -> Async<Project list>
-type UserExists = string -> bool
-type ProjectExists = string -> bool
+type UserExists = string -> Async<bool>
+type ProjectExists = string -> Async<bool>
 type GetUser = string -> Async<User option>
 type GetProject = string -> Async<Project option>
 
@@ -97,77 +97,81 @@ let projectsQueryAsync =
     |> List.executeQueryAsync
 
 let userExists username =
-    query {
-        for user in ctx.Testldapi.Users do
-            select user.Login
-            contains username
+    async {
+        return query {
+            for user in ctx.Testldapi.Users do
+                select user.Login
+                contains username }
     }
 
 let projectExists projectCode =
-    query {
-        for project in ctx.Testldapi.Projects do
-            select project.Identifier
-            contains projectCode
+    async {
+        return query {
+            for project in ctx.Testldapi.Projects do
+                select project.Identifier
+                contains projectCode }
     }
 
 let getUser username =
     async {
-        return query { for user in ctx.Testldapi.Users do
-                           where (user.Login = username)
-                           select (Some (User.FromSql user))
-                           exactlyOneOrDefault }
+        return query {
+            for user in ctx.Testldapi.Users do
+                where (user.Login = username)
+                select (Some (User.FromSql user))
+                exactlyOneOrDefault }
     }
 
 let getProject projectCode =
     async {
-        return query { for project in ctx.Testldapi.Projects do
-                           where (project.Identifier = projectCode)
-                           select (Some (Project.FromSql project))
-                           exactlyOneOrDefault }
+        return query {
+            for project in ctx.Testldapi.Projects do
+                where (project.Identifier = projectCode)
+                select (Some (Project.FromSql project))
+                exactlyOneOrDefault }
     }
 
 let projectsByUserRole username (role : int) =
-    if not (userExists username) then
-        async { return [] }
-    else
+    async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
                 where (user.Login = username)
-                select user
-                exactlyOneOrDefault
-        }
-        query {
-            for project in ctx.Testldapi.Projects do
-                join user in ctx.Testldapi.Members
-                    on (project.Id = user.ProjectId)
-                where (user.UserId = requestedUser.Id &&
-                    (if role < 0 then true else user.RoleId = role))
-                select project.Identifier
-        }
-        |> List.executeQueryAsync
+                select (Some user)
+                exactlyOneOrDefault }
+        match requestedUser with
+        | None -> return []
+        | Some requestedUser ->
+            return! query {
+                for project in ctx.Testldapi.Projects do
+                    join user in ctx.Testldapi.Members
+                        on (project.Id = user.ProjectId)
+                    where (user.UserId = requestedUser.Id &&
+                        (if role < 0 then true else user.RoleId = role))
+                    select project.Identifier
+            } |> List.executeQueryAsync
+    }
 
 let projectsByUser username = projectsByUserRole username -1
 
 let projectsAndRolesByUserRole username (roleId : int) =
-    if not (userExists username) then
-        async { return [] }
-    else
+    async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
                 where (user.Login = username)
-                select user
-                exactlyOneOrDefault
-        }
-        query {
-            for project in ctx.Testldapi.Projects do
-                join user in ctx.Testldapi.Members
-                    on (project.Id = user.ProjectId)
-                join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
-                where (user.UserId = requestedUser.Id &&
-                    (if roleId < 0 then true else user.RoleId = roleId))
-                select (project.Identifier, role.Name)
-        }
-        |> List.executeQueryAsync
+                select (Some user)
+                exactlyOneOrDefault }
+        match requestedUser with
+        | None -> return []
+        | Some requestedUser ->
+            return! query {
+                for project in ctx.Testldapi.Projects do
+                    join user in ctx.Testldapi.Members
+                        on (project.Id = user.ProjectId)
+                    join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
+                    where (user.UserId = requestedUser.Id &&
+                        (if roleId < 0 then true else user.RoleId = roleId))
+                    select (project.Identifier, role.Name)
+            } |> List.executeQueryAsync
+    }
 
 let projectsAndRolesByUser username =
     projectsAndRolesByUserRole username -1

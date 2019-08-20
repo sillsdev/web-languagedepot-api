@@ -70,17 +70,21 @@ let webApp = router {
         }
     )
 
-    getf "/api/project/exists/%s" (fun projId ->
+    getf "/api/project/exists/%s" (fun projId next ctx ->
         // Returns true if project exists (NOTE: This is the INVERSE of what the old API did!)
-        json (Model.projectExists projId)
+        task {
+            let result = Model.projectExists projId
+            return! json result next ctx
+        }
     )
-    // Or just: getf "/api/project/exists/%s" (Model.projectExists >> json)
 
-    getf "/api/users/exists/%s" (fun login ->
+    getf "/api/users/exists/%s" (fun login next ctx ->
         // Returns true if username exists (NOTE: This is the INVERSE of what the old API did!)
-        json (Model.userExists login)
+        task {
+            let result = Model.userExists login
+            return! json result next ctx
+        }
     )
-    // Or just: getf "/api/users/exists/%s" (Model.userExists >> json)
 
     get "/api/users" (fun next ctx ->
         // DEMO ONLY. Enumerates all users
