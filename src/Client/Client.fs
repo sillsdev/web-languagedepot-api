@@ -51,7 +51,6 @@ type Model = { UserList : string list; CurrentUser : SharedUser option; Page : N
 // the state of the application changes *only* in reaction to these events
 type Msg =
 | UserProjectsUpdated of Shared.SharedUser
-| FindUser of string
 | UserNotFound
 | LogResult of Result<string,string>
 | UserFound of Shared.SharedUser

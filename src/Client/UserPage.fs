@@ -14,6 +14,8 @@ open TextInput
 open Shared
 
 type Msg =
+    | FindUser of string
+    | LogUserResult of User
     | RoleListUpdated of (int * string) list
     | RootModelUpdated of RootPage.Model
     | NewUserPageNav of string
@@ -33,6 +35,12 @@ let init rootModel =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | FindUser username ->
+        let url = sprintf "/api/users/%s" username
+        currentModel, Cmd.OfPromise.either Fetch.get url LogUserResult LogException
+    | LogUserResult user ->
+        printfn "User ID %d, first name %s, last name %s, is_admin %A" user.Id user.FirstName user.LastName user.Admin
+        currentModel, Cmd.none
     | RoleListUpdated newRoleList ->
         let nextModel = { currentModel with RoleList = newRoleList }
         nextModel, Cmd.none
@@ -117,4 +125,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
               ul [ ]
                  [ for (project, role) in model.ProjectList -> li [ ] [ str (project + ": " + role) ] ]
               roleSelector model dispatch
+              br [ ]
+              textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (dispatch << FindUser)
             ]

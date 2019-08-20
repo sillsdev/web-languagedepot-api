@@ -53,18 +53,34 @@ let webApp = router {
         })
 
     getf "/api/project/%s" (fun projId next ctx ->
-        json [(sprintf "Would get public project with ID %s" projId)] next ctx
+        task {
+            let! project = Model.getProject projId
+            match project with
+            | Some project -> return! json project next ctx
+            | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
+        }
     )
 
-    getf "/api/project/exists/%s" (fun projId next ctx ->
+    getf "/api/users/%s" (fun login next ctx ->
+        task {
+            let! user = Model.getUser login
+            match user with
+            | Some user -> return! json { user with HashedPassword = "***" } next ctx
+            | None -> return! RequestErrors.notFound (json (Error (sprintf "Username %s not found" login))) next ctx
+        }
+    )
+
+    getf "/api/project/exists/%s" (fun projId ->
         // Returns true if project exists (NOTE: This is the INVERSE of what the old API did!)
-        json (Model.projectExists projId) next ctx
+        json (Model.projectExists projId)
     )
+    // Or just: getf "/api/project/exists/%s" (Model.projectExists >> json)
 
-    getf "/api/users/exists/%s" (fun login next ctx ->
+    getf "/api/users/exists/%s" (fun login ->
         // Returns true if username exists (NOTE: This is the INVERSE of what the old API did!)
-        json (Model.userExists login) next ctx
+        json (Model.userExists login)
     )
+    // Or just: getf "/api/users/exists/%s" (Model.userExists >> json)
 
     get "/api/users" (fun next ctx ->
         // DEMO ONLY. Enumerates all users

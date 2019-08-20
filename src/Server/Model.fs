@@ -2,6 +2,7 @@ module Model
 
 open System
 open FSharp.Data.Sql
+open Shared
 
 [<Literal>]
 let connString  = "Server=localhost;Database=testldapi;User=rmunn"
@@ -18,18 +19,7 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
 let ctx = sql.GetDataContext()
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
-type Project = {
-    Id : int
-    Name : string
-    Description : string option // Long
-    Homepage : string option
-    IsPublic : bool // default true
-    ParentId : int // TODO: Determine what we get if the SQL value was NULL
-    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    UpdatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    Identifier : string option // 20 chars
-    Status : int // default 1
-} with
+type Shared.Project with
     static member mkProject id name now = {
         Id = id
         Name = name
@@ -55,23 +45,7 @@ type Project = {
         Status = sqlProject.Status
     }
 
-type User = {
-    Id : int
-    Login : string
-    HashedPassword : string
-    FirstName : string
-    LastName : string
-    Mail : string
-    MailNotification : bool // default true
-    Admin : bool // default false
-    Status : int // default 1
-    LastLoginOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    Language : string option // 5 chars
-    AuthSourceId : int // TODO: Determine what we get if the SQL value was NULL
-    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    UpdatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    Type : string option
-} with
+type Shared.User with
     static member FromSql (sqlUser : sql.dataContext.``testldapi.usersEntity``) = {
         Id = sqlUser.Id
         Login = sqlUser.Login
@@ -90,14 +64,7 @@ type User = {
         Type = sqlUser.Type |> Option.ofObj
     }
 
-type Role = {
-    Id : int
-    Name : string
-    Position : int // Default 1
-    Assignable : bool
-    Builtin : int // Default 0
-    Permissions : string option // Long
-} with
+type Shared.Role with
     static member FromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = {
         Id = sqlRole.Id
         Name = sqlRole.Name
@@ -107,14 +74,7 @@ type Role = {
         Permissions = sqlRole.Permissions |> Option.ofObj
     }
 
-type Membership = {
-    Id : int
-    UserId : int // default 0
-    ProjectId : int // default 0
-    RoleId : int // default 0
-    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
-    MailNotification : bool // default false
-} with
+type Shared.Membership with
     static member FromSql (sqlMember : sql.dataContext.``testldapi.membersEntity``) = {
         Id = sqlMember.Id
         UserId = sqlMember.UserId
@@ -123,12 +83,16 @@ type Membership = {
         CreatedOn = sqlMember.CreatedOn
         MailNotification = sqlMember.MailNotification <> 0y
     }
-// TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
 
+// TODO: Register these function signatures with Giraffe so that we can build mocks for testing
 type ListUsers = unit -> Async<User list>
 type ListProjects = unit -> Async<Project list>
 type ListRoleNamesAndIds = unit -> Async<(int * string) list>
 type ProjectsByUserRole = string -> int -> Async<Project list>
+type UserExists = string -> bool
+type ProjectExists = string -> bool
+type GetUser = string -> Async<User option>
+type GetProject = string -> Async<Project option>
 
 let usersQueryAsync =
     query {
@@ -147,15 +111,47 @@ let projectsQueryAsync =
 let userExists username =
     query {
         for user in ctx.Testldapi.Users do
-        select user.Login
-        contains username
+            select user.Login
+            contains username
     }
 
 let projectExists projectCode =
     query {
         for project in ctx.Testldapi.Projects do
-        select project.Identifier
-        contains projectCode
+            select project.Identifier
+            contains projectCode
+    }
+
+let getUser username =
+    async {
+        try
+            let user =
+                query { for user in ctx.Testldapi.Users do
+                            where (user.Login = username)
+                            select user
+                            head }
+            return (Some (User.FromSql user))
+        with
+            | :? InvalidOperationException ->
+                return None
+            | :? ArgumentException ->
+                return None
+    }
+
+let getProject projectCode =
+    async {
+        try
+            let project =
+                query { for project in ctx.Testldapi.Projects do
+                            where (project.Identifier = projectCode)
+                            select project
+                            head }
+            return (Some (Project.FromSql project))
+        with
+            | :? InvalidOperationException ->
+                return None
+            | :? ArgumentException ->
+                return None
     }
 
 let projectsByUserRole username (role : int) =
