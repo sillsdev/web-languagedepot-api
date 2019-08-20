@@ -20,18 +20,6 @@ let ctx = sql.GetDataContext()
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 type Shared.Project with
-    static member mkProject id name now = {
-        Id = id
-        Name = name
-        Description = None
-        Homepage = None
-        IsPublic = true
-        ParentId = 0
-        CreatedOn = now
-        UpdatedOn = now
-        Identifier = None
-        Status = 1
-    }
     static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
         Id = sqlProject.Id
         Name = sqlProject.Name
@@ -124,34 +112,18 @@ let projectExists projectCode =
 
 let getUser username =
     async {
-        try
-            let user =
-                query { for user in ctx.Testldapi.Users do
-                            where (user.Login = username)
-                            select user
-                            head }
-            return (Some (User.FromSql user))
-        with
-            | :? InvalidOperationException ->
-                return None
-            | :? ArgumentException ->
-                return None
+        return query { for user in ctx.Testldapi.Users do
+                           where (user.Login = username)
+                           select (Some (User.FromSql user))
+                           exactlyOneOrDefault }
     }
 
 let getProject projectCode =
     async {
-        try
-            let project =
-                query { for project in ctx.Testldapi.Projects do
-                            where (project.Identifier = projectCode)
-                            select project
-                            head }
-            return (Some (Project.FromSql project))
-        with
-            | :? InvalidOperationException ->
-                return None
-            | :? ArgumentException ->
-                return None
+        return query { for project in ctx.Testldapi.Projects do
+                           where (project.Identifier = projectCode)
+                           select (Some (Project.FromSql project))
+                           exactlyOneOrDefault }
     }
 
 let projectsByUserRole username (role : int) =
