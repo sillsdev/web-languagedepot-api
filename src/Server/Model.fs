@@ -18,18 +18,129 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
 let ctx = sql.GetDataContext()
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
+type Project = {
+    Id : int
+    Name : string
+    Description : string option // Long
+    Homepage : string option
+    IsPublic : bool // default true
+    ParentId : int // TODO: Determine what we get if the SQL value was NULL
+    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    UpdatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    Identifier : string option // 20 chars
+    Status : int // default 1
+} with
+    static member mkProject id name now = {
+        Id = id
+        Name = name
+        Description = None
+        Homepage = None
+        IsPublic = true
+        ParentId = 0
+        CreatedOn = now
+        UpdatedOn = now
+        Identifier = None
+        Status = 1
+    }
+    static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
+        Id = sqlProject.Id
+        Name = sqlProject.Name
+        Description = sqlProject.Description |> Option.ofObj
+        Homepage = sqlProject.Homepage |> Option.ofObj
+        IsPublic = sqlProject.IsPublic <> 0y
+        ParentId = sqlProject.ParentId
+        CreatedOn = sqlProject.CreatedOn
+        UpdatedOn = sqlProject.UpdatedOn
+        Identifier = sqlProject.Identifier |> Option.ofObj
+        Status = sqlProject.Status
+    }
+
+type User = {
+    Id : int
+    Login : string
+    HashedPassword : string
+    FirstName : string
+    LastName : string
+    Mail : string
+    MailNotification : bool // default true
+    Admin : bool // default false
+    Status : int // default 1
+    LastLoginOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    Language : string option // 5 chars
+    AuthSourceId : int // TODO: Determine what we get if the SQL value was NULL
+    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    UpdatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    Type : string option
+} with
+    static member FromSql (sqlUser : sql.dataContext.``testldapi.usersEntity``) = {
+        Id = sqlUser.Id
+        Login = sqlUser.Login
+        HashedPassword = sqlUser.HashedPassword
+        FirstName = sqlUser.Firstname
+        LastName = sqlUser.Lastname
+        Mail = sqlUser.Mail
+        MailNotification = sqlUser.MailNotification <> 0y
+        Admin = sqlUser.Admin <> 0y
+        Status = sqlUser.Status
+        LastLoginOn = sqlUser.LastLoginOn
+        Language = sqlUser.Language |> Option.ofObj
+        AuthSourceId = sqlUser.AuthSourceId
+        CreatedOn = sqlUser.CreatedOn
+        UpdatedOn = sqlUser.UpdatedOn
+        Type = sqlUser.Type |> Option.ofObj
+    }
+
+type Role = {
+    Id : int
+    Name : string
+    Position : int // Default 1
+    Assignable : bool
+    Builtin : int // Default 0
+    Permissions : string option // Long
+} with
+    static member FromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = {
+        Id = sqlRole.Id
+        Name = sqlRole.Name
+        Position = sqlRole.Position
+        Assignable = sqlRole.Assignable <> 0y
+        Builtin = sqlRole.Builtin
+        Permissions = sqlRole.Permissions |> Option.ofObj
+    }
+
+type Membership = {
+    Id : int
+    UserId : int // default 0
+    ProjectId : int // default 0
+    RoleId : int // default 0
+    CreatedOn : DateTime // TODO: Determine what we get if the SQL value was NULL
+    MailNotification : bool // default false
+} with
+    static member FromSql (sqlMember : sql.dataContext.``testldapi.membersEntity``) = {
+        Id = sqlMember.Id
+        UserId = sqlMember.UserId
+        ProjectId = sqlMember.ProjectId
+        RoleId = sqlMember.RoleId
+        CreatedOn = sqlMember.CreatedOn
+        MailNotification = sqlMember.MailNotification <> 0y
+    }
+// TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
+
+type ListUsers = unit -> Async<User list>
+type ListProjects = unit -> Async<Project list>
+type ListRoleNamesAndIds = unit -> Async<(int * string) list>
+type ProjectsByUserRole = string -> int -> Async<Project list>
 
 let usersQueryAsync =
     query {
         for user in ctx.Testldapi.Users do
-            select user
+            select (User.FromSql user)
     }
     |> List.executeQueryAsync
 
 let projectsQueryAsync =
     query {
         for project in ctx.Testldapi.Projects do
-            select project
+            select (Project.FromSql project)
     }
     |> List.executeQueryAsync
 
@@ -135,69 +246,3 @@ let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
         | None -> return false
         | Some user -> return verifyPass loginInfo.password user.HashedPassword
     }
-
-// TODO: Decide whether all these fields are actually needed
-
-type Project = {
-    Id : int
-    Name : string
-    Description : string option // Long
-    Homepage : string option
-    IsPublic : bool // default true
-    ParentId : int option
-    CreatedOn : DateTime option
-    UpdatedOn : DateTime option
-    Identifier : string option // 20 chars
-    Status : int // default 1
-} with
-    static member mkProject id name now = {
-        Id = id
-        Name = name
-        Description = None
-        Homepage = None
-        IsPublic = true
-        ParentId = None
-        CreatedOn = Some now
-        UpdatedOn = Some now
-        Identifier = None
-        Status = 1
-    }
-
-type User = {
-    Id : int
-    Login : string
-    HashedPassword : string
-    FirstName : string
-    LastName : string
-    Mail : string
-    MailNotification : bool // default true
-    Admin : bool // default false
-    Status : int // default 1
-    LastLoginOn : DateTime option
-    Language : string option // 5 chars
-    AuthSourceId : int option
-    CreatedOn : DateTime option
-    UpdatedOn : DateTime option
-    Type : string option
-}
-
-type Role = {
-    Id : int
-    Name : string
-    Position : int option // Default 1
-    Assignable : bool option // Default true
-    Builtin : int // Default 0
-    Permissions : string option // Long
-}
-
-type Membership = {
-    Id : int
-    UserId : int // default 0
-    ProjectId : int // default 0
-    RoleId : int // default 0
-    CreatedOn : DateTime option
-    MailNotification : bool // default false
-}
-
-
-let p = { Project.mkProject 5 "foo" DateTime.UtcNow with Description = Some "bar" }
