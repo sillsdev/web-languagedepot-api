@@ -173,7 +173,12 @@ let webApp = router {
         json (Error "Would return true or false, and do some work behind the scenes to reconcile MySQL and Mongo passwords")
     )
 
-    post "/api/project" (json (Error "Not implemented; would create project based on data from POST body (as JSON)"))
+    post "/api/project" (bindJson<Project> (fun proj next ctx ->
+        task {
+            let! newId = Model.createProject proj
+            return! json newId next ctx
+        }
+    ))
 
     get "/api/count/users" (json (Error "Not implemented; would count total # of users"))
 
