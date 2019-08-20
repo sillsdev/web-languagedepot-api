@@ -16,8 +16,6 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            ResolutionPath = resolutionPath,
                            CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL>
 
-let ctx = sql.GetDataContext()
-
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 type Shared.Project with
     static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
@@ -83,6 +81,7 @@ type GetUser = string -> Async<User option>
 type GetProject = string -> Async<Project option>
 
 let usersQueryAsync =
+    let ctx = sql.GetDataContext()
     query {
         for user in ctx.Testldapi.Users do
             select (User.FromSql user)
@@ -90,6 +89,7 @@ let usersQueryAsync =
     |> List.executeQueryAsync
 
 let projectsQueryAsync =
+    let ctx = sql.GetDataContext()
     query {
         for project in ctx.Testldapi.Projects do
             select (Project.FromSql project)
@@ -97,6 +97,7 @@ let projectsQueryAsync =
     |> List.executeQueryAsync
 
 let userExists username =
+    let ctx = sql.GetDataContext()
     async {
         return query {
             for user in ctx.Testldapi.Users do
@@ -105,6 +106,7 @@ let userExists username =
     }
 
 let projectExists projectCode =
+    let ctx = sql.GetDataContext()
     async {
         return query {
             for project in ctx.Testldapi.Projects do
@@ -113,6 +115,7 @@ let projectExists projectCode =
     }
 
 let getUser username =
+    let ctx = sql.GetDataContext()
     async {
         return query {
             for user in ctx.Testldapi.Users do
@@ -122,6 +125,7 @@ let getUser username =
     }
 
 let getProject projectCode =
+    let ctx = sql.GetDataContext()
     async {
         return query {
             for project in ctx.Testldapi.Projects do
@@ -131,6 +135,7 @@ let getProject projectCode =
     }
 
 let projectsByUserRole username (role : int) =
+    let ctx = sql.GetDataContext()
     async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -153,6 +158,7 @@ let projectsByUserRole username (role : int) =
 let projectsByUser username = projectsByUserRole username -1
 
 let projectsAndRolesByUserRole username (roleId : int) =
+    let ctx = sql.GetDataContext()
     async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -177,6 +183,7 @@ let projectsAndRolesByUser username =
     projectsAndRolesByUserRole username -1
 
 let roleNames() =
+    let ctx = sql.GetDataContext()
     query {
         for role in ctx.Testldapi.Roles do
             select (role.Id, role.Name)
@@ -210,6 +217,7 @@ let verifyPass (clearPass : string) (hashPass : string) =
         false
 
 let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
+    let ctx = sql.GetDataContext()
     async {
         let! user = query { for user in ctx.Testldapi.Users do
                                 where (user.Login = loginInfo.username)
