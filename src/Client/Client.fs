@@ -18,35 +18,6 @@ open Thoth.Json
 open TextInput
 open Shared
 
-module Nav =
-    type Route =
-        | UserPage of string
-        | ProjectPage of string
-        | RootPage
-        | LoginPage
-
-    let parseUrl = function
-    | [] -> RootPage
-    | ["user"; login] -> UserPage login
-    | ["project"; code] -> ProjectPage code
-    | ["login"] -> LoginPage
-    | _ -> RootPage
-
-    let toRoute = function
-        | UserPage username -> sprintf "#user/%s" username
-        | ProjectPage projectCode -> sprintf "#project/%s" projectCode
-        | LoginPage -> "#login"
-        | RootPage -> "#"
-
-    let jump (n:int):Cmd<_> =
-        [fun _ -> history.go n]
-
-// The model holds data that you want to keep track of while the application is running
-// in this case, we are keeping track of a counter
-// we mark it as optional, because initially it will not be available from the client
-// the initial value will be requested from server
-type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
-
 // The Msg type defines what events/actions can occur while the application is running
 // the state of the application changes *only* in reaction to these events
 type Msg =
@@ -73,6 +44,37 @@ let msgsWhenRootModelUpdates = [
     ProjectPage.Msg.RootModelUpdated >> ProjectPageMsg
     UserPage.Msg.RootModelUpdated >> UserPageMsg
 ]
+
+module Nav =
+    type Route =
+        | UserPage of string
+        | ProjectPage of string
+        | RootPage
+        | LoginPage
+
+    let parseUrl = function
+    // For pages with internal models based on the URL, pass on a message so they can update their internal model
+    | [] -> RootPage, Cmd.none
+    | ["user"; login] -> UserPage login, UserPage.Msg.NewUserPageNav login |> UserPageMsg |> Cmd.ofMsg
+    | ["project"; code] -> ProjectPage code, ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
+    | ["login"] -> LoginPage, Cmd.none
+    | ["logout"] -> RootPage, Cmd.ofMsg UserLoggedOut
+    | _ -> RootPage, Cmd.none
+
+    let toRoute = function
+        | UserPage username -> sprintf "#user/%s" username
+        | ProjectPage projectCode -> sprintf "#project/%s" projectCode
+        | LoginPage -> "#login"
+        | RootPage -> "#"
+
+    let jump (n:int):Cmd<_> =
+        [fun _ -> history.go n]
+
+// The model holds data that you want to keep track of while the application is running
+// in this case, we are keeping track of a counter
+// we mark it as optional, because initially it will not be available from the client
+// the initial value will be requested from server
+type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
 
 // defines the initial state and initial command (= side-effect) of the application
 let init() : Model * Cmd<Msg> =
@@ -123,20 +125,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, UserLoggedIn user ->
         let nextModel = { currentModel with CurrentUser = Some user }
         nextModel, Nav.jump -1 // On login we go back to the previous page
-    | _, UserLoggedOut ->
+    | _, RootPageMsg RootPage.Msg.UserLoggedOut ->
         let nextModel = { currentModel with CurrentUser = None }
-        nextModel, Router.navigate "" // On logout we go to the root page
+        nextModel, Cmd.none // Router.navigate "" // On logout we go to the root page
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
     | _, UrlChanged parts ->
-        let page = Nav.parseUrl parts
-        // For pages with internal models based on the URL, pass on a message so they can update their internal model
-        // TODO: Extract this into something that can live in the Nav module so the knowledge is all in one place
-        let cmd = match page with
-                  | Nav.UserPage user -> UserPage.Msg.NewUserPageNav user |> UserPageMsg |> Cmd.ofMsg
-                  | Nav.ProjectPage code -> ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
-                  | _ -> Cmd.none
+        let page, cmd = Nav.parseUrl parts
         let nextModel = { currentModel with Page = page }
         nextModel, cmd
     // Sub pages

@@ -9,14 +9,17 @@ open Fulma
 
 open Shared
 
-type Msg = Msg
+type Msg =
+    | UserLoggedOut
 
 type Model = { nothing : unit }
 
 let init() = { nothing = () }
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
-    currentModel, Cmd.none
+    match msg with
+    | UserLoggedOut ->
+        currentModel, Cmd.none  // Handled by Client.fs  // TODO: Better design
 
 let userCtx : IContext<SharedUser option> = createContext None
 
@@ -26,7 +29,7 @@ let Avatar = FunctionComponent.Of (fun (props : {| user : SharedUser |}) ->
     let emailForGravatar = email.Trim().ToLowerInvariant()
     let hash = Hashes.md5 emailForGravatar
     let url = "https://www.gravatar.com/avatar/" + hash + "?d=mp"
-    img [ Src url ]
+    img [ Src url; Style [ MaxHeight "none"] ]
 )
 let avatar user = Avatar {| user = user |}
 
@@ -46,11 +49,24 @@ let UserCard = FunctionComponent.Of (fun (props : {| user : SharedUser |}) ->
 )
 let userCard user = UserCard {| user = user |}
 
-let ShowUser = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
+let NavbarUserCard = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
+    let currentUser = Hooks.useContext userCtx
+    match currentUser with
+    | None -> p [ ] [ a [ Href "#login"; Style [ Color "white" ] ] [ str "Please log in" ] ]
+    | Some user ->
+    Navbar.Item.div
+        [ Navbar.Item.HasDropdown
+          Navbar.Item.IsHoverable ]
+        [ Navbar.Link.a [ ] [ userCard user ]
+          Navbar.Dropdown.div [ ]
+            [ Navbar.Item.a [ Navbar.Item.Props [ OnClick (fun _ -> props.dispatch UserLoggedOut) ] ] [ str "Log out" ] ] ]
+)
+
+let ShowUsername = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
     let userCtx = Hooks.useContext userCtx
     match userCtx with
-    | None -> p [ ] [ str "Please "; a [ Href "#login"] [ str "log in" ] ]
-    | Some user -> p [ ] [ str ("Hello, " + user.Name); br [ ]; userCard user; p [ ] [ str "Please "; a [ Href "#login"] [ str "log out" ] ] ]
+    | None -> p [ ] [ str "Hello, Admin" ]
+    | Some user -> p [ ] [ str ("Hello, " + user.Name) ]
 )
 
 let safeComponents =
@@ -78,8 +94,8 @@ let safeComponents =
           str " powered by: "
           components ]
 
-let navBrand =
-    Navbar.navbar [ Navbar.Color IsWhite ]
+let navBrand dispatch =
+    Navbar.navbar [ Navbar.Color IsInfo ]
         [ Container.container [ ]
             [ Navbar.Brand.div [ ]
                 [ Navbar.Item.a [ Navbar.Item.CustomClass "brand-text" ]
@@ -87,13 +103,10 @@ let navBrand =
               Navbar.menu [ ]
                   [ Navbar.Start.div [ ]
                       [ Navbar.Item.a [ ]
-                            [ str "Home" ]
+                            [ str "Projects" ]
                         Navbar.Item.a [ ]
-                            [ str "Orders" ]
-                        Navbar.Item.a [ ]
-                            [ str "Payments" ]
-                        Navbar.Item.a [ ]
-                            [ str "Exceptions" ] ] ] ] ]
+                            [ str "Users" ] ] ]
+              NavbarUserCard {|dispatch=dispatch|} ] ]
 
 let menu =
     Menu.menu [ ]
@@ -101,50 +114,37 @@ let menu =
               [ str "General" ]
           Menu.list [ ]
               [ Menu.Item.a [ ]
-                    [ str "Dashboard" ]
+                    [ str "Projects" ]
                 Menu.Item.a [ ]
-                    [ str "Customers" ] ]
+                    [ str "Users" ] ]
           Menu.label [ ]
               [ str "Administration" ]
           Menu.list [ ]
               [ Menu.Item.a [ ]
-                  [ str "Team Settings" ]
+                  [ str "Create project" ]
                 li [ ]
                     [ a [ ]
-                        [ str "Manage Your Team" ]
+                        [ str "Manage Project" ]
                       Menu.list [ ]
                           [ Menu.Item.a [ ]
                                 [ str "Members" ]
                             Menu.Item.a [ ]
-                                [ str "Plugins" ]
+                                [ str "Project Profile" ]
                             Menu.Item.a [ ]
-                                [ str "Add a member" ] ] ]
+                                [ str "Add a member" ]
+                            Menu.Item.a [ ]
+                                [ str "Remove a member" ] ] ]
                 Menu.Item.a [ ]
-                    [ str "Invitations" ]
-                Menu.Item.a [ ]
-                    [ str "Cloud Storage Environment Settings" ]
-                Menu.Item.a [ ]
-                    [ str "Authentication" ] ]
-          Menu.label [ ]
-              [ str "Transactions" ]
-          Menu.list [ ]
-              [ Menu.Item.a [ ]
-                    [ str "Payments" ]
-                Menu.Item.a [ ]
-                    [ str "Transfers" ]
-                Menu.Item.a [ ]
-                    [ str "Balance" ] ] ]
+                    [ str "Invitations (TODO)" ] ] ]
 
 let breadcrump =
     Breadcrumb.breadcrumb [ ]
         [ Breadcrumb.item [ ]
-              [ a [ ] [ str "Bulma" ] ]
+              [ a [ ] [ str "Language Depot" ] ]
           Breadcrumb.item [ ]
-              [ a [ ] [ str "Templates" ] ]
-          Breadcrumb.item [ ]
-              [ a [ ] [ str "Examples" ] ]
+              [ a [ ] [ str "Admin" ] ]
           Breadcrumb.item [ Breadcrumb.Item.IsActive true ]
-              [ a [ ] [ str "Admin" ] ] ]
+              [ a [ ] [ str "Root page" ] ] ]
 
 let hero dispatch =
     Hero.hero [ Hero.Color IsInfo
@@ -152,7 +152,7 @@ let hero dispatch =
         [ Hero.body [ ]
             [ Container.container [ ]
                 [ Heading.h1 [ ]
-                      [ str "Hello, Admin." ]
+                      [ ShowUsername {|dispatch=dispatch|} ]
                   safeComponents ] ] ]
 
 let info =
@@ -261,7 +261,7 @@ let columns (model : Model) (dispatch : Msg -> unit) =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ]
-        [ navBrand
+        [ navBrand dispatch
           Container.container [ ]
               [ Columns.columns [ ]
                   [ Column.column [ Column.Width (Screen.All, Column.Is3) ]
@@ -271,9 +271,3 @@ let view (model : Model) (dispatch : Msg -> unit) =
                         hero dispatch
                         info
                         columns model dispatch ] ] ] ]
-
-let oldView (model : Model) (dispatch : Msg -> unit) =
-    div [ ]
-        [ str "This is the root page"
-          br [ ]
-          ShowUser {|dispatch = dispatch|} ]
