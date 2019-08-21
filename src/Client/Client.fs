@@ -115,7 +115,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     //     nextModel, Cmd.none
     | _, UserLoggedIn user ->
         let nextModel = { currentModel with CurrentUser = user }
-        nextModel, (if user.IsSome then Nav.jump -1 (* On login we go back to the previous page *) else Cmd.none (* On logout we do nothing *) )
+        nextModel, Router.navigate ""
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
