@@ -175,6 +175,7 @@ let webApp = router {
 
     post "/api/project" (bindJson<CreateProject> (fun proj next ctx ->
         task {
+            // TODO: Check if project code already exists, because MySQL database doesn't have a UNIQUE constraint on project code so we need to do it ourselves
             let! newId = Model.createProject proj
             return! json newId next ctx
         }

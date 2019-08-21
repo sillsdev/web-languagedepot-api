@@ -71,7 +71,7 @@ let navBrand dispatch =
         [ Container.container [ ]
             [ Navbar.Brand.div [ ]
                 [ Navbar.Item.a [ Navbar.Item.CustomClass "brand-text" ]
-                      [ str "SAFE Admin" ] ]
+                      [ str "Language Depot Admin" ] ]
               Navbar.menu [ ]
                   [ Navbar.Start.div [ ]
                       [ Navbar.Item.a [ ]
