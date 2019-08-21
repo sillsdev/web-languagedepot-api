@@ -183,6 +183,7 @@ let webApp = router {
 
     get "/api/count/users" (fun next ctx ->
         task {
+            do! Async.Sleep 500 // Simulate server load
             let! newId = Model.usersCountAsync()
             return! json newId next ctx
         }
@@ -190,6 +191,7 @@ let webApp = router {
 
     get "/api/count/projects" (fun next ctx ->
         task {
+            do! Async.Sleep 750 // Simulate server load
             let! newId = Model.projectsCountAsync()
             return! json newId next ctx
         }
@@ -197,6 +199,7 @@ let webApp = router {
 
     get "/api/count/non-test-projects" (fun next ctx ->
         task {
+            do! Async.Sleep 1000 // Simulate server load
             let! newId = Model.realProjectsCountAsync()
             return! json newId next ctx
         }
