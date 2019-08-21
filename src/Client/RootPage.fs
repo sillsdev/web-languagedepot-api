@@ -9,19 +9,16 @@ open Fulma
 
 open Shared
 
-type Msg =
-    | UserLoggedOut
+type Msg = Msg
 
 type Model = { nothing : unit }
 
 let init() = { nothing = () }
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
-    match msg with
-    | UserLoggedOut ->
-        currentModel, Cmd.none  // Handled by Client.fs  // TODO: Better design
+    currentModel, Cmd.none
 
-let userCtx : IContext<SharedUser option> = createContext None
+let userCtx : IContext<SharedUser option * (SharedUser option -> unit)> = createContext (None, ignore)
 
 let Avatar = FunctionComponent.Of (fun (props : {| user : SharedUser |}) ->
     let name = if isNull props.user.Name then "" else props.user.Name
@@ -50,7 +47,7 @@ let UserCard = FunctionComponent.Of (fun (props : {| user : SharedUser |}) ->
 let userCard user = UserCard {| user = user |}
 
 let NavbarUserCard = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
-    let currentUser = Hooks.useContext userCtx
+    let currentUser, setUser = Hooks.useContext userCtx
     match currentUser with
     | None -> p [ ] [ a [ Href "#login"; Style [ Color "white" ] ] [ str "Please log in" ] ]
     | Some user ->
@@ -59,40 +56,15 @@ let NavbarUserCard = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit
           Navbar.Item.IsHoverable ]
         [ Navbar.Link.a [ ] [ userCard user ]
           Navbar.Dropdown.div [ ]
-            [ Navbar.Item.a [ Navbar.Item.Props [ OnClick (fun _ -> props.dispatch UserLoggedOut) ] ] [ str "Log out" ] ] ]
+            [ Navbar.Item.a [ Navbar.Item.Props [ OnClick (fun _ -> setUser None) ] ] [ str "Log out" ] ] ]
 )
 
-let ShowUsername = FunctionComponent.Of (fun (props : {|dispatch : Msg -> unit|}) ->
-    let userCtx = Hooks.useContext userCtx
+let ShowUsername = FunctionComponent.Of (fun () ->
+    let userCtx, _ = Hooks.useContext userCtx
     match userCtx with
     | None -> p [ ] [ str "Hello, Admin" ]
     | Some user -> p [ ] [ str ("Hello, " + user.Name) ]
 )
-
-let safeComponents =
-    let components =
-        span [ ]
-           [ a [ Href "https://github.com/SAFE-Stack/SAFE-template" ]
-               [ str "SAFE  "
-                 str Version.template ]
-             str ", "
-             a [ Href "https://saturnframework.github.io" ] [ str "Saturn" ]
-             str ", "
-             a [ Href "http://fable.io" ] [ str "Fable" ]
-             str ", "
-             a [ Href "https://elmish.github.io" ] [ str "Elmish" ]
-             str ", "
-             a [ Href "https://fulma.github.io/Fulma" ] [ str "Fulma" ]
-             str ", "
-             a [ Href "https://bulmatemplates.github.io/bulma-templates/" ] [ str "Bulma\u00A0Templates" ]
-
-           ]
-
-    span [ ]
-        [ str "Version "
-          strong [ ] [ str Version.app ]
-          str " powered by: "
-          components ]
 
 let navBrand dispatch =
     Navbar.navbar [ Navbar.Color IsInfo ]
@@ -152,8 +124,7 @@ let hero dispatch =
         [ Hero.body [ ]
             [ Container.container [ ]
                 [ Heading.h1 [ ]
-                      [ ShowUsername {|dispatch=dispatch|} ]
-                  safeComponents ] ] ]
+                      [ ShowUsername() ] ] ] ]
 
 let info =
     section [ Class "info-tiles" ]
@@ -162,30 +133,23 @@ let info =
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "439k" ]
+                                [ str "10" ]
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Users" ] ] ] ]
               Tile.parent [ ]
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "59k" ]
+                                [ str "7" ]
                             Heading.p [ Heading.IsSubtitle ]
-                                [ str "Products" ] ] ] ]
+                                [ str "Projects" ] ] ] ]
               Tile.parent [ ]
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "3.4k" ]
+                                [ str "2" ]
                             Heading.p [ Heading.IsSubtitle ]
-                                [ str "Open Orders" ] ] ] ]
-              Tile.parent [ ]
-                  [ Tile.child [ ]
-                      [ Box.box' [ ]
-                          [ Heading.p [ ]
-                                [ str "19" ]
-                            Heading.p [ Heading.IsSubtitle ]
-                                [ str "Exceptions" ] ] ] ] ] ]
+                                [ str "Real projects" ] ] ] ] ] ]
 
 let columns (model : Model) (dispatch : Msg -> unit) =
     Columns.columns [ ]

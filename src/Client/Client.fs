@@ -32,8 +32,7 @@ type Msg =
 | GetProjectsForUser of string
 | ProjectsListRetrieved of string list
 | RootPageMsg of RootPage.Msg
-| UserLoggedIn of Shared.SharedUser
-| UserLoggedOut
+| UserLoggedIn of Shared.SharedUser option
 | LoginPageMsg of LoginPage.Msg
 | ProjectPageMsg of ProjectPage.Msg
 | UserPageMsg of UserPage.Msg
@@ -58,7 +57,7 @@ module Nav =
     | ["user"; login] -> UserPage login, UserPage.Msg.NewUserPageNav login |> UserPageMsg |> Cmd.ofMsg
     | ["project"; code] -> ProjectPage code, ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
     | ["login"] -> LoginPage, Cmd.none
-    | ["logout"] -> RootPage, Cmd.ofMsg UserLoggedOut
+    | ["logout"] -> RootPage, Cmd.ofMsg (UserLoggedIn None)
     | _ -> RootPage, Cmd.none
 
     let toRoute = function
@@ -89,16 +88,8 @@ let init() : Model * Cmd<Msg> =
                          LoginModel = loginModel
                          ProjectModel = projectModel
                          UserModel = userModel }
-    let loginSub = Cmd.ofSub (fun dispatch ->
-        let onLoggedIn user = dispatch (UserLoggedIn user)
-        dispatch (LoginPageMsg (LoginPage.Msg.ConnectOnLoginHook onLoggedIn)))
-    let logoutSub = Cmd.ofSub (fun dispatch ->
-        let onLoggedOut () = dispatch (UserLoggedOut)
-        dispatch (LoginPageMsg (LoginPage.Msg.ConnectOnLogoutHook onLoggedOut)))
     initialModel, Cmd.batch [
         loginCmds |> Cmd.map LoginPageMsg
-        loginSub
-        logoutSub
         projectCmds |> Cmd.map ProjectPageMsg
         userCmds |> Cmd.map UserPageMsg
     ]
@@ -123,11 +114,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     //     let nextModel = { currentModel with ProjectList = projects }
     //     nextModel, Cmd.none
     | _, UserLoggedIn user ->
-        let nextModel = { currentModel with CurrentUser = Some user }
-        nextModel, Nav.jump -1 // On login we go back to the previous page
-    | _, RootPageMsg RootPage.Msg.UserLoggedOut ->
-        let nextModel = { currentModel with CurrentUser = None }
-        nextModel, Cmd.none // Router.navigate "" // On logout we go to the root page
+        let nextModel = { currentModel with CurrentUser = user }
+        nextModel, (if user.IsSome then Nav.jump -1 (* On login we go back to the previous page *) else Cmd.none (* On logout we do nothing *) )
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
@@ -163,7 +151,7 @@ let routingView (model : Model) (dispatch : Msg -> unit) =
         | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
         | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
         | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
-    let root = contextProvider RootPage.userCtx model.CurrentUser [ pageView ]
+    let root = contextProvider RootPage.userCtx (model.CurrentUser, UserLoggedIn >> dispatch) [ pageView ]
     Router.router [
         Router.onUrlChanged (dispatch << UrlChanged)
         Router.application root
