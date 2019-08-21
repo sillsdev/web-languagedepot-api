@@ -7,15 +7,14 @@ open Fulma
 open Thoth.Elmish
 open Thoth.Elmish.FormBuilder
 open Thoth.Elmish.FormBuilder.BasicFields
-open Fetch.Types
+open Thoth.Fetch
 
 type Msg =
     | RootModelUpdated of RootPage.Model
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | FormSubmitted
-    | GotFormResult of Result<Response,System.Exception>
-    | ParsedFormResult of string
+    | GotFormResult of int
 
 type Model = { RootModel : RootPage.Model; CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
@@ -75,26 +74,20 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         nextModel, Cmd.map OnFormMsg formCmd
     | FormSubmitted ->
         let newFormState, isValid = Form.validate formConfig currentModel.FormState
+        let nextModel = { currentModel with FormState = newFormState }
         if isValid then
-            let json = Form.toJson formConfig newFormState  // TODO: Convert form to a Shared.Project instance once https://github.com/MangelMaxime/Thoth/issues/93 is implemented
-            let url = "/api/project"
-            let nextModel = { currentModel with FormState = newFormState }
-            let props = [
-                Method HttpMethod.POST
-                Body (unbox json)
-            ]
-            nextModel, Cmd.OfPromise.perform (Fetch.tryFetch url) props GotFormResult
+            let json = Form.toJson formConfig newFormState
+            match Thoth.Json.Decode.Auto.fromString<Shared.CreateProject> json with
+            | Ok data ->
+                let url = "/api/project"
+                // TODO: Use tryPost and make GetFormResult take a Result<int,string>, logging the error if one happens
+                nextModel, Cmd.OfPromise.perform (fun data -> Fetch.post(url, data)) data GotFormResult
+            | Error err ->
+                printfn "Decoding error (fix the form validation?): %s" err
+                nextModel, Cmd.none
         else
-            currentModel, Cmd.none
-    | GotFormResult result ->
-        match result with
-        | Ok response ->
-            currentModel, Cmd.OfPromise.result (response.text() |> Promise.map ParsedFormResult)
-        | Error ex ->
-            printfn "Error submitting form: %s" ex.Message  // TODO: Make this pop up as a Toast notification
-            currentModel, Cmd.none
-    | ParsedFormResult text ->
-        let n = System.Int32.Parse text
+            nextModel, Cmd.none  // TODO: Do something to report "invalid form not submitted"?
+    | GotFormResult n ->
         printfn "Got ID %d from server" n
         currentModel, Cmd.none
 
