@@ -14,6 +14,7 @@
         <Compile Include="Hashes.fs" />
         <Compile Include="TextInput.fs" />
         <Compile Include="RootPage.fs" />
+        <Compile Include="NotImplementedPage.fs" />
         <Compile Include="LoginPage.fs" />
         <Compile Include="ProjectPage.fs" />
         <Compile Include="UserPage.fs" />

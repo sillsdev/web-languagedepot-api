@@ -28,7 +28,7 @@ type Msg =
 
 type Model = { RoleList : (int * string) list; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
 
-let init rootModel =
+let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
     Cmd.OfPromise.perform Fetch.get "/api/roles" RoleListUpdated
 

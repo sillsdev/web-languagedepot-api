@@ -36,6 +36,7 @@ type Msg =
 | LoginPageMsg of LoginPage.Msg
 | ProjectPageMsg of ProjectPage.Msg
 | UserPageMsg of UserPage.Msg
+| NotImplementedPageMsg of NotImplementedPage.Msg
 | UrlChanged of string list
 
 module Nav =
@@ -44,6 +45,7 @@ module Nav =
         | ProjectPage of string
         | RootPage
         | LoginPage
+        | NotImplementedPage
 
     let parseUrl = function
     // For pages with internal models based on the URL, pass on a message so they can update their internal model
@@ -52,6 +54,7 @@ module Nav =
     | ["project"; code] -> ProjectPage code, ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
     | ["login"] -> LoginPage, Cmd.none
     | ["logout"] -> RootPage, Cmd.ofMsg (UserLoggedIn None)
+    | ["not-implemented"] -> NotImplementedPage, Cmd.none
     | _ -> RootPage, Cmd.none
 
     let toRoute = function
@@ -67,22 +70,25 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model }
+type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model; NotImplementedModel : NotImplementedPage.Model }
 
 // defines the initial state and initial command (= side-effect) of the application
 let init() : Model * Cmd<Msg> =
     let initialRootModel, rootCmds = RootPage.init()
-    let loginModel, loginCmds = LoginPage.init initialRootModel
-    let projectModel, projectCmds = ProjectPage.init initialRootModel
-    let userModel, userCmds = UserPage.init initialRootModel
+    let notImplementedModel, notImplementedCmds = NotImplementedPage.init()
+    let loginModel, loginCmds = LoginPage.init()
+    let projectModel, projectCmds = ProjectPage.init()
+    let userModel, userCmds = UserPage.init()
     let initialModel = { Page = Nav.RootPage
                          CurrentUser = None
                          UserList = []
                          RootModel = initialRootModel
+                         NotImplementedModel = notImplementedModel
                          LoginModel = loginModel
                          ProjectModel = projectModel
                          UserModel = userModel }
     initialModel, Cmd.batch [
+        notImplementedCmds |> Cmd.map NotImplementedPageMsg
         loginCmds |> Cmd.map LoginPageMsg
         projectCmds |> Cmd.map ProjectPageMsg
         userCmds |> Cmd.map UserPageMsg
@@ -117,7 +123,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, UrlChanged parts ->
         let page, cmd = Nav.parseUrl parts
         let nextModel = { currentModel with Page = page }
-        nextModel, cmd
+        nextModel, Cmd.batch [ cmd; Cmd.ofMsg (RootPageMsg RootPage.Msg.RefreshCounts) ]
     // Sub pages
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
@@ -135,6 +141,10 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextUserModel, nextUserCmds = userModel |> UserPage.update userMsg
         let nextModel = { currentModel with UserModel = nextUserModel }
         nextModel, nextUserCmds |> Cmd.map UserPageMsg
+    | { NotImplementedModel = pageModel }, NotImplementedPageMsg pageMsg ->
+        let nextpageModel, nextpageCmds = pageModel |> NotImplementedPage.update pageMsg
+        let nextModel = { currentModel with NotImplementedModel = nextpageModel }
+        nextModel, nextpageCmds |> Cmd.map NotImplementedPageMsg
 
 // TODO: Look into Fetch.patch and test the JSON stuff in it
 
@@ -145,6 +155,7 @@ let routingView (model : Model) (dispatch : Msg -> unit) =
         | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
         | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
         | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
+        | Nav.NotImplementedPage -> NotImplementedPage.view model.NotImplementedModel (NotImplementedPageMsg >> dispatch)
     let root = contextProvider RootPage.userCtx (model.CurrentUser, UserLoggedIn >> dispatch) [ pageView ]
     Router.router [
         Router.onUrlChanged (dispatch << UrlChanged)

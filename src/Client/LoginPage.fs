@@ -12,7 +12,7 @@ type Msg =
 
 type Model = { LoginInput : string }
 
-let init rootModel = { LoginInput = "" }, Cmd.none
+let init() = { LoginInput = "" }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with

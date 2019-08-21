@@ -11,6 +11,7 @@ open Thoth.Fetch
 open Shared
 
 type Msg =
+    | RefreshCounts
     | ProjectCountLoaded of int
     | RealProjectCountLoaded of int
     | UserCountLoaded of int
@@ -23,15 +24,17 @@ let init() =
     let initialModel = { ProjectCount = None
                          RealProjectCount = None
                          UserCount = None }
-    let cmds = Cmd.batch [
-        Cmd.OfPromise.perform Fetch.get "/api/count/projects" ProjectCountLoaded
-        Cmd.OfPromise.perform Fetch.get "/api/count/non-test-projects" RealProjectCountLoaded
-        Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
-    ]
-    initialModel, cmds
+    initialModel, Cmd.ofMsg RefreshCounts
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | RefreshCounts ->
+        let cmds = Cmd.batch [
+            Cmd.OfPromise.perform Fetch.get "/api/count/projects" ProjectCountLoaded
+            Cmd.OfPromise.perform Fetch.get "/api/count/non-test-projects" RealProjectCountLoaded
+            Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+        ]
+        currentModel, cmds
     | ProjectCountLoaded n ->
         { currentModel with ProjectCount = Some n}, Cmd.none
     | RealProjectCountLoaded n ->
@@ -95,13 +98,14 @@ let navBrand dispatch =
     Navbar.navbar [ Navbar.Color IsInfo ]
         [ Container.container [ ]
             [ Navbar.Brand.div [ ]
-                [ Navbar.Item.a [ Navbar.Item.CustomClass "brand-text" ]
+                [ Navbar.Item.a [ Navbar.Item.Props [ Href "#" ]
+                                  Navbar.Item.CustomClass "brand-text" ]
                       [ str "Language Depot Admin" ] ]
               Navbar.menu [ ]
                   [ Navbar.Start.div [ ]
-                      [ Navbar.Item.a [ ]
+                      [ Navbar.Item.a [ Navbar.Item.Props [ Href "#not-implemented" ] ]
                             [ str "Projects" ]
-                        Navbar.Item.a [ ]
+                        Navbar.Item.a [ Navbar.Item.Props [ Href "#not-implemented" ] ]
                             [ str "Users" ] ] ]
               NavbarUserCard {|dispatch=dispatch|} ] ]
 
@@ -110,38 +114,38 @@ let menu =
         [ Menu.label [ ]
               [ str "General" ]
           Menu.list [ ]
-              [ Menu.Item.a [ ]
+              [ Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                     [ str "Projects" ]
-                Menu.Item.a [ ]
+                Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                     [ str "Users" ] ]
           Menu.label [ ]
               [ str "Administration" ]
           Menu.list [ ]
-              [ Menu.Item.a [ ]
+              [ Menu.Item.a [ Menu.Item.Props [ Href "#project/create" ] ]
                   [ str "Create project" ]
                 li [ ]
                     [ a [ ]
                         [ str "Manage Project" ]
                       Menu.list [ ]
-                          [ Menu.Item.a [ ]
+                          [ Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                                 [ str "Members" ]
-                            Menu.Item.a [ ]
+                            Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                                 [ str "Project Profile" ]
-                            Menu.Item.a [ ]
+                            Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                                 [ str "Add a member" ]
-                            Menu.Item.a [ ]
+                            Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                                 [ str "Remove a member" ] ] ]
-                Menu.Item.a [ ]
+                Menu.Item.a [ Menu.Item.Props [ Href "#not-implemented" ] ]
                     [ str "Invitations (TODO)" ] ] ]
 
-let breadcrump =
+let breadcrumb =
     Breadcrumb.breadcrumb [ ]
         [ Breadcrumb.item [ ]
-              [ a [ ] [ str "Language Depot" ] ]
+              [ a [ Href "#not-implemented" ] [ str "Language Depot" ] ]
           Breadcrumb.item [ ]
-              [ a [ ] [ str "Admin" ] ]
+              [ a [ Href "#not-implemented" ] [ str "Admin" ] ]
           Breadcrumb.item [ Breadcrumb.Item.IsActive true ]
-              [ a [ ] [ str "Root page" ] ] ]
+              [ a [ Href "#not-implemented" ] [ str "Root page" ] ] ]
 
 let hero dispatch =
     Hero.hero [ Hero.Color IsInfo
@@ -196,20 +200,11 @@ let columns (model : Model) (dispatch : Msg -> unit) =
                                   Icon.icon
                                       [ Icon.Size IsMedium
                                         Icon.IsLeft ]
-                                      [ Fa.i [Fa.Solid.Search] [] ]
+                                      [ Fa.i [Fa.Solid.Search] [ ] ]
                                   Icon.icon
                                       [ Icon.Size IsMedium
                                         Icon.IsRight ]
-                                      [ Fa.i [Fa.Solid.Check] [] ] ] ] ]
-                    Card.footer [ ]
-                        [ Button.button
-                            [ Button.Color IsInfo
-                              Button.OnClick ignore ] // Was: (fun _ -> dispatch ListAllUsers)
-                            [ str "All users" ]
-                          Button.button
-                            [ Button.Color IsInfo
-                              Button.OnClick ignore ] // Was: (fun _ -> dispatch ListAllProjects)
-                            [ str "All projects" ] ] ]
+                                      [ Fa.i [Fa.Solid.Check] [ ] ] ] ] ] ]
                 Card.card [ ]
                   [ Card.header [ ]
                       [ Card.Header.title [ ]
@@ -256,7 +251,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   [ Column.column [ Column.Width (Screen.All, Column.Is3) ]
                       [ menu ]
                     Column.column [ Column.Width (Screen.All, Column.Is9) ]
-                      [ breadcrump
+                      [ breadcrumb
                         hero dispatch
                         info model
                         columns model dispatch ] ] ] ]

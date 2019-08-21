@@ -1,5 +1,6 @@
 module ProjectPage
 
+open Browser
 open Elmish
 open Fable.React
 open Fable.React.Props
@@ -55,7 +56,7 @@ let (formState, formConfig) =
         )
         .Build()
 
-let init rootModel =
+let init() =
     let formState, formCmds = Form.init formConfig formState
     { CurrentlyViewedProject = ""; FormState = formState }, Cmd.map OnFormMsg formCmds
 
@@ -89,7 +90,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             printfn "Got ID %d from server" n
         | Error e ->
             printfn "Server responded with error message: %s" e
-        currentModel, Cmd.none
+        currentModel, [fun _ -> history.go -1]
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
     div [ ]
@@ -101,7 +102,7 @@ let formActions (formState : FormBuilder.Types.State) dispatch =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [
-        str ("This is the project page" + if System.String.IsNullOrEmpty model.CurrentlyViewedProject then "" else " for " + model.CurrentlyViewedProject)
+        str "Sorry, haven't made this form fancy yet"
         br [ ]
         Form.render {
             Config = formConfig
