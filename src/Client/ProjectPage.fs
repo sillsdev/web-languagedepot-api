@@ -14,7 +14,7 @@ type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | FormSubmitted
-    | GotFormResult of int
+    | GotFormResult of Result<int,string>
 
 type Model = { RootModel : RootPage.Model; CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
@@ -81,14 +81,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             | Ok data ->
                 let url = "/api/project"
                 // TODO: Use tryPost and make GetFormResult take a Result<int,string>, logging the error if one happens
-                nextModel, Cmd.OfPromise.perform (fun data -> Fetch.post(url, data)) data GotFormResult
+                nextModel, Cmd.OfPromise.perform (fun data -> Fetch.tryPost(url, data)) data GotFormResult
             | Error err ->
                 printfn "Decoding error (fix the form validation?): %s" err
                 nextModel, Cmd.none
         else
             nextModel, Cmd.none  // TODO: Do something to report "invalid form not submitted"?
-    | GotFormResult n ->
-        printfn "Got ID %d from server" n
+    | GotFormResult result ->
+        match result with
+        | Ok n ->
+            printfn "Got ID %d from server" n
+        | Error e ->
+            printfn "Server responded with error message: %s" e
         currentModel, Cmd.none
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
