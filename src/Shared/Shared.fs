@@ -33,6 +33,12 @@ type Project = {
     Status : int // default 1
 }
 
+type CreateProject = { // Just a subset of fields
+    Name : string
+    Description : string option // Long
+    Identifier : string option // 20 chars
+}
+
 type User = {
     Id : int
     Login : string

@@ -173,7 +173,7 @@ let webApp = router {
         json (Error "Would return true or false, and do some work behind the scenes to reconcile MySQL and Mongo passwords")
     )
 
-    post "/api/project" (bindJson<Project> (fun proj next ctx ->
+    post "/api/project" (bindJson<CreateProject> (fun proj next ctx ->
         task {
             let! newId = Model.createProject proj
             return! json newId next ctx

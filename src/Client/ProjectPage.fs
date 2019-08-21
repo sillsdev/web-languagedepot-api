@@ -7,14 +7,15 @@ open Fulma
 open Thoth.Elmish
 open Thoth.Elmish.FormBuilder
 open Thoth.Elmish.FormBuilder.BasicFields
-open Thoth.Fetch
+open Fetch.Types
 
 type Msg =
     | RootModelUpdated of RootPage.Model
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | FormSubmitted
-    | GotFormResult of int
+    | GotFormResult of Result<Response,System.Exception>
+    | ParsedFormResult of string
 
 type Model = { RootModel : RootPage.Model; CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
@@ -23,21 +24,21 @@ let (formState, formConfig) =
         .Create(OnFormMsg)
         .AddField(
             BasicInput
-                .Create("projectName")
+                .Create("Name")
                 .WithLabel("Project Name")
                 .IsRequired()
                 .WithDefaultView()
         )
         .AddField(
             BasicTextarea
-                .Create("description")
+                .Create("Description")
                 .WithLabel("Description")
                 .WithPlaceholder("Describe your project in a paragraph or two")
                 .WithDefaultView()
         )
         .AddField(
             BasicInput
-                .Create("projectCode")
+                .Create("Identifier")
                 .WithLabel("Project Code")
                 .IsRequired("You must specify a project code")
                 .AddValidator(fun state ->
@@ -75,13 +76,25 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | FormSubmitted ->
         let newFormState, isValid = Form.validate formConfig currentModel.FormState
         if isValid then
-            let json = Form.toJson formConfig newFormState  // TODO: Convert form to a Shared.Project instance
+            let json = Form.toJson formConfig newFormState  // TODO: Convert form to a Shared.Project instance once https://github.com/MangelMaxime/Thoth/issues/93 is implemented
             let url = "/api/project"
             let nextModel = { currentModel with FormState = newFormState }
-            nextModel, Cmd.OfPromise.perform (fun data -> Fetch.post(url, data)) json GotFormResult
+            let props = [
+                Method HttpMethod.POST
+                Body (unbox json)
+            ]
+            nextModel, Cmd.OfPromise.perform (Fetch.tryFetch url) props GotFormResult
         else
             currentModel, Cmd.none
-    | GotFormResult n ->
+    | GotFormResult result ->
+        match result with
+        | Ok response ->
+            currentModel, Cmd.OfPromise.result (response.text() |> Promise.map ParsedFormResult)
+        | Error ex ->
+            printfn "Error submitting form: %s" ex.Message  // TODO: Make this pop up as a Toast notification
+            currentModel, Cmd.none
+    | ParsedFormResult text ->
+        let n = System.Int32.Parse text
         printfn "Got ID %d from server" n
         currentModel, Cmd.none
 

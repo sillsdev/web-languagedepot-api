@@ -134,7 +134,7 @@ let getProject projectCode =
                 exactlyOneOrDefault }
     }
 
-let createProject (project : Project) =
+let createProject (project : CreateProject) =
     async {
         let ctx = sql.GetDataContext()
         let sqlProject = ctx.Testldapi.Projects.Create()
@@ -143,15 +143,15 @@ let createProject (project : Project) =
         match project.Description with
         | None -> ()
         | Some desc -> sqlProject.Description <- desc // string option // Long
-        match project.Homepage with
-        | None -> ()
-        | Some page -> sqlProject.Homepage <- page // string option // Long
-        sqlProject.IsPublic <- if project.IsPublic then 1y else 0y
-        sqlProject.ParentId <- project.ParentId // int // TODO: Determine what we get if the SQL value was NULL
-        sqlProject.CreatedOn <- project.CreatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
-        sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
+        // match project.Homepage with
+        // | None -> ()
+        // | Some page -> sqlProject.Homepage <- page // string option // Long
+        // sqlProject.IsPublic <- if project.IsPublic then 1y else 0y
+        // sqlProject.ParentId <- project.ParentId // int // TODO: Determine what we get if the SQL value was NULL
+        // sqlProject.CreatedOn <- project.CreatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
+        // sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
         sqlProject.Identifier <- project.Identifier |> Option.defaultValue "" // string option // 20 chars
-        sqlProject.Status <- project.Status // int // default 1
+        // sqlProject.Status <- project.Status // int // default 1
         do! ctx.SubmitUpdatesAsync()
         return sqlProject.Id
     }
