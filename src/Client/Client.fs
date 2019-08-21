@@ -2,7 +2,7 @@ module Client
 
 open Browser
 open Elmish
-open Elmish.Navigation
+open Feliz.Router
 open Elmish.React
 open Fable.Core.JsInterop
 open Fable.FontAwesome
@@ -19,27 +19,27 @@ open TextInput
 open Shared
 
 module Nav =
-    open Elmish.UrlParser
-
     type Route =
         | UserPage of string
         | ProjectPage of string
         | RootPage
         | LoginPage
 
-    let route =
-        oneOf [
-            s "user" </> str |> map UserPage
-            s "project" </> str |> map ProjectPage
-            s "login" |> map LoginPage
-            top |> map RootPage
-        ]
+    let parseUrl = function
+    | [] -> RootPage
+    | ["user"; login] -> UserPage login
+    | ["project"; code] -> ProjectPage code
+    | ["login"] -> LoginPage
+    | _ -> RootPage
 
     let toRoute = function
         | UserPage username -> sprintf "#user/%s" username
         | ProjectPage projectCode -> sprintf "#project/%s" projectCode
         | LoginPage -> "#login"
         | RootPage -> "#"
+
+    let jump (n:int):Cmd<_> =
+        [fun _ -> history.go n]
 
 // The model holds data that you want to keep track of while the application is running
 // in this case, we are keeping track of a counter
@@ -66,6 +66,7 @@ type Msg =
 | LoginPageMsg of LoginPage.Msg
 | ProjectPageMsg of ProjectPage.Msg
 | UserPageMsg of UserPage.Msg
+| UrlChanged of string list
 
 let msgsWhenRootModelUpdates = [
     LoginPage.Msg.RootModelUpdated >> LoginPageMsg
@@ -74,12 +75,12 @@ let msgsWhenRootModelUpdates = [
 ]
 
 // defines the initial state and initial command (= side-effect) of the application
-let init page : Model * Cmd<Msg> =
+let init() : Model * Cmd<Msg> =
     let initialRootModel = RootPage.init()
     let loginModel, loginCmds = LoginPage.init initialRootModel
     let projectModel, projectCmds = ProjectPage.init initialRootModel
     let userModel, userCmds = UserPage.init initialRootModel
-    let initialModel = { Page = defaultArg page Nav.RootPage
+    let initialModel = { Page = Nav.RootPage
                          CurrentUser = None
                          UserList = []
                          RootModel = initialRootModel
@@ -121,13 +122,23 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     //     nextModel, Cmd.none
     | _, UserLoggedIn user ->
         let nextModel = { currentModel with CurrentUser = Some user }
-        nextModel, Navigation.jump -1
+        nextModel, Nav.jump -1 // On login we go back to the previous page
     | _, UserLoggedOut ->
         let nextModel = { currentModel with CurrentUser = None }
-        nextModel, Navigation.jump -1
+        nextModel, Router.navigate "" // On logout we go to the root page
     | _, LogResult result ->
         let cmd = result |> Notifications.notifyStrResult
         currentModel, cmd
+    | _, UrlChanged parts ->
+        let page = Nav.parseUrl parts
+        // For pages with internal models based on the URL, pass on a message so they can update their internal model
+        // TODO: Extract this into something that can live in the Nav module so the knowledge is all in one place
+        let cmd = match page with
+                  | Nav.UserPage user -> UserPage.Msg.NewUserPageNav user |> UserPageMsg |> Cmd.ofMsg
+                  | Nav.ProjectPage code -> ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
+                  | _ -> Cmd.none
+        let nextModel = { currentModel with Page = page }
+        nextModel, cmd
     // Sub pages
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
@@ -368,18 +379,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
                         info
                         columns model dispatch ] ] ] ]
 
-let urlUpdate (result : Nav.Route option) model =
-  match result with
-  | Some (Nav.UserPage username as page) ->
-      { model with Page = page }, Cmd.ofMsg (UserPage.Msg.NewUserPageNav username |> UserPageMsg)
-  | Some (Nav.ProjectPage projectCode as page) ->
-      { model with Page = page }, Cmd.ofMsg (ProjectPage.Msg.NewProjectPageNav projectCode |> ProjectPageMsg)
-  | Some page ->
-      { model with Page = page }, Cmd.none
-
-  | None ->
-      model, Navigation.modifyUrl (Nav.toRoute Nav.RootPage)
-
 let routingView (model : Model) (dispatch : Msg -> unit) =
     let pageView =
         match model.Page with
@@ -387,7 +386,11 @@ let routingView (model : Model) (dispatch : Msg -> unit) =
         | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
         | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
         | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
-    contextProvider RootPage.userCtx model.CurrentUser [ pageView ]
+    let root = contextProvider RootPage.userCtx model.CurrentUser [ pageView ]
+    Router.router [
+        Router.onUrlChanged (dispatch << UrlChanged)
+        Router.application root
+    ]
 
 #if DEBUG
 open Elmish.Debug
@@ -398,7 +401,6 @@ Program.mkProgram init update routingView
 #if DEBUG
 |> Program.withConsoleTrace
 #endif
-|> Program.toNavigable (UrlParser.parseHash Nav.route) urlUpdate
 |> Toast.Program.withToast Notifications.renderToastWithFulma
 |> Program.withReactBatched "elmish-app"
 // #if DEBUG

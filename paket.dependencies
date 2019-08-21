@@ -42,6 +42,7 @@ group Client
     nuget Fable.React ~> 5
     nuget Fulma ~> 2
     nuget Fable.FontAwesome.Free ~> 2
+    nuget Feliz.Router
 
 group Build
     source https://api.nuget.org/v3/index.json
