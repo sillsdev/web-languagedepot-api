@@ -8,18 +8,14 @@ open Fulma
 open Shared
 
 type Msg =
-    | RootModelUpdated of RootPage.Model
     | LoginInputChanged of string
 
-type Model = { RootModel : RootPage.Model; LoginInput : string }
+type Model = { LoginInput : string }
 
-let init rootModel = { RootModel = rootModel; LoginInput = "" }, Cmd.none
+let init rootModel = { LoginInput = "" }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
-    | RootModelUpdated newRootModel ->
-        let nextModel = { currentModel with RootModel = newRootModel }
-        nextModel, Cmd.none
     | LoginInputChanged username ->
         let nextModel = { currentModel with LoginInput = username }
         nextModel, Cmd.none

@@ -80,7 +80,7 @@ type ProjectExists = string -> Async<bool>
 type GetUser = string -> Async<User option>
 type GetProject = string -> Async<Project option>
 
-let usersQueryAsync =
+let usersQueryAsync() =
     let ctx = sql.GetDataContext()
     query {
         for user in ctx.Testldapi.Users do
@@ -88,13 +88,44 @@ let usersQueryAsync =
     }
     |> List.executeQueryAsync
 
-let projectsQueryAsync =
+let projectsQueryAsync() =
     let ctx = sql.GetDataContext()
     query {
         for project in ctx.Testldapi.Projects do
+            where (project.IsPublic > 0y)
             select (Project.FromSql project)
     }
     |> List.executeQueryAsync
+
+let projectsCountAsync() =
+    async {
+        let ctx = sql.GetDataContext()
+        return query {
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y)
+                count
+        }
+    }
+
+let realProjectsCountAsync() =
+    async {
+        let ctx = sql.GetDataContext()
+        return query {
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y &&
+                       not (project.Name.ToLowerInvariant().Contains("test"))) // TODO: Figure out a better rule for what's a test project
+                count
+        }
+    }
+
+let usersCountAsync() =
+    async {
+        let ctx = sql.GetDataContext()
+        return query {
+            for _ in ctx.Testldapi.Users do
+            count
+        }
+    }
 
 let userExists username =
     let ctx = sql.GetDataContext()

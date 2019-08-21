@@ -17,7 +17,6 @@ type Msg =
     | FindUser of string
     | LogUserResult of User
     | RoleListUpdated of (int * string) list
-    | RootModelUpdated of RootPage.Model
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
@@ -27,10 +26,10 @@ type Msg =
     | ProjectsListRetrieved of (string * string) list
     | LogException of System.Exception
 
-type Model = { RootModel : RootPage.Model; RoleList : (int * string) list; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : (int * string) list; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
 
 let init rootModel =
-    { RootModel = rootModel; RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
+    { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
     Cmd.OfPromise.perform Fetch.get "/api/roles" RoleListUpdated
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
@@ -43,9 +42,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | RoleListUpdated newRoleList ->
         let nextModel = { currentModel with RoleList = newRoleList }
-        nextModel, Cmd.none
-    | RootModelUpdated newRootModel ->
-        let nextModel = { currentModel with RootModel = newRootModel }
         nextModel, Cmd.none
     | NewUserPageNav username ->
         let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username; Email = "rmunn@pobox.com" } }

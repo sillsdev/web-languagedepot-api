@@ -6,17 +6,38 @@ open Fable.FontAwesome.Free
 open Fable.React
 open Fable.React.Props
 open Fulma
+open Thoth.Fetch
 
 open Shared
 
-type Msg = Msg
+type Msg =
+    | ProjectCountLoaded of int
+    | RealProjectCountLoaded of int
+    | UserCountLoaded of int
 
-type Model = { nothing : unit }
+type Model = { ProjectCount : int option
+               RealProjectCount : int option
+               UserCount : int option }
 
-let init() = { nothing = () }
+let init() =
+    let initialModel = { ProjectCount = None
+                         RealProjectCount = None
+                         UserCount = None }
+    let cmds = Cmd.batch [
+        Cmd.OfPromise.perform Fetch.get "/api/count/projects" ProjectCountLoaded
+        Cmd.OfPromise.perform Fetch.get "/api/count/non-test-projects" RealProjectCountLoaded
+        Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+    ]
+    initialModel, cmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
-    currentModel, Cmd.none
+    match msg with
+    | ProjectCountLoaded n ->
+        { currentModel with ProjectCount = Some n}, Cmd.none
+    | RealProjectCountLoaded n ->
+        { currentModel with RealProjectCount = Some n}, Cmd.none
+    | UserCountLoaded n ->
+        { currentModel with UserCount = Some n}, Cmd.none
 
 let userCtx : IContext<SharedUser option * (SharedUser option -> unit)> = createContext (None, ignore)
 
@@ -65,6 +86,10 @@ let ShowUsername = FunctionComponent.Of (fun () ->
     | None -> p [ ] [ str "Hello, Admin" ]
     | Some user -> p [ ] [ str ("Hello, " + user.Name) ]
 )
+
+let showInt = function
+    | None -> Fa.i [ Fa.Solid.Spinner; Fa.Spin ] []
+    | Some n -> str (n.ToString())
 
 let navBrand dispatch =
     Navbar.navbar [ Navbar.Color IsInfo ]
@@ -126,28 +151,28 @@ let hero dispatch =
                 [ Heading.h1 [ ]
                       [ ShowUsername() ] ] ] ]
 
-let info =
+let info (model : Model) =
     section [ Class "info-tiles" ]
         [ Tile.ancestor [ Tile.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
             [ Tile.parent [ ]
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "10" ]
+                                [ showInt model.UserCount ]
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Users" ] ] ] ]
               Tile.parent [ ]
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "7" ]
+                                [ showInt model.ProjectCount ]
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Projects" ] ] ] ]
               Tile.parent [ ]
                   [ Tile.child [ ]
                       [ Box.box' [ ]
                           [ Heading.p [ ]
-                                [ str "2" ]
+                                [ showInt model.RealProjectCount ]
                             Heading.p [ Heading.IsSubtitle ]
                                 [ str "Real projects" ] ] ] ] ] ]
 
@@ -233,5 +258,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                     Column.column [ Column.Width (Screen.All, Column.Is9) ]
                       [ breadcrump
                         hero dispatch
-                        info
+                        info model
                         columns model dispatch ] ] ] ]

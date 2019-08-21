@@ -40,7 +40,7 @@ let webApp = router {
 
     get "/api/project" (fun next ctx ->
         task {
-            let! x = Model.projectsQueryAsync |> Async.StartAsTask
+            let! x = Model.projectsQueryAsync() |> Async.StartAsTask
             let logins = x |> List.map (fun project -> project.Identifier)
             return! json logins next ctx
         }
@@ -89,7 +89,7 @@ let webApp = router {
     get "/api/users" (fun next ctx ->
         // DEMO ONLY. Enumerates all users
         task {
-            let! x = Model.usersQueryAsync |> Async.StartAsTask
+            let! x = Model.usersQueryAsync() |> Async.StartAsTask
             let logins = x |> List.map (fun user -> user.Login)
             return! json logins next ctx
         }
@@ -181,12 +181,26 @@ let webApp = router {
         }
     ))
 
-    get "/api/count/users" (json (Error "Not implemented; would count total # of users"))
+    get "/api/count/users" (fun next ctx ->
+        task {
+            let! newId = Model.usersCountAsync()
+            return! json newId next ctx
+        }
+    )
 
-    get "/api/count/projects" (json (Error "Not implemented; would count total # of projects"))
+    get "/api/count/projects" (fun next ctx ->
+        task {
+            let! newId = Model.projectsCountAsync()
+            return! json newId next ctx
+        }
+    )
 
-    get "/api/count/non-test-projects" (json (Error "Not implemented; would count total # of projects, excluding test projects (definition of test TBD)"))
-    // TODO: Determine a definition of a "test project"
+    get "/api/count/non-test-projects" (fun next ctx ->
+        task {
+            let! newId = Model.realProjectsCountAsync()
+            return! json newId next ctx
+        }
+    )
 
     deletef "/api/project/%s" (fun (projId) ->
         // TODO: Verify admin password before this is allowed

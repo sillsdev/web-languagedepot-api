@@ -38,12 +38,6 @@ type Msg =
 | UserPageMsg of UserPage.Msg
 | UrlChanged of string list
 
-let msgsWhenRootModelUpdates = [
-    LoginPage.Msg.RootModelUpdated >> LoginPageMsg
-    ProjectPage.Msg.RootModelUpdated >> ProjectPageMsg
-    UserPage.Msg.RootModelUpdated >> UserPageMsg
-]
-
 module Nav =
     type Route =
         | UserPage of string
@@ -77,7 +71,7 @@ type Model = { UserList : string list; CurrentUser : SharedUser option; Page : N
 
 // defines the initial state and initial command (= side-effect) of the application
 let init() : Model * Cmd<Msg> =
-    let initialRootModel = RootPage.init()
+    let initialRootModel, rootCmds = RootPage.init()
     let loginModel, loginCmds = LoginPage.init initialRootModel
     let projectModel, projectCmds = ProjectPage.init initialRootModel
     let userModel, userCmds = UserPage.init initialRootModel
@@ -92,6 +86,7 @@ let init() : Model * Cmd<Msg> =
         loginCmds |> Cmd.map LoginPageMsg
         projectCmds |> Cmd.map ProjectPageMsg
         userCmds |> Cmd.map UserPageMsg
+        rootCmds |> Cmd.map RootPageMsg
     ]
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
@@ -127,8 +122,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
         let nextModel = { currentModel with RootModel = nextRootModel }
-        let otherPageMsgs = msgsWhenRootModelUpdates |> List.map (fun f -> f nextRootModel |> Cmd.ofMsg) |> Cmd.batch
-        nextModel, Cmd.batch [Cmd.map RootPageMsg nextRootCmds; otherPageMsgs]
+        nextModel, nextRootCmds |> Cmd.map RootPageMsg
     | { LoginModel = loginModel }, LoginPageMsg loginMsg ->
         let nextLoginModel, nextLoginCmds = loginModel |> LoginPage.update loginMsg
         let nextModel = { currentModel with LoginModel = nextLoginModel }

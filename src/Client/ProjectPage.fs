@@ -10,13 +10,12 @@ open Thoth.Elmish.FormBuilder.BasicFields
 open Thoth.Fetch
 
 type Msg =
-    | RootModelUpdated of RootPage.Model
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | FormSubmitted
     | GotFormResult of Result<int,string>
 
-type Model = { RootModel : RootPage.Model; CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -58,13 +57,10 @@ let (formState, formConfig) =
 
 let init rootModel =
     let formState, formCmds = Form.init formConfig formState
-    { RootModel = rootModel; CurrentlyViewedProject = ""; FormState = formState }, Cmd.map OnFormMsg formCmds
+    { CurrentlyViewedProject = ""; FormState = formState }, Cmd.map OnFormMsg formCmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
-    | RootModelUpdated newRootModel ->
-        let nextModel = { currentModel with RootModel = newRootModel }
-        nextModel, Cmd.none
     | NewProjectPageNav projectCode ->
         let nextModel = { currentModel with CurrentlyViewedProject = projectCode }
         nextModel, Cmd.none
