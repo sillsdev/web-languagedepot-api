@@ -1,0 +1,50 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26124.0
+MinimumVisualStudioVersion = 15.0.26124.0
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{38CF4A98-8535-48A0-BCAE-72F712915C56}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		LICENSE.md = LICENSE.md
+		NuGet.config = NuGet.config
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B4DD0E94-190C-4CF2-BE22-93071A6AE2EC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanguageDepotRestApi", "src/LanguageDepotRestApi.csproj", "{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{036337A2-BCB3-4C7D-ADB1-2A9134ECABF4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanguageDepotRestApi.Test", "test/LanguageDepotRestApi.Test.csproj", "{C96192AD-1DBF-4376-BFD0-63B95004A2E1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C96192AD-1DBF-4376-BFD0-63B95004A2E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C96192AD-1DBF-4376-BFD0-63B95004A2E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C96192AD-1DBF-4376-BFD0-63B95004A2E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C96192AD-1DBF-4376-BFD0-63B95004A2E1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CFF02CD4-7F03-4B82-B60D-8C3091EB4CFD} = {B4DD0E94-190C-4CF2-BE22-93071A6AE2EC}
+		{C96192AD-1DBF-4376-BFD0-63B95004A2E1} = {036337A2-BCB3-4C7D-ADB1-2A9134ECABF4}
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
