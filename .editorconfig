@@ -29,3 +29,7 @@ continuation_indent_size = 8
 [*.md]
 max_line_length = off
 trim_trailing_whitespace = false
+
+# Visual Studio solution files use tabs
+[*.sln]
+indent_style = tab
