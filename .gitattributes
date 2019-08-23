@@ -1,0 +1,7 @@
+# All files should default to text and have LF endings, even on Windows
+* text eol=lf
+
+# Binary files should be left untouched
+*.png binary
+*.jpg binary
+*.ico binary
