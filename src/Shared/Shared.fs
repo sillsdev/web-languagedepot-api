@@ -26,26 +26,19 @@ type AudioSettings = {
 }
 
 module FixSettings =
+    let defaultValue (def : 'a) (value : 'a) =
+        if value = Unchecked.defaultof<'a> then def else value
+
     let defaultAudioSettings = {
         FfmpegPath = "default path"
         Development = "default dev"
     }
 
     type AudioSettings with
-        member x.FixDefault() =
-            // This is going to get tedious if there are many properties
-            let y =
-                if isNull x.FfmpegPath then
-                    { x with FfmpegPath = defaultAudioSettings.FfmpegPath }
-                else
-                    x
-            let z =
-                if isNull y.Development then
-                    { y with Development = defaultAudioSettings.Development }
-                else
-                    y
-            z
-
+        member this.FixDefault() =
+            { this with
+                FfmpegPath = this.FfmpegPath |> defaultValue defaultAudioSettings.FfmpegPath
+                Development = this.Development |> defaultValue defaultAudioSettings.Development }
 
 // TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
 type Project = {
