@@ -2,6 +2,7 @@ open System.IO
 open System.Threading.Tasks
 
 open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
@@ -232,6 +233,17 @@ let webApp = router {
     )
 }
 
+let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
+    let env = context.HostingEnvironment
+    if env.IsDevelopment() || env.IsEnvironment("Testing") then
+        configBuilder
+            .AddJsonFile("secrets.json")
+        |> ignore
+
+let hostConfig (builder : IWebHostBuilder) =
+    builder
+        .ConfigureAppConfiguration(setupUserSecrets)
+
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
@@ -240,6 +252,7 @@ let app = application {
     use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
+    host_config hostConfig
     use_config buildConfig
 }
 
