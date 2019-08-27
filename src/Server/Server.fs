@@ -208,7 +208,7 @@ let webApp = router {
 
     get "/api/config" (fun next ctx ->
         task {
-            let cfg = ctx.Items.["Configuration"] :?> Shared.AudioSettings
+            let cfg = ctx.Items.["Configuration"] :?> AudioSettings
             return! json cfg next ctx
         }
     )
@@ -227,10 +227,7 @@ let app = application {
     use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
-    use_config (fun (c : IConfiguration) ->
-        let section = c.GetSection "Audio"
-        section.Get<AudioSettings>().FixDefault()
-    )
+    use_config buildConfig
 }
 
 run app

@@ -8,6 +8,7 @@
         <None Include="paket.references" />
         <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="..\Shared\Settings.fs" />
+        <Compile Include="SettingsHelper.fs" />
         <Compile Include="Model.fs" />
         <Compile Include="Mongo.fs" />
         <Compile Include="Server.fs" />
