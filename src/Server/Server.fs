@@ -208,7 +208,7 @@ let webApp = router {
 
     get "/api/config" (fun next ctx ->
         task {
-            let cfg = ctx |> getSettings<AudioSettings>
+            let cfg = ctx |> getSettings<MySqlSettings>
             return! json cfg next ctx
         }
     )

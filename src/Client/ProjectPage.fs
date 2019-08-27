@@ -16,7 +16,7 @@ type Msg =
     | FormSubmitted
     | GotFormResult of Result<int,string>
     | GetConfig
-    | GotConfig of Shared.Settings.AudioSettings
+    | GotConfig of Shared.Settings.MySqlSettings
 
 type Model = { CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
@@ -96,9 +96,9 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | GetConfig ->
         let url = "/api/config"
         currentModel, Cmd.OfPromise.perform Fetch.get url GotConfig
-    | GotConfig audioSettings ->
-        printfn "Got config: %A" audioSettings
-        printfn "ffmpeg path: %s" audioSettings.FfmpegPath
+    | GotConfig mySqlSettings ->
+        printfn "Got config: %A" mySqlSettings
+        printfn "Port: %d" mySqlSettings.Port
         currentModel, Cmd.none
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
@@ -120,7 +120,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             ActionsArea = (formActions model.FormState dispatch)
             Loader = Form.DefaultLoader }
         br [ ]
-        str "Config should be valid AudioSettings config; check it"
+        str "Config should be valid MySqlSettings config; check it"
         br [ ]
         Button.button
             [ Button.Props [ OnClick (fun _ -> dispatch GetConfig) ]

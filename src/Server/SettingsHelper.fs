@@ -15,10 +15,18 @@ module SettingsHelper =
         else
             name
 
-    let getSettingsValue<'settings> (config : IConfiguration) =
+    let getSettingsValue<'settings when 'settings : equality> (config : IConfiguration) =
         let typ = typeof<'settings>
         let section = config.GetSection (getSectionName<'settings>())
-        let settings = section.Get<'settings>()
+        let maybeSettings = section.Get<'settings>()
+        // IConfigurationSection.Get can return null if there's no such section at all in the config
+        let settings =
+            if maybeSettings = Unchecked.defaultof<'settings> then
+                // Have to construct a real value so method.Invoke doesn't fail later
+                let constructor = typ.GetConstructor [||]
+                constructor.Invoke [||] :?> 'settings
+            else
+                maybeSettings
         let method = typ.GetMethod "SetDefaultValues"
         if not (isNull method) then
             let fixedValue = method.Invoke(settings, [||])
@@ -26,7 +34,7 @@ module SettingsHelper =
         else
             settings
 
-    let addSettings<'settings> (config : IConfiguration) =
+    let addSettings<'settings when 'settings : equality> (config : IConfiguration) =
         let name = getSectionName<'settings>()
         let settings = getSettingsValue<'settings> config
         Map.add name (box settings)
@@ -39,3 +47,4 @@ module SettingsHelper =
     let buildConfig (c : IConfiguration) : ServerConfig =
         Map.empty<string, obj>
         |> addSettings<AudioSettings> c
+        |> addSettings<MySqlSettings> c
