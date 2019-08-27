@@ -22,7 +22,7 @@ module Settings =
         Development : string
         Path : string
     } with
-        member this.FixDefault() =
+        member this.SetDefaultValues() =
             { this with
                 FfmpegPath = this.FfmpegPath |> defaultValue "default path"
                 Development = this.Development |> defaultValue "default dev"
