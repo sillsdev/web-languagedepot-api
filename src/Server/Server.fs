@@ -10,7 +10,7 @@ open Giraffe
 open Giraffe.HttpStatusCodeHandlers
 open Saturn
 open Shared
-open Shared.FixSettings
+open Shared.Settings
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 

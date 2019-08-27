@@ -16,7 +16,7 @@ type Msg =
     | FormSubmitted
     | GotFormResult of Result<int,string>
     | GetConfig
-    | GotConfig of Shared.AudioSettings
+    | GotConfig of Shared.Settings.AudioSettings
 
 type Model = { CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
