@@ -5,14 +5,13 @@ open FSharp.Data.Sql
 open Shared
 
 [<Literal>]
-let connString  = "Server=localhost;Database=testldapi;User=rmunn"
-// TODO: Create constants that the build script can replace from a Config.fs file
+let sampleConnString = "Server=localhost;Database=testldapi;User=rmunn"
 
 [<Literal>]
 let resolutionPath = __SOURCE_DIRECTORY__
 
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
-                           connString,
+                           sampleConnString,
                            ResolutionPath = resolutionPath,
                            CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL>
 
@@ -80,16 +79,16 @@ type ProjectExists = string -> Async<bool>
 type GetUser = string -> Async<User option>
 type GetProject = string -> Async<Project option>
 
-let usersQueryAsync() =
-    let ctx = sql.GetDataContext()
+let usersQueryAsync (connString : string) =
+    let ctx = sql.GetDataContext connString
     query {
         for user in ctx.Testldapi.Users do
             select (User.FromSql user)
     }
     |> List.executeQueryAsync
 
-let projectsQueryAsync() =
-    let ctx = sql.GetDataContext()
+let projectsQueryAsync (connString : string) =
+    let ctx = sql.GetDataContext connString
     query {
         for project in ctx.Testldapi.Projects do
             where (project.IsPublic > 0y)
@@ -97,9 +96,9 @@ let projectsQueryAsync() =
     }
     |> List.executeQueryAsync
 
-let projectsCountAsync() =
+let projectsCountAsync (connString : string) =
     async {
-        let ctx = sql.GetDataContext()
+        let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Testldapi.Projects do
                 where (project.IsPublic > 0y)
@@ -107,9 +106,9 @@ let projectsCountAsync() =
         }
     }
 
-let realProjectsCountAsync() =
+let realProjectsCountAsync (connString : string) =
     async {
-        let ctx = sql.GetDataContext()
+        let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Testldapi.Projects do
                 where (project.IsPublic > 0y &&
@@ -118,17 +117,17 @@ let realProjectsCountAsync() =
         }
     }
 
-let usersCountAsync() =
+let usersCountAsync (connString : string) =
     async {
-        let ctx = sql.GetDataContext()
+        let ctx = sql.GetDataContext connString
         return query {
             for _ in ctx.Testldapi.Users do
             count
         }
     }
 
-let userExists username =
-    let ctx = sql.GetDataContext()
+let userExists (connString : string) username =
+    let ctx = sql.GetDataContext connString
     async {
         return query {
             for user in ctx.Testldapi.Users do
@@ -136,8 +135,8 @@ let userExists username =
                 contains username }
     }
 
-let projectExists projectCode =
-    let ctx = sql.GetDataContext()
+let projectExists (connString : string) projectCode =
+    let ctx = sql.GetDataContext connString
     async {
         return query {
             for project in ctx.Testldapi.Projects do
@@ -145,8 +144,8 @@ let projectExists projectCode =
                 contains projectCode }
     }
 
-let getUser username =
-    let ctx = sql.GetDataContext()
+let getUser (connString : string) username =
+    let ctx = sql.GetDataContext connString
     async {
         return query {
             for user in ctx.Testldapi.Users do
@@ -155,8 +154,8 @@ let getUser username =
                 exactlyOneOrDefault }
     }
 
-let getProject projectCode =
-    let ctx = sql.GetDataContext()
+let getProject (connString : string) projectCode =
+    let ctx = sql.GetDataContext connString
     async {
         return query {
             for project in ctx.Testldapi.Projects do
@@ -165,9 +164,9 @@ let getProject projectCode =
                 exactlyOneOrDefault }
     }
 
-let createProject (project : CreateProject) =
+let createProject (connString : string) (project : CreateProject) =
     async {
-        let ctx = sql.GetDataContext()
+        let ctx = sql.GetDataContext connString
         let sqlProject = ctx.Testldapi.Projects.Create()
         // sqlProject.Id <- project.Id // int
         sqlProject.Name <- project.Name // string
@@ -187,8 +186,8 @@ let createProject (project : CreateProject) =
         return sqlProject.Id
     }
 
-let projectsByUserRole username (role : int) =
-    let ctx = sql.GetDataContext()
+let projectsByUserRole (connString : string) username (role : int) =
+    let ctx = sql.GetDataContext connString
     async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -208,10 +207,10 @@ let projectsByUserRole username (role : int) =
             } |> List.executeQueryAsync
     }
 
-let projectsByUser username = projectsByUserRole username -1
+let projectsByUser username connString = projectsByUserRole connString username -1
 
-let projectsAndRolesByUserRole username (roleId : int) =
-    let ctx = sql.GetDataContext()
+let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
+    let ctx = sql.GetDataContext connString
     async {
         let requestedUser = query {
             for user in ctx.Testldapi.Users do
@@ -232,11 +231,11 @@ let projectsAndRolesByUserRole username (roleId : int) =
             } |> List.executeQueryAsync
     }
 
-let projectsAndRolesByUser username =
-    projectsAndRolesByUserRole username -1
+let projectsAndRolesByUser (connString : string) username =
+    projectsAndRolesByUserRole connString username -1
 
-let roleNames() =
-    let ctx = sql.GetDataContext()
+let roleNames (connString : string) =
+    let ctx = sql.GetDataContext connString
     query {
         for role in ctx.Testldapi.Roles do
             select (role.Id, role.Name)
@@ -269,8 +268,8 @@ let verifyPass (clearPass : string) (hashPass : string) =
     else
         false
 
-let verifyLoginInfo (loginInfo : Shared.LoginInfo) =
-    let ctx = sql.GetDataContext()
+let verifyLoginInfo (connString : string) (loginInfo : Shared.LoginInfo) =
+    let ctx = sql.GetDataContext connString
     async {
         let! user = query { for user in ctx.Testldapi.Users do
                                 where (user.Login = loginInfo.username)
