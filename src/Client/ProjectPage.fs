@@ -15,6 +15,8 @@ type Msg =
     | OnFormMsg of FormBuilder.Types.Msg
     | FormSubmitted
     | GotFormResult of Result<int,string>
+    | GetConfig
+    | GotConfig of Shared.AudioSettings
 
 type Model = { CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
 
@@ -91,6 +93,13 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Error e ->
             printfn "Server responded with error message: %s" e
         currentModel, [fun _ -> history.go -1]
+    | GetConfig ->
+        let url = "/api/config"
+        currentModel, Cmd.OfPromise.perform Fetch.get url GotConfig
+    | GotConfig audioSettings ->
+        printfn "Got config: %A" audioSettings
+        printfn "ffmpeg path: %s" audioSettings.FfmpegPath
+        currentModel, Cmd.none
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
     div [ ]
@@ -110,4 +119,12 @@ let view (model : Model) (dispatch : Msg -> unit) =
             Dispatch = dispatch
             ActionsArea = (formActions model.FormState dispatch)
             Loader = Form.DefaultLoader }
+        br [ ]
+        str "Config should be valid AudioSettings config; check it"
+        br [ ]
+        Button.button
+            [ Button.Props [ OnClick (fun _ -> dispatch GetConfig) ]
+              Button.Color IsPrimary
+            ]
+            [ str "Get Config" ]
         ]

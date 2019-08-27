@@ -19,6 +19,34 @@ type PatchProjects = {
     removeUser : SharedUser option
 }
 
+[<CLIMutable>]
+type AudioSettings = {
+    FfmpegPath : string
+    Development : string
+}
+
+module FixSettings =
+    let defaultAudioSettings = {
+        FfmpegPath = "default path"
+        Development = "default dev"
+    }
+
+    type AudioSettings with
+        member x.FixDefault() =
+            // This is going to get tedious if there are many properties
+            let y =
+                if isNull x.FfmpegPath then
+                    { x with FfmpegPath = defaultAudioSettings.FfmpegPath }
+                else
+                    x
+            let z =
+                if isNull y.Development then
+                    { y with Development = defaultAudioSettings.Development }
+                else
+                    y
+            z
+
+
 // TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
 type Project = {
     Id : int

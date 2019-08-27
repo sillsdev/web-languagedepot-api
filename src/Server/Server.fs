@@ -2,6 +2,7 @@ open System.IO
 open System.Threading.Tasks
 
 open Microsoft.AspNetCore.Builder
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open FSharp.Control.Tasks.V2
@@ -9,7 +10,7 @@ open Giraffe
 open Giraffe.HttpStatusCodeHandlers
 open Saturn
 open Shared
-
+open Shared.FixSettings
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -205,6 +206,13 @@ let webApp = router {
         }
     )
 
+    get "/api/config" (fun next ctx ->
+        task {
+            let cfg = ctx.Items.["Configuration"] :?> Shared.AudioSettings
+            return! json cfg next ctx
+        }
+    )
+
     deletef "/api/project/%s" (fun (projId) ->
         // TODO: Verify admin password before this is allowed
         (json (Error "Not implemented; would verify admin username/password first, then delete a project (really just archive it)"))
@@ -219,6 +227,10 @@ let app = application {
     use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
+    use_config (fun (c : IConfiguration) ->
+        let section = c.GetSection "Audio"
+        section.Get<AudioSettings>().FixDefault()
+    )
 }
 
 run app
