@@ -46,5 +46,4 @@ module SettingsHelper =
 
     let buildConfig (c : IConfiguration) : ServerConfig =
         Map.empty<string, obj>
-        |> addSettings<AudioSettings> c
         |> addSettings<MySqlSettings> c

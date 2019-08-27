@@ -28,18 +28,6 @@ module Settings =
 #endif
 
     [<CLIMutable>]
-    type AudioSettings = {
-        FfmpegPath : string
-        Development : string
-        Path : string
-    } with
-        member this.SetDefaultValues() =
-            { this with
-                FfmpegPath = this.FfmpegPath |> defaultValue "default path"
-                Development = this.Development |> defaultValue "default dev"
-                Path = this.Path |> defaultEnv "PATH" "default path" }
-
-    [<CLIMutable>]
     type MySqlSettings = {
         Hostname : string
         Database : string
