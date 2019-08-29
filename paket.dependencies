@@ -7,11 +7,7 @@ group Server
     nuget Saturn
     nuget Thoth.Json.Giraffe
     nuget SQLProvider
-    nuget MongoDB.Driver ~> 2
-    nuget MongoDB.Bson ~> 2
-    // Our custom-built MongoDB.FSharp package isn't yet on NuGet, so get it locally
-    source ../../MongoDB.FSharp/dist
-    nuget MongoDB.FSharp 0.1.1
+    nuget BCrypt.Net-Next
 
 group Sql
     source https://api.nuget.org/v3/index.json

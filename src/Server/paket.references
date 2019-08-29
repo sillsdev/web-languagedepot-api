@@ -3,8 +3,7 @@ group Server
     Saturn
     Thoth.Json.Giraffe
     SQLProvider
-    MongoDB.FSharp
-    MongoDB.Driver
+    BCrypt.Net-Next
 
 group Sql
     MySqlConnector

@@ -19,6 +19,16 @@ type PatchProjects = {
     removeUser : SharedUser option
 }
 
+type ProjectType =
+    | Unknown
+    | Lift
+    | Flex
+    | OurWord
+    | OneStory
+    | Test
+    | AdaptIt
+    | School
+
 // TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
 type Project = {
     Id : int
@@ -31,6 +41,14 @@ type Project = {
     UpdatedOn : System.DateTime option
     Identifier : string option // 20 chars
     Status : int // default 1
+}
+
+type ProjectForListing = {
+    Id : int
+    Name : string
+    Typ : ProjectType
+    CreatedOn : System.DateTime option
+    Identifier : string option // 20 chars
 }
 
 type CreateProject = { // Just a subset of fields
@@ -55,6 +73,24 @@ type User = {
     CreatedOn : System.DateTime option
     UpdatedOn : System.DateTime option
     Type : string option
+}
+
+type CreateUser = { // Just a subset of fields
+    Login : string
+    CleartextPassword : string
+    FirstName : string
+    LastName : string
+    Mail : string
+}
+
+type UpdateUser = {
+    User : User
+    NewPassword : string option
+}
+
+type ChangePassword = {
+    OldPassword : string
+    NewPassword : string
 }
 
 type Role = {

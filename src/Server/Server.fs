@@ -31,39 +31,73 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
+(*
+API surface done:
+GET /api/project/private
+GET /api/project/private/{projId}
+GET /api/project
+GET /api/project/{projId}
+GET /api/project/exists/{projId}
+GET /api/users/exists/{username}
+POST /api/users/{username}/projects
+POST /api/users
+PUT /api/users/{username}
+PATCH /api/users/{username} - change password only
+POST /api/users/{username}/verify-password
+POST /api/project
+GET /api/count/users
+GET /api/count/projects
+GET /api/count/non-test-projects
+
+API surface NOT done:
+patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
+DELETE /api/project/{projId}/user/{username} - remove membership
+POST /api/project/{projId}/user/{username} - add membership
+DELETE /api/project/{projId}
+
+API surface rejected:
+POST /api/project/{projId}/add-user/{username}
+*)
 let webApp = router {
     get "/api/project/private" (fun next ctx ->
-        json ["Would get all private projects"] next ctx
-    )
-
-    getf "/api/project/private/%s" (fun projId next ctx ->
-        json [(sprintf "Would get private project with ID %s" projId)] next ctx
-    )
-
-    get "/api/project" (fun next ctx ->
         task {
+            // TODO: Verify login
             let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects () |> Async.StartAsTask
+            let! projects = listProjects true |> Async.StartAsTask
             return! json projects next ctx
         }
     )
 
-    get "/api/collections" (fun next ctx ->
+    getf "/api/project/private/%s" (fun projId next ctx ->
         task {
-            let! names = Mongo.getCollectionNames("live-sf")
-            return! json (names |> List.ofSeq) next ctx
-        })
-
-    getf "/api/project/%s" (fun projId next ctx ->
-        task {
+            // TODO: Verify login
             let getProject = ctx.GetService<Model.GetProject>()
-            let! project = getProject projId
+            let! project = getProject true projId
             match project with
             | Some project -> return! json project next ctx
             | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
         }
     )
 
+    get "/api/project" (fun next ctx ->
+        task {
+            let listProjects = ctx.GetService<Model.ListProjects>()
+            let! projects = listProjects false |> Async.StartAsTask
+            return! json projects next ctx
+        }
+    )
+
+    getf "/api/project/%s" (fun projId next ctx ->
+        task {
+            let getProject = ctx.GetService<Model.GetProject>()
+            let! project = getProject false projId
+            match project with
+            | Some project -> return! json project next ctx
+            | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
+        }
+    )
+
+    // TODO: Not in real API spec. Why not? Probably need to add it
     getf "/api/users/%s" (fun login next ctx ->
         task {
             let getUser = ctx.GetService<Model.GetUser>()
@@ -93,7 +127,7 @@ let webApp = router {
     )
 
     get "/api/users" (fun next ctx ->
-        // DEMO ONLY. Enumerates all users
+        // DEMO ONLY. Enumerates all users. TODO: Remove since it's not in real API spec
         task {
             let listUsers = ctx.GetService<Model.ListUsers>()
             let! x = listUsers() |> Async.StartAsTask
@@ -102,21 +136,40 @@ let webApp = router {
         }
     )
 
-    patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
+    postf "/api/users/%s/projects" (fun login ->
+        bindJson<Shared.LoginInfo> (fun loginInfo next ctx ->
+            task {
+                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
+                let projectsAndRolesByUser = ctx.GetService<Model.ProjectsAndRolesByUser>()
+                let! goodLogin = verifyLoginInfo loginInfo |> Async.StartAsTask
+                if goodLogin then
+                    let! projectList = projectsAndRolesByUser login |> Async.StartAsTask
+                    return! json projectList next ctx
+                else
+                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
+            }
+        )
+    )
+
+    patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData next ctx -> task {
         match patchData.addUser, patchData.removeUser with
         | Some add, Some remove ->
-            RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser"))
+            return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
         | Some add, None ->
             // TODO: Actually do the add
-            let result = Ok (sprintf "Added %s to %s" add.Name projId)
-            json result
+            let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
+            let! result = addMember add.Name projId 3 |> Async.StartAsTask  // TODO: get role in here as well
+            // let result = Ok (sprintf "Added %s to %s" add.Name projId)
+            // TODO: Fix up the result type (should be Result<string, string>, not just bool)
+            // TODO: Do the rest
+            return! json result next ctx
         | None, Some remove ->
             // TODO: Actually do the remove
             let result = Ok (sprintf "Removed %s from %s" remove.Name projId)
-            json result
+            return! json result next ctx
         | None, None ->
-            RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser"))
-    ))
+            return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
+    }))
 
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s" (fun (projId,username) ->
@@ -131,25 +184,8 @@ let webApp = router {
         json result
     )
 
-    postf "/api/users/%s/projects" (fun login ->
-        bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
-            eprintfn "Got username %s and password %s" logininfo.username logininfo.password
-            task {
-                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-                let projectsAndRolesByUser = ctx.GetService<Model.ProjectsAndRolesByUser>()
-                let! goodLogin = verifyLoginInfo logininfo |> Async.StartAsTask
-                if goodLogin then
-                    let! projectList = projectsAndRolesByUser login |> Async.StartAsTask
-                    return! json projectList next ctx
-                else
-                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
-            }
-        )
-    )
-
     postf "/api/users/%s/projects/withRole/%i" (fun (login, roleId) ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
-            eprintfn "Got username %s and password %s" logininfo.username logininfo.password
             task {
                 let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
                 let projectsAndRolesByUserRole = ctx.GetService<Model.ProjectsAndRolesByUserRole>()
@@ -171,19 +207,43 @@ let webApp = router {
         }
     )
 
-    post "/api/users" (json (Error "Not implemented; would create user based on data from POST body (as JSON)"))
+    post "/api/users" (bindJson<CreateUser> (fun user next ctx ->
+        task {
+            let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
+            let! alreadyExists = userExists user.Login
+            if alreadyExists then
+                return! json {| status = "error"; message = "Username already exists; pick another one" |} next ctx
+            else
+                let createUser = ctx.GetService<Model.CreateUser>()
+                let! newId = createUser user
+                return! json newId next ctx
+        }
+    ))
 
-    putf "/api/users/%s" (fun login ->
-        json (Error "Not implemented; would update existing user based on data from POST body (as JSON)")
-    )
+    putf "/api/users/%s" (fun login -> bindJson<UpdateUser> (fun updateData next ctx ->
+        task {
+            let upsertUser = ctx.GetService<Model.UpsertUser>()
+            let! newId = upsertUser login updateData
+            return! json newId next ctx
+        }
+    ))
 
-    patchf "/api/users/%s" (fun login ->
-        json (Error "Not implemented; would update individual fields of user (e.g., password) based on data from POST body (as JSON)")
-    )
+    patchf "/api/users/%s" (fun login -> bindJson<ChangePassword> (fun updateData next ctx ->
+        task {
+            let changePassword = ctx.GetService<Model.ChangePassword>()
+            let! success = changePassword login updateData
+            return! json success next ctx
+        }
+    ))
 
-    postf "/api/users/%s/verify-password" (fun login ->
-        json (Error "Would return true or false, and do some work behind the scenes to reconcile MySQL and Mongo passwords")
-    )
+    postf "/api/users/%s/verify-password" (fun login -> bindJson<LoginInfo> (fun loginInfo next ctx ->
+        task {
+            let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
+            let! goodLogin = verifyLoginInfo loginInfo |> Async.StartAsTask
+            return! json goodLogin next ctx
+            // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
+        }
+    ))
 
     post "/api/project" (bindJson<CreateProject> (fun proj next ctx ->
         task {

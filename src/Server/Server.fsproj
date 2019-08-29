@@ -10,8 +10,8 @@
         <Compile Include="..\Shared\Settings.fs" />
         <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="SettingsHelper.fs" />
+        <Compile Include="GuessProjectType.fs" />
         <Compile Include="Model.fs" />
-        <Compile Include="Mongo.fs" />
         <Compile Include="Server.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -14,14 +14,14 @@ type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | ListAllProjects
-    | ProjectListRetrieved of Shared.Project list
+    | ProjectListRetrieved of Shared.ProjectForListing list
     | ClearProjects
     | FormSubmitted
     | GotFormResult of Result<int,string>
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
 
-type Model = { CurrentlyViewedProject : string; ProjectList : Shared.Project list; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : string; ProjectList : Shared.ProjectForListing list; FormState : FormBuilder.Types.State }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -154,5 +154,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ str "Clear Project list" ])
         ul [ ]
            [ for project in model.ProjectList ->
-                li [ ] [ str project.Name ] ]
+                li [ ] [ str (sprintf "%s: %A" project.Name project.Typ) ] ]
         ]
