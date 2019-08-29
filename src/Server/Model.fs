@@ -100,23 +100,21 @@ let usersQueryAsync (connString : string) () =
 
 let projectsQueryAsync (connString : string) () =
     let ctx = sql.GetDataContext connString
-    printfn "About to query %s for projects" connString
-    async {
-        let sqlProjects = query {
-            for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
-                select project
-            }
-        let! results = List.executeQueryAsync sqlProjects
-        return List.map Project.FromSql results
+    query {
+        // Due to https://github.com/fsprojects/SQLProvider/issues/631 the name of the
+        // loop variable must be four letters or less, hence "proj" instead of "project"
+        for proj in ctx.Testldapi.Projects do
+            where (proj.IsPublic > 0y)
+            select (Project.FromSql proj)
     }
+    |> List.executeQueryAsync
 
 let projectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
+            for proj in ctx.Testldapi.Projects do
+                where (proj.IsPublic > 0y)
                 count
         }
     }
@@ -125,9 +123,9 @@ let realProjectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y &&
-                       not (project.Name.ToLowerInvariant().Contains("test"))) // TODO: Figure out a better rule for what's a test project
+            for proj in ctx.Testldapi.Projects do
+                where (proj.IsPublic > 0y &&
+                       not (proj.Name.ToLowerInvariant().Contains("test"))) // TODO: Figure out a better rule for what's a test project
                 count
         }
     }
@@ -154,10 +152,10 @@ let projectExists (connString : string) projectCode =
     let ctx = sql.GetDataContext connString
     async {
         return query {
-            for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
-                where (project.Identifier.IsSome)
-                select project.Identifier.Value
+            for proj in ctx.Testldapi.Projects do
+                where (proj.IsPublic > 0y)
+                where (proj.Identifier.IsSome)
+                select proj.Identifier.Value
                 contains projectCode }
     }
 
@@ -175,10 +173,10 @@ let getProject (connString : string) projectCode =
     let ctx = sql.GetDataContext connString
     async {
         return query {
-            for project in ctx.Testldapi.Projects do
-                where (not project.Identifier.IsNone)
-                where (project.Identifier.Value = projectCode)
-                select (Some (Project.FromSql project))
+            for proj in ctx.Testldapi.Projects do
+                where (not proj.Identifier.IsNone)
+                where (proj.Identifier.Value = projectCode)
+                select (Some (Project.FromSql proj))
                 exactlyOneOrDefault }
     }
 
@@ -212,15 +210,14 @@ let projectsByUserRole (connString : string) username roleId =
         | None -> return []
         | Some requestedUser ->
             let projectsQuery = query {
-                for project in ctx.Testldapi.Projects do
+                for proj in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
+                        on (proj.Id = user.ProjectId)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
-                    select project
+                    select (Project.FromSql proj)
                 }
-            let! projects = projectsQuery |> List.executeQueryAsync
-            return projects |> List.map Project.FromSql
+            return! projectsQuery |> List.executeQueryAsync
     }
 
 let projectsByUser username connString = projectsByUserRole connString username -1
@@ -237,16 +234,15 @@ let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
         | None -> return []
         | Some requestedUser ->
             let projectsQuery = query {
-                for project in ctx.Testldapi.Projects do
+                for proj in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
+                        on (proj.Id = user.ProjectId)
                     join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
-                    select (project, role)
+                    select (Project.FromSql proj, Role.FromSql role)
                 }
-            let! projects = projectsQuery |> List.executeQueryAsync
-            return projects |> List.map (fun (project, role) -> Project.FromSql project, Role.FromSql role)
+            return! projectsQuery |> List.executeQueryAsync
     }
 
 let projectsAndRolesByUser (connString : string) username =
@@ -256,7 +252,7 @@ let roleNames (connString : string) () =
     let ctx = sql.GetDataContext connString
     query {
         for role in ctx.Testldapi.Roles do
-            select (Role.FromSql role)  // TODO: Does this work? Or does it crash like the projects query did?
+            select (Role.FromSql role)
     }
     |> List.executeQueryAsync
 
