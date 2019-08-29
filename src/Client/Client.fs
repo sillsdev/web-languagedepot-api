@@ -22,15 +22,9 @@ open Shared
 // the state of the application changes *only* in reaction to these events
 type Msg =
 | UserProjectsUpdated of Shared.SharedUser
-| UserNotFound
 | LogResult of Result<string,string>
-| UserFound of Shared.SharedUser
 | ListAllUsers
-| UserListRetrieved of string list
-| ListAllProjects
-| ProjectListRetrieved of string list
-| GetProjectsForUser of string
-| ProjectsListRetrieved of string list
+| UserListRetrieved of Shared.User list
 | RootPageMsg of RootPage.Msg
 | UserLoggedIn of Shared.SharedUser option
 | LoginPageMsg of LoginPage.Msg
@@ -62,6 +56,7 @@ module Nav =
         | ProjectPage projectCode -> sprintf "#project/%s" projectCode
         | LoginPage -> "#login"
         | RootPage -> "#"
+        | NotImplementedPage -> "#not-implemented"
 
     let jump (n:int):Cmd<_> =
         [fun _ -> history.go n]
@@ -70,7 +65,7 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { UserList : string list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model; NotImplementedModel : NotImplementedPage.Model }
+type Model = { UserList : Shared.User list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model; NotImplementedModel : NotImplementedPage.Model }
 
 // defines the initial state and initial command (= side-effect) of the application
 let init() : Model * Cmd<Msg> =
@@ -108,12 +103,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, UserListRetrieved users ->
         let nextModel = { currentModel with UserList = users }
         nextModel, Cmd.none
-    | _, ListAllProjects ->
-        let url = "/api/project"
-        currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
-    // | _, ProjectListRetrieved projects ->
-    //     let nextModel = { currentModel with ProjectList = projects }
-    //     nextModel, Cmd.none
     | _, UserLoggedIn user ->
         let nextModel = { currentModel with CurrentUser = user }
         nextModel, Router.navigate ""
@@ -145,8 +134,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextpageModel, nextpageCmds = pageModel |> NotImplementedPage.update pageMsg
         let nextModel = { currentModel with NotImplementedModel = nextpageModel }
         nextModel, nextpageCmds |> Cmd.map NotImplementedPageMsg
-
-// TODO: Look into Fetch.patch and test the JSON stuff in it
 
 let routingView (model : Model) (dispatch : Msg -> unit) =
     let pageView =

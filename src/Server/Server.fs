@@ -42,10 +42,9 @@ let webApp = router {
 
     get "/api/project" (fun next ctx ->
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! x = Model.projectsQueryAsync settings.ConnString |> Async.StartAsTask
-            let logins = x |> List.map (fun project -> project.Identifier)
-            return! json logins next ctx
+            let listProjects = ctx.GetService<Model.ListProjects>()
+            let! projects = listProjects () |> Async.StartAsTask
+            return! json projects next ctx
         }
     )
 
@@ -57,8 +56,8 @@ let webApp = router {
 
     getf "/api/project/%s" (fun projId next ctx ->
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! project = Model.getProject settings.ConnString projId
+            let getProject = ctx.GetService<Model.GetProject>()
+            let! project = getProject projId
             match project with
             | Some project -> return! json project next ctx
             | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
@@ -67,8 +66,8 @@ let webApp = router {
 
     getf "/api/users/%s" (fun login next ctx ->
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! user = Model.getUser settings.ConnString login
+            let getUser = ctx.GetService<Model.GetUser>()
+            let! user = getUser login
             match user with
             | Some user -> return! json { user with HashedPassword = "***" } next ctx
             | None -> return! RequestErrors.notFound (json (Error (sprintf "Username %s not found" login))) next ctx
@@ -78,8 +77,8 @@ let webApp = router {
     getf "/api/project/exists/%s" (fun projId next ctx ->
         // Returns true if project exists (NOTE: This is the INVERSE of what the old API did!)
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let result = Model.projectExists settings.ConnString projId
+            let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
+            let result = projectExists projId
             return! json result next ctx
         }
     )
@@ -87,8 +86,8 @@ let webApp = router {
     getf "/api/users/exists/%s" (fun login next ctx ->
         // Returns true if username exists (NOTE: This is the INVERSE of what the old API did!)
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let result = Model.userExists settings.ConnString login
+            let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
+            let result = userExists login
             return! json result next ctx
         }
     )
@@ -96,9 +95,9 @@ let webApp = router {
     get "/api/users" (fun next ctx ->
         // DEMO ONLY. Enumerates all users
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! x = Model.usersQueryAsync settings.ConnString |> Async.StartAsTask
-            let logins = x |> List.map (fun user -> user.Login)
+            let listUsers = ctx.GetService<Model.ListUsers>()
+            let! x = listUsers() |> Async.StartAsTask
+            let logins = x |> List.map (fun user -> { user with HashedPassword = "***" })
             return! json logins next ctx
         }
     )
@@ -136,10 +135,11 @@ let webApp = router {
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password
             task {
-                let settings = ctx |> getSettings<MySqlSettings>
-                let! goodLogin = Model.verifyLoginInfo settings.ConnString logininfo |> Async.StartAsTask
+                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
+                let projectsAndRolesByUser = ctx.GetService<Model.ProjectsAndRolesByUser>()
+                let! goodLogin = verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! projectList = Model.projectsAndRolesByUser settings.ConnString login |> Async.StartAsTask
+                    let! projectList = projectsAndRolesByUser login |> Async.StartAsTask
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
@@ -151,10 +151,11 @@ let webApp = router {
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
             eprintfn "Got username %s and password %s" logininfo.username logininfo.password
             task {
-                let settings = ctx |> getSettings<MySqlSettings>
-                let! goodLogin = Model.verifyLoginInfo settings.ConnString logininfo |> Async.StartAsTask
+                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
+                let projectsAndRolesByUserRole = ctx.GetService<Model.ProjectsAndRolesByUserRole>()
+                let! goodLogin = verifyLoginInfo logininfo |> Async.StartAsTask
                 if goodLogin then
-                    let! projectList = Model.projectsAndRolesByUserRole settings.ConnString login roleId |> Async.StartAsTask
+                    let! projectList = projectsAndRolesByUserRole login roleId |> Async.StartAsTask
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
@@ -164,8 +165,8 @@ let webApp = router {
 
     get "/api/roles" (fun next ctx ->
         task {
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! roles = Model.roleNames settings.ConnString
+            let roleNames = ctx.GetService<Model.ListRoles>()
+            let! roles = roleNames()
             return! json roles next ctx
         }
     )
@@ -186,37 +187,44 @@ let webApp = router {
 
     post "/api/project" (bindJson<CreateProject> (fun proj next ctx ->
         task {
-            // TODO: Check if project code already exists, because MySQL database doesn't have a UNIQUE constraint on project code so we need to do it ourselves
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! newId = Model.createProject settings.ConnString proj
-            return! json newId next ctx
+            let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
+            let projId = match proj.Identifier with
+                         | None -> "new-project-id"  // TODO: Build from project name and check whether it exists, appending numbers if needed
+                         | Some projId -> projId
+            let! alreadyExists = projectExists projId
+            if alreadyExists then
+                return! json {| status = "error"; message = "Project code already exists; pick another one" |} next ctx
+            else
+                let createProject = ctx.GetService<Model.CreateProject>()
+                let! newId = createProject { proj with Identifier = Some projId }
+                return! json newId next ctx
         }
     ))
 
     get "/api/count/users" (fun next ctx ->
         task {
             do! Async.Sleep 500 // Simulate server load
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! newId = Model.usersCountAsync settings.ConnString
-            return! json newId next ctx
+            let (Model.CountUsers countUsers) = ctx.GetService<Model.CountUsers>()
+            let! count = countUsers ()
+            return! json count next ctx
         }
     )
 
     get "/api/count/projects" (fun next ctx ->
         task {
             do! Async.Sleep 750 // Simulate server load
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! newId = Model.projectsCountAsync settings.ConnString
-            return! json newId next ctx
+            let (Model.CountProjects countProjects) = ctx.GetService<Model.CountProjects>()
+            let! count = countProjects ()
+            return! json count next ctx
         }
     )
 
     get "/api/count/non-test-projects" (fun next ctx ->
         task {
             do! Async.Sleep 1000 // Simulate server load
-            let settings = ctx |> getSettings<MySqlSettings>
-            let! newId = Model.realProjectsCountAsync settings.ConnString
-            return! json newId next ctx
+            let (Model.CountRealProjects countRealProjects) = ctx.GetService<Model.CountRealProjects>()
+            let! count = countRealProjects ()
+            return! json count next ctx
         }
     )
 
@@ -240,9 +248,14 @@ let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigu
             .AddJsonFile("secrets.json")
         |> ignore
 
+let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
+    let x = getSettingsValue<MySqlSettings> context.Configuration
+    Model.ModelRegistration.registerServices svc x.ConnString
+
 let hostConfig (builder : IWebHostBuilder) =
     builder
         .ConfigureAppConfiguration(setupUserSecrets)
+        .ConfigureServices(registerMySqlServices)
 
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
@@ -253,7 +266,7 @@ let app = application {
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
     host_config hostConfig
-    use_config buildConfig
+    use_config buildConfig // TODO: Get rid of this
 }
 
 run app

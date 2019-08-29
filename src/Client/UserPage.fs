@@ -15,18 +15,20 @@ open Shared
 
 type Msg =
     | FindUser of string
+    | UserFound of User
+    | UserNotFound
     | LogUserResult of User
-    | RoleListUpdated of (int * string) list
+    | RoleListUpdated of Role list
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
     | LogResult of Result<string,string>
     | GetProjectsForUser
     | GetProjectsByRole of int
-    | ProjectsListRetrieved of (string * string) list
+    | ProjectsListRetrieved of (Project * Role) list
     | LogException of System.Exception
 
-type Model = { RoleList : (int * string) list; ProjectList : (string * string) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : Role list; ProjectList : (Project * Role) list; CurrentlyViewedUser : SharedUser option; }
 
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
@@ -37,6 +39,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | FindUser username ->
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url LogUserResult LogException
+    | UserFound user ->
+        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = sprintf "%s %s" user.FirstName user.LastName; Email = user.Mail } }
+        nextModel, Cmd.ofMsg (LogUserResult user)
+    | UserNotFound ->
+        currentModel, Cmd.none
     | LogUserResult user ->
         printfn "User ID %d, first name %s, last name %s, is_admin %A" user.Id user.FirstName user.LastName user.Admin
         currentModel, Cmd.none
@@ -95,7 +102,7 @@ let RoleSelector =
         let selected = Hooks.useState "0"
         Select.select
             [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
-            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for (roleId, role) in props.model.RoleList -> option [ Value (roleId.ToString()); Key (roleId.ToString()) ] [ str role ] ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.Id.ToString()); Key (role.Id.ToString()) ] [ str role.Name ] ]
               Button.a
                 [ Button.Size IsSmall
                   Button.Color IsPrimary
@@ -119,8 +126,9 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   Button.OnClick (fun _ -> dispatch GetProjectsForUser) ]
                 [ str "Projects" ]
               ul [ ]
-                 [ for (project, role) in model.ProjectList -> li [ ] [ str (project + ": " + role) ] ]
+                 [ for (project, role) in model.ProjectList -> li [ ] [ str ((project.Identifier |> Option.defaultValue "(no id)") + ": " + role.Name) ] ]
               roleSelector model dispatch
+              br [ ]
               br [ ]
               textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (dispatch << FindUser)
             ]

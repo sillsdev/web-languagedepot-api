@@ -13,12 +13,15 @@ open Thoth.Fetch
 type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
+    | ListAllProjects
+    | ProjectListRetrieved of Shared.Project list
+    | ClearProjects
     | FormSubmitted
     | GotFormResult of Result<int,string>
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
 
-type Model = { CurrentlyViewedProject : string; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : string; ProjectList : Shared.Project list; FormState : FormBuilder.Types.State }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -60,7 +63,7 @@ let (formState, formConfig) =
 
 let init() =
     let formState, formCmds = Form.init formConfig formState
-    { CurrentlyViewedProject = ""; FormState = formState }, Cmd.map OnFormMsg formCmds
+    { CurrentlyViewedProject = ""; ProjectList = []; FormState = formState }, Cmd.map OnFormMsg formCmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -71,6 +74,15 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let (formState, formCmd) = Form.update formConfig msg currentModel.FormState
         let nextModel = { currentModel with FormState = formState }
         nextModel, Cmd.map OnFormMsg formCmd
+    | ListAllProjects ->
+        let url = "/api/project"
+        currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
+    | ProjectListRetrieved projects ->
+        let nextModel = { currentModel with ProjectList = projects }
+        nextModel, Cmd.none
+    | ClearProjects ->
+        let nextModel = { currentModel with ProjectList = [] }
+        nextModel, Cmd.none
     | FormSubmitted ->
         let newFormState, isValid = Form.validate formConfig currentModel.FormState
         let nextModel = { currentModel with FormState = newFormState }
@@ -127,4 +139,20 @@ let view (model : Model) (dispatch : Msg -> unit) =
               Button.Color IsPrimary
             ]
             [ str "Get Config" ]
+        br [ ]
+        (if model.ProjectList |> List.isEmpty then
+            Button.button
+                [ Button.Props [ OnClick (fun _ -> dispatch ListAllProjects) ]
+                  Button.Color IsPrimary
+                ]
+                [ str "List Projects" ]
+        else
+            Button.button
+                [ Button.Props [ OnClick (fun _ -> dispatch ClearProjects) ]
+                  Button.Color IsPrimary
+                ]
+                [ str "Clear Project list" ])
+        ul [ ]
+           [ for project in model.ProjectList ->
+                li [ ] [ str project.Name ] ]
         ]

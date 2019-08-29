@@ -26,9 +26,9 @@ type Project = {
     Description : string option // Long
     Homepage : string option
     IsPublic : bool // default true
-    ParentId : int // TODO: Determine what we get if the SQL value was NULL
-    CreatedOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
-    UpdatedOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
+    ParentId : int option
+    CreatedOn : System.DateTime option
+    UpdatedOn : System.DateTime option
     Identifier : string option // 20 chars
     Status : int // default 1
 }
@@ -49,18 +49,18 @@ type User = {
     MailNotification : bool // default true
     Admin : bool // default false
     Status : int // default 1
-    LastLoginOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
+    LastLoginOn : System.DateTime option
     Language : string option // 5 chars
-    AuthSourceId : int // TODO: Determine what we get if the SQL value was NULL
-    CreatedOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
-    UpdatedOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
+    AuthSourceId : int option
+    CreatedOn : System.DateTime option
+    UpdatedOn : System.DateTime option
     Type : string option
 }
 
 type Role = {
     Id : int
     Name : string
-    Position : int // Default 1
+    Position : int option // Default 1
     Assignable : bool
     Builtin : int // Default 0
     Permissions : string option // Long
@@ -71,6 +71,6 @@ type Membership = {
     UserId : int // default 0
     ProjectId : int // default 0
     RoleId : int // default 0
-    CreatedOn : System.DateTime // TODO: Determine what we get if the SQL value was NULL
+    CreatedOn : System.DateTime option
     MailNotification : bool // default false
 }

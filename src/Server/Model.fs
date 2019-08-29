@@ -13,20 +13,21 @@ let resolutionPath = __SOURCE_DIRECTORY__
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            sampleConnString,
                            ResolutionPath = resolutionPath,
-                           CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL>
+                           CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL,
+                           UseOptionTypes = true>
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 type Shared.Project with
     static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
         Id = sqlProject.Id
         Name = sqlProject.Name
-        Description = sqlProject.Description |> Option.ofObj
-        Homepage = sqlProject.Homepage |> Option.ofObj
+        Description = sqlProject.Description
+        Homepage = sqlProject.Homepage
         IsPublic = sqlProject.IsPublic <> 0y
         ParentId = sqlProject.ParentId
         CreatedOn = sqlProject.CreatedOn
         UpdatedOn = sqlProject.UpdatedOn
-        Identifier = sqlProject.Identifier |> Option.ofObj
+        Identifier = sqlProject.Identifier
         Status = sqlProject.Status
     }
 
@@ -42,11 +43,11 @@ type Shared.User with
         Admin = sqlUser.Admin <> 0y
         Status = sqlUser.Status
         LastLoginOn = sqlUser.LastLoginOn
-        Language = sqlUser.Language |> Option.ofObj
+        Language = sqlUser.Language
         AuthSourceId = sqlUser.AuthSourceId
         CreatedOn = sqlUser.CreatedOn
         UpdatedOn = sqlUser.UpdatedOn
-        Type = sqlUser.Type |> Option.ofObj
+        Type = sqlUser.Type
     }
 
 type Shared.Role with
@@ -54,9 +55,9 @@ type Shared.Role with
         Id = sqlRole.Id
         Name = sqlRole.Name
         Position = sqlRole.Position
-        Assignable = sqlRole.Assignable <> 0y
+        Assignable = (sqlRole.Assignable |> Option.defaultValue 0y) <> 0y
         Builtin = sqlRole.Builtin
-        Permissions = sqlRole.Permissions |> Option.ofObj
+        Permissions = sqlRole.Permissions
     }
 
 type Shared.Membership with
@@ -69,17 +70,27 @@ type Shared.Membership with
         MailNotification = sqlMember.MailNotification <> 0y
     }
 
-// TODO: Register these function signatures with Giraffe so that we can build mocks for testing
 type ListUsers = unit -> Async<User list>
 type ListProjects = unit -> Async<Project list>
-type ListRoleNamesAndIds = unit -> Async<(int * string) list>
+// These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
+type CountUsers = CountUsers of (unit -> Async<int>)
+type CountProjects = CountProjects of (unit -> Async<int>)
+type CountRealProjects = CountRealProjects of (unit -> Async<int>)
+type ListRoles = unit -> Async<Role list>
+type ProjectsByUser = string -> Async<Project list>
 type ProjectsByUserRole = string -> int -> Async<Project list>
-type UserExists = string -> Async<bool>
-type ProjectExists = string -> Async<bool>
+type ProjectsAndRolesByUser = string -> Async<(Project * Role) list>
+type ProjectsAndRolesByUserRole = string -> int -> Async<(Project * Role) list>
+// Ditto for these two FooExists types: need a DU
+type UserExists = UserExists of (string -> Async<bool>)
+type ProjectExists = ProjectExists of (string -> Async<bool>)
 type GetUser = string -> Async<User option>
 type GetProject = string -> Async<Project option>
+type CreateProject = Shared.CreateProject -> Async<int>
+// type CreateUser = Shared.CreateUser -> Async<int>
+type VerifyLoginInfo = LoginInfo -> Async<bool>
 
-let usersQueryAsync (connString : string) =
+let usersQueryAsync (connString : string) () =
     let ctx = sql.GetDataContext connString
     query {
         for user in ctx.Testldapi.Users do
@@ -87,16 +98,20 @@ let usersQueryAsync (connString : string) =
     }
     |> List.executeQueryAsync
 
-let projectsQueryAsync (connString : string) =
+let projectsQueryAsync (connString : string) () =
     let ctx = sql.GetDataContext connString
-    query {
-        for project in ctx.Testldapi.Projects do
-            where (project.IsPublic > 0y)
-            select (Project.FromSql project)
+    printfn "About to query %s for projects" connString
+    async {
+        let sqlProjects = query {
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y)
+                select project
+            }
+        let! results = List.executeQueryAsync sqlProjects
+        return List.map Project.FromSql results
     }
-    |> List.executeQueryAsync
 
-let projectsCountAsync (connString : string) =
+let projectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
@@ -106,7 +121,7 @@ let projectsCountAsync (connString : string) =
         }
     }
 
-let realProjectsCountAsync (connString : string) =
+let realProjectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
@@ -117,7 +132,7 @@ let realProjectsCountAsync (connString : string) =
         }
     }
 
-let usersCountAsync (connString : string) =
+let usersCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
@@ -140,7 +155,9 @@ let projectExists (connString : string) projectCode =
     async {
         return query {
             for project in ctx.Testldapi.Projects do
-                select project.Identifier
+                where (project.IsPublic > 0y)
+                where (project.Identifier.IsSome)
+                select project.Identifier.Value
                 contains projectCode }
     }
 
@@ -159,34 +176,31 @@ let getProject (connString : string) projectCode =
     async {
         return query {
             for project in ctx.Testldapi.Projects do
-                where (project.Identifier = projectCode)
+                where (not project.Identifier.IsNone)
+                where (project.Identifier.Value = projectCode)
                 select (Some (Project.FromSql project))
                 exactlyOneOrDefault }
     }
 
-let createProject (connString : string) (project : CreateProject) =
+let createProject (connString : string) (project : Shared.CreateProject) =
     async {
         let ctx = sql.GetDataContext connString
         let sqlProject = ctx.Testldapi.Projects.Create()
         // sqlProject.Id <- project.Id // int
         sqlProject.Name <- project.Name // string
-        match project.Description with
-        | None -> ()
-        | Some desc -> sqlProject.Description <- desc // string option // Long
-        // match project.Homepage with
-        // | None -> ()
-        // | Some page -> sqlProject.Homepage <- page // string option // Long
+        sqlProject.Description <- project.Description // string option // Long
+        // sqlProject.Homepage <- project.Homepage // string option // Long
         // sqlProject.IsPublic <- if project.IsPublic then 1y else 0y
-        // sqlProject.ParentId <- project.ParentId // int // TODO: Determine what we get if the SQL value was NULL
-        // sqlProject.CreatedOn <- project.CreatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
-        // sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime // TODO: Determine what we get if the SQL value was NULL
-        sqlProject.Identifier <- project.Identifier |> Option.defaultValue "" // string option // 20 chars
+        // sqlProject.ParentId <- project.ParentId // int option
+        // sqlProject.CreatedOn <- project.CreatedOn // System.DateTime option
+        // sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime option
+        sqlProject.Identifier <- project.Identifier // string option // 20 chars
         // sqlProject.Status <- project.Status // int // default 1
         do! ctx.SubmitUpdatesAsync()
         return sqlProject.Id
     }
 
-let projectsByUserRole (connString : string) username (role : int) =
+let projectsByUserRole (connString : string) username roleId =
     let ctx = sql.GetDataContext connString
     async {
         let requestedUser = query {
@@ -197,14 +211,16 @@ let projectsByUserRole (connString : string) username (role : int) =
         match requestedUser with
         | None -> return []
         | Some requestedUser ->
-            return! query {
+            let projectsQuery = query {
                 for project in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
                         on (project.Id = user.ProjectId)
                     where (user.UserId = requestedUser.Id &&
-                        (if role < 0 then true else user.RoleId = role))
-                    select project.Identifier
-            } |> List.executeQueryAsync
+                        (if roleId < 0 then true else user.RoleId = roleId))
+                    select project
+                }
+            let! projects = projectsQuery |> List.executeQueryAsync
+            return projects |> List.map Project.FromSql
     }
 
 let projectsByUser username connString = projectsByUserRole connString username -1
@@ -220,25 +236,27 @@ let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
         match requestedUser with
         | None -> return []
         | Some requestedUser ->
-            return! query {
+            let projectsQuery = query {
                 for project in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
                         on (project.Id = user.ProjectId)
                     join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
-                    select (project.Identifier, role.Name)
-            } |> List.executeQueryAsync
+                    select (project, role)
+                }
+            let! projects = projectsQuery |> List.executeQueryAsync
+            return projects |> List.map (fun (project, role) -> Project.FromSql project, Role.FromSql role)
     }
 
 let projectsAndRolesByUser (connString : string) username =
     projectsAndRolesByUserRole connString username -1
 
-let roleNames (connString : string) =
+let roleNames (connString : string) () =
     let ctx = sql.GetDataContext connString
     query {
         for role in ctx.Testldapi.Roles do
-            select (role.Id, role.Name)
+            select (Role.FromSql role)  // TODO: Does this work? Or does it crash like the projects query did?
     }
     |> List.executeQueryAsync
 
@@ -278,3 +296,27 @@ let verifyLoginInfo (connString : string) (loginInfo : Shared.LoginInfo) =
         | None -> return false
         | Some user -> return verifyPass loginInfo.password user.HashedPassword
     }
+
+module ModelRegistration =
+    open Microsoft.Extensions.DependencyInjection
+
+    let registerServices (builder : IServiceCollection) (connString : string) =
+        builder
+            .AddSingleton<ListUsers>(usersQueryAsync connString)
+            .AddSingleton<ListProjects>(projectsQueryAsync connString)
+            .AddSingleton<CountUsers>(CountUsers (usersCountAsync connString))
+            .AddSingleton<CountProjects>(CountProjects (projectsCountAsync connString))
+            .AddSingleton<CountRealProjects>(CountRealProjects (realProjectsCountAsync connString))
+            .AddSingleton<ListRoles>(roleNames connString)
+            .AddSingleton<UserExists>(UserExists (userExists connString))
+            .AddSingleton<ProjectExists>(ProjectExists (projectExists connString))
+            .AddSingleton<GetUser>(getUser connString)
+            .AddSingleton<GetProject>(getProject connString)
+            .AddSingleton<CreateProject>(createProject connString)
+            .AddSingleton<CreateProject>(createProject connString)
+            .AddSingleton<ProjectsByUser>(projectsByUser connString)
+            .AddSingleton<ProjectsByUserRole>(projectsByUserRole connString)
+            .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser connString)
+            .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole connString)
+            .AddSingleton<VerifyLoginInfo>(verifyLoginInfo connString)
+        |> ignore
