@@ -48,7 +48,7 @@ let usersQueryAsync() = async {
 let projectsQueryAsync isPublic = async {
     return
         projectStorage.Values
-        |> Seq.filter (fun proj -> proj.IsPublic = isPublic)
+        |> Seq.filter (fun project -> project.IsPublic = isPublic)
         |> Seq.map mkProjectForListing
         |> List.ofSeq
 }
@@ -66,7 +66,7 @@ let realProjectsCountAsync() = async {
         projectStorage.Values
         |> Seq.map mkProjectForListing
         // TODO: The filter below is used in both Model and here. We should extract it into a function.
-        |> Seq.filter (fun proj -> proj.Typ <> Test && not ((defaultArg proj.Identifier "").StartsWith "test"))
+        |> Seq.filter (fun project -> project.Typ <> Test && not ((defaultArg project.Identifier "").StartsWith "test"))
         |> Seq.length
 }
 
@@ -86,9 +86,9 @@ let projectsByPredicate pred projection =
             projectStorage
             |> Seq.map (fun kv -> let project = kv.Value in KeyValuePair(project.Id, project)))
     memberships
-    |> Seq.choose (fun memb ->
-        match projectsLookup.TryGetValue memb.ProjectId with
-        | true, project -> Some (projection memb project)
+    |> Seq.choose (fun membership ->
+        match projectsLookup.TryGetValue membership.ProjectId with
+        | true, project -> Some (projection membership project)
         | false, _ -> None)
     |> List.ofSeq
 
@@ -97,7 +97,7 @@ let projectsByUser (username : string) = async {
     | false, _ ->
         return []
     | true, user ->
-        return projectsByPredicate (fun memb -> memb.UserId = user.Id) (fun _ proj -> proj)
+        return projectsByPredicate (fun membership -> membership.UserId = user.Id) (fun _ project -> project)
 }
 
 let projectsByUserRole (username : string) (roleId : int) = async {
@@ -105,7 +105,7 @@ let projectsByUserRole (username : string) (roleId : int) = async {
     | false, _ ->
         return []
     | true, user ->
-        return projectsByPredicate (fun memb -> memb.UserId = user.Id && memb.RoleId = roleId) (fun _ proj -> proj)
+        return projectsByPredicate (fun membership -> membership.UserId = user.Id && membership.RoleId = roleId) (fun _ project -> project)
 }
 
 let projectsAndRolesByUser (username : string) =
@@ -114,7 +114,7 @@ let projectsAndRolesByUser (username : string) =
         | false, _ ->
             return []
         | true, user ->
-            return projectsByPredicate (fun memb -> memb.UserId = user.Id) (fun memb proj -> proj, roleStorage.[memb.RoleId])
+            return projectsByPredicate (fun membership -> membership.UserId = user.Id) (fun membership project -> project, roleStorage.[membership.RoleId])
     }
 
 let projectsAndRolesByUserRole (username : string) (roleId : int) = async {
@@ -122,7 +122,7 @@ let projectsAndRolesByUserRole (username : string) (roleId : int) = async {
     | false, _ ->
         return []
     | true, user ->
-        return projectsByPredicate (fun memb -> memb.UserId = user.Id && memb.RoleId = roleId) (fun memb proj -> proj, roleStorage.[memb.RoleId])
+        return projectsByPredicate (fun membership -> membership.UserId = user.Id && membership.RoleId = roleId) (fun membership project -> project, roleStorage.[membership.RoleId])
 }
 
 let userExists username = async {
@@ -244,9 +244,9 @@ let verifyLoginInfo (loginInfo : LoginInfo) = async {
 }
 
 let addOrRemoveMembershipById (isAdd : bool) (userId : int) (projectId : int) (roleId : int) =
-        let membershipFilter (memb : Membership) =
-            memb.UserId = userId && memb.ProjectId = projectId &&
-            (if isAdd then memb.RoleId = roleId else true)
+        let membershipFilter (membership : Membership) =
+            membership.UserId = userId && membership.ProjectId = projectId &&
+            (if isAdd then membership.RoleId = roleId else true)
         let results = membershipStorage.Values |> Seq.filter membershipFilter |> List.ofSeq
         match results with
         | [] ->
@@ -265,7 +265,7 @@ let addOrRemoveMembershipById (isAdd : bool) (userId : int) (projectId : int) (r
             // If removing, no items found = nothing to remove, so success
         | items ->
             if not isAdd then
-                items |> List.iter(fun memb -> membershipStorage.Remove memb.Id |> ignore)
+                items |> List.iter(fun membership -> membershipStorage.Remove membership.Id |> ignore)
             // If adding, then existing items mean we're already done
 
 let addOrRemoveMembership (isAdd : bool) (username : string) (projectCode : string) (roleId : int) = async {

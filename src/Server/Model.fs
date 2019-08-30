@@ -119,12 +119,10 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
-            // Due to https://github.com/fsprojects/SQLProvider/issues/631 the name of the
-            // loop variable must be four letters or less, hence "proj" instead of "project"
-            for proj in ctx.Testldapi.Projects do
-                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
-                where (proj.Status = ProjectStatus.Active)
-                select (proj.Id, proj.Identifier, proj.CreatedOn, proj.Name, proj.Description)
+            for project in ctx.Testldapi.Projects do
+                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+                where (project.Status = ProjectStatus.Active)
+                select (project.Id, project.Identifier, project.CreatedOn, project.Name, project.Description)
         }
         let! projects = projectsQuery |> List.executeQueryAsync
         return projects |> List.map ProjectForListing.FromSql
@@ -134,9 +132,9 @@ let projectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for proj in ctx.Testldapi.Projects do
-                where (proj.IsPublic > 0y)
-                where (proj.Status = ProjectStatus.Active)
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y)
+                where (project.Status = ProjectStatus.Active)
                 count
         }
     }
@@ -145,16 +143,16 @@ let realProjectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
-            for proj in ctx.Testldapi.Projects do
-                where (proj.IsPublic > 0y)
-                where (proj.Status = ProjectStatus.Active)
-                select (proj.Id, proj.Identifier, proj.CreatedOn, proj.Name, proj.Description)
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y)
+                where (project.Status = ProjectStatus.Active)
+                select (project.Id, project.Identifier, project.CreatedOn, project.Name, project.Description)
             }
         let! projects = projectsQuery |> Seq.executeQueryAsync
         return
             projects
             |> Seq.map ProjectForListing.FromSql
-            |> Seq.filter (fun proj -> proj.Typ <> Test && not ((defaultArg proj.Identifier "").StartsWith "test"))
+            |> Seq.filter (fun project -> project.Typ <> Test && not ((defaultArg project.Identifier "").StartsWith "test"))
             |> Seq.length
     }
 
@@ -180,11 +178,11 @@ let projectExists (connString : string) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for proj in ctx.Testldapi.Projects do
-                where (proj.IsPublic > 0y)
-                // We do NOT check where (proj.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
-                where (proj.Identifier.IsSome)
-                select proj.Identifier.Value
+            for project in ctx.Testldapi.Projects do
+                where (project.IsPublic > 0y)
+                // We do NOT check where (project.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
+                where (project.Identifier.IsSome)
+                select project.Identifier.Value
                 contains projectCode }
     }
 
@@ -202,11 +200,11 @@ let getProject (connString : string) (isPublic : bool) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for proj in ctx.Testldapi.Projects do
-                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
-                where (not proj.Identifier.IsNone)
-                where (proj.Identifier.Value = projectCode)
-                select (Some (Project.FromSql proj))
+            for project in ctx.Testldapi.Projects do
+                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+                where (not project.Identifier.IsNone)
+                where (project.Identifier.Value = projectCode)
+                select (Some (Project.FromSql project))
                 exactlyOneOrDefault }
     }
 
@@ -309,13 +307,13 @@ let projectsByUserRole (connString : string) username roleId =
         | None -> return []
         | Some requestedUser ->
             let projectsQuery = query {
-                for proj in ctx.Testldapi.Projects do
+                for project in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
-                        on (proj.Id = user.ProjectId)
-                    where (proj.Status = ProjectStatus.Active)
+                        on (project.Id = user.ProjectId)
+                    where (project.Status = ProjectStatus.Active)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
-                    select (Project.FromSql proj)
+                    select (Project.FromSql project)
                 }
             return! projectsQuery |> List.executeQueryAsync
     }
@@ -334,14 +332,14 @@ let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
         | None -> return []
         | Some requestedUser ->
             let projectsQuery = query {
-                for proj in ctx.Testldapi.Projects do
+                for project in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
-                        on (proj.Id = user.ProjectId)
+                        on (project.Id = user.ProjectId)
                     join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
-                    where (proj.Status = ProjectStatus.Active)
+                    where (project.Status = ProjectStatus.Active)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
-                    select (Project.FromSql proj, Role.FromSql role)
+                    select (Project.FromSql project, Role.FromSql role)
                 }
             return! projectsQuery |> List.executeQueryAsync
     }
@@ -401,14 +399,14 @@ let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int
     async {
         let ctx = sql.GetDataContext connString
         let membershipQuery = query {
-            for memb in ctx.Testldapi.Members do
-                where (memb.ProjectId = projectId && memb.UserId = userId)
-                select memb }
+            for membership in ctx.Testldapi.Members do
+                where (membership.ProjectId = projectId && membership.UserId = userId)
+                select membership }
         if isAdd then
             let withRole = query {
-                for memb in membershipQuery do
-                    where (memb.RoleId = roleId)
-                    select (Some memb)
+                for membership in membershipQuery do
+                    where (membership.RoleId = roleId)
+                    select (Some membership)
                     headOrDefault
             }
             match withRole with
@@ -438,11 +436,11 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
                 select (Some user)
                 exactlyOneOrDefault }
         let maybeProject = query {
-            for proj in ctx.Testldapi.Projects do
-                where (proj.Status = ProjectStatus.Active)
-                where (proj.Identifier.IsSome)
-                where (proj.Identifier.Value = projectCode)
-                select (Some proj)
+            for project in ctx.Testldapi.Projects do
+                where (project.Status = ProjectStatus.Active)
+                where (project.Identifier.IsSome)
+                where (project.Identifier.Value = projectCode)
+                select (Some project)
                 exactlyOneOrDefault }
         let validRole = query {
             for role in ctx.Testldapi.Roles do
@@ -462,11 +460,11 @@ let archiveProject (connString : string) (isPublic : bool) (projectCode : string
     async {
         let ctx = sql.GetDataContext connString
         let maybeProject = query {
-            for proj in ctx.Testldapi.Projects do
-                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
-                where (not proj.Identifier.IsNone)
-                where (proj.Identifier.Value = projectCode)
-                select (Some proj)
+            for project in ctx.Testldapi.Projects do
+                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+                where (not project.Identifier.IsNone)
+                where (project.Identifier.Value = projectCode)
+                select (Some project)
                 exactlyOneOrDefault }
         match maybeProject with
         | None -> return false
