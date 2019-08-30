@@ -29,6 +29,12 @@ type ProjectType =
     | AdaptIt
     | School
 
+module ProjectStatus =
+    // Values copied from Redmine
+    let [<Literal>] Active = 1
+    let [<Literal>] Closed = 5
+    let [<Literal>] Archived = 9
+
 // TODO: Decide whether all these fields in the Redmine SQL schema will actually be needed in our use case
 type Project = {
     Id : int
@@ -56,6 +62,13 @@ type CreateProject = { // Just a subset of fields
     Description : string option // Long
     Identifier : string option // 20 chars
 }
+
+module UserStatus =
+    // Values copied from Redmine
+    let [<Literal>] Anonymous = 0
+    let [<Literal>] Active = 1
+    let [<Literal>] Registered = 2
+    let [<Literal>] Locked = 3
 
 type User = {
     Id : int

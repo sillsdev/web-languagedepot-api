@@ -311,10 +311,21 @@ let webApp = router {
         }
     )
 
-    deletef "/api/project/%s" (fun (projId) ->
+    deletef "/api/project/%s" (fun projId next ctx -> task {
         // TODO: Verify admin password before this is allowed
-        (json (Error "Not implemented; would verify admin username/password first, then delete a project (really just archive it)"))
-    )
+        let archiveProject = ctx.GetService<Model.ArchiveProject>()
+        let! success = archiveProject true projId
+        return! json success next ctx
+    })
+
+    deletef "/api/project/private/%s" (fun projId next ctx -> task {
+        // TODO: Verify admin password before this is allowed
+        let archiveProject = ctx.GetService<Model.ArchiveProject>()
+        let! success = archiveProject false projId
+        return! json success next ctx
+    })
+
+
 }
 
 let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =

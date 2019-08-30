@@ -103,6 +103,7 @@ type ChangePassword = string -> Shared.ChangePassword -> Async<bool>
 type VerifyLoginInfo = LoginInfo -> Async<bool>
 type AddMembership = AddMembership of (string -> string -> int -> Async<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> int -> Async<bool>)
+type ArchiveProject = bool -> string -> Async<bool>
 
 let usersQueryAsync (connString : string) () =
     async {
@@ -122,6 +123,7 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
             // loop variable must be four letters or less, hence "proj" instead of "project"
             for proj in ctx.Testldapi.Projects do
                 where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
+                where (proj.Status = ProjectStatus.Active)
                 select (proj.Id, proj.Identifier, proj.CreatedOn, proj.Name, proj.Description)
         }
         let! projects = projectsQuery |> List.executeQueryAsync
@@ -134,6 +136,7 @@ let projectsCountAsync (connString : string) () =
         return query {
             for proj in ctx.Testldapi.Projects do
                 where (proj.IsPublic > 0y)
+                where (proj.Status = ProjectStatus.Active)
                 count
         }
     }
@@ -144,6 +147,7 @@ let realProjectsCountAsync (connString : string) () =
         let projectsQuery = query {
             for proj in ctx.Testldapi.Projects do
                 where (proj.IsPublic > 0y)
+                where (proj.Status = ProjectStatus.Active)
                 select (proj.Id, proj.Identifier, proj.CreatedOn, proj.Name, proj.Description)
             }
         let! projects = projectsQuery |> Seq.executeQueryAsync
@@ -178,6 +182,7 @@ let projectExists (connString : string) projectCode =
         return query {
             for proj in ctx.Testldapi.Projects do
                 where (proj.IsPublic > 0y)
+                // We do NOT check where (proj.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
                 where (proj.Identifier.IsSome)
                 select proj.Identifier.Value
                 contains projectCode }
@@ -218,7 +223,7 @@ let createProject (connString : string) (project : Shared.CreateProject) =
         // sqlProject.CreatedOn <- project.CreatedOn // System.DateTime option
         // sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime option
         sqlProject.Identifier <- project.Identifier // string option // 20 chars
-        // sqlProject.Status <- project.Status // int // default 1
+        sqlProject.Status <- ProjectStatus.Active
         do! ctx.SubmitUpdatesAsync()
         return sqlProject.Id
     }
@@ -306,6 +311,7 @@ let projectsByUserRole (connString : string) username roleId =
                 for proj in ctx.Testldapi.Projects do
                     join user in ctx.Testldapi.Members
                         on (proj.Id = user.ProjectId)
+                    where (proj.Status = ProjectStatus.Active)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
                     select (Project.FromSql proj)
@@ -331,6 +337,7 @@ let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
                     join user in ctx.Testldapi.Members
                         on (proj.Id = user.ProjectId)
                     join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
+                    where (proj.Status = ProjectStatus.Active)
                     where (user.UserId = requestedUser.Id &&
                         (if roleId < 0 then true else user.RoleId = roleId))
                     select (Project.FromSql proj, Role.FromSql role)
@@ -433,6 +440,7 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
                 exactlyOneOrDefault }
         let maybeProject = query {
             for proj in ctx.Testldapi.Projects do
+                where (proj.Status = ProjectStatus.Active)
                 where (proj.Identifier.IsSome)
                 where (proj.Identifier.Value = projectCode)
                 select (Some proj)
@@ -448,6 +456,24 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
             return false
         | Some sqlUser, Some sqlProject, true ->
             return! addOrRemoveMembershipById connString isAdd sqlUser.Id sqlProject.Id roleId
+    }
+
+let archiveProject (connString : string) (isPublic : bool) (projectCode : string) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let maybeProject = query {
+            for proj in ctx.Testldapi.Projects do
+                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
+                where (not proj.Identifier.IsNone)
+                where (proj.Identifier.Value = projectCode)
+                select (Some proj)
+                exactlyOneOrDefault }
+        match maybeProject with
+        | None -> return false
+        | Some project ->
+            project.Status <- ProjectStatus.Archived
+            do! ctx.SubmitUpdatesAsync()
+            return true
     }
 
 module ModelRegistration =
@@ -476,4 +502,5 @@ module ModelRegistration =
             .AddSingleton<VerifyLoginInfo>(verifyLoginInfo connString)
             .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership connString true))
             .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership connString false))
+            .AddSingleton<ArchiveProject>(archiveProject connString)
         |> ignore
