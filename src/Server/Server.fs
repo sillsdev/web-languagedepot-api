@@ -63,7 +63,7 @@ let webApp = router {
         task {
             // TODO: Verify login
             let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects false |> Async.StartAsTask
+            let! projects = listProjects false
             return! json projects next ctx
         }
     )
@@ -82,7 +82,7 @@ let webApp = router {
     get "/api/project" (fun next ctx ->
         task {
             let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects true |> Async.StartAsTask
+            let! projects = listProjects true
             return! json projects next ctx
         }
     )
@@ -130,7 +130,7 @@ let webApp = router {
         // DEMO ONLY. Enumerates all users. TODO: Remove since it's not in real API spec
         task {
             let listUsers = ctx.GetService<Model.ListUsers>()
-            let! x = listUsers() |> Async.StartAsTask
+            let! x = listUsers()
             let logins = x |> List.map (fun user -> { user with HashedPassword = "***" })
             return! json logins next ctx
         }
@@ -141,9 +141,9 @@ let webApp = router {
             task {
                 let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
                 let projectsAndRolesByUser = ctx.GetService<Model.ProjectsAndRolesByUser>()
-                let! goodLogin = verifyLoginInfo loginInfo |> Async.StartAsTask
+                let! goodLogin = verifyLoginInfo loginInfo
                 if goodLogin then
-                    let! projectList = projectsAndRolesByUser login |> Async.StartAsTask
+                    let! projectList = projectsAndRolesByUser login
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
@@ -157,7 +157,7 @@ let webApp = router {
             return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
         | Some add, None ->
             let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-            let! success = addMember add.Name projId 3 |> Async.StartAsTask  // TODO: get role in here as well
+            let! success = addMember add.Name projId 3  // TODO: get role in here as well
             let result =
                 if success then
                     Ok (sprintf "Added %s to %s" add.Name projId)
@@ -166,7 +166,7 @@ let webApp = router {
             return! json result next ctx
         | None, Some remove ->
             let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-            let! success = removeMember remove.Name projId -1 |> Async.StartAsTask  // TODO: Better API; it makes no sense to specify a role for the removal
+            let! success = removeMember remove.Name projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
             let result =
                 if success then
                     Ok (sprintf "Removed %s from %s" remove.Name projId)
@@ -180,7 +180,7 @@ let webApp = router {
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
         let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-        let! success = addMember username projId 3 |> Async.StartAsTask  // TODO: get role in here as well
+        let! success = addMember username projId 3  // TODO: get role in here as well
         let result =
             if success then
                 Ok (sprintf "Added %s to %s" username projId)
@@ -191,7 +191,7 @@ let webApp = router {
 
     deletef "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
         let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-        let! success = removeMember username projId -1 |> Async.StartAsTask  // TODO: Better API; it makes no sense to specify a role for the removal
+        let! success = removeMember username projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
         let result =
             if success then
                 Ok (sprintf "Removed %s from %s" username projId)
@@ -205,9 +205,9 @@ let webApp = router {
             task {
                 let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
                 let projectsAndRolesByUserRole = ctx.GetService<Model.ProjectsAndRolesByUserRole>()
-                let! goodLogin = verifyLoginInfo logininfo |> Async.StartAsTask
+                let! goodLogin = verifyLoginInfo logininfo
                 if goodLogin then
-                    let! projectList = projectsAndRolesByUserRole login roleId |> Async.StartAsTask
+                    let! projectList = projectsAndRolesByUserRole login roleId
                     return! json projectList next ctx
                 else
                     return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
@@ -255,7 +255,7 @@ let webApp = router {
     postf "/api/users/%s/verify-password" (fun login -> bindJson<LoginInfo> (fun loginInfo next ctx ->
         task {
             let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-            let! goodLogin = verifyLoginInfo loginInfo |> Async.StartAsTask
+            let! goodLogin = verifyLoginInfo loginInfo
             return! json goodLogin next ctx
             // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
         }
