@@ -114,14 +114,14 @@ let usersQueryAsync (connString : string) () =
         return! usersQuery |> List.executeQueryAsync
     }
 
-let projectsQueryAsync (connString : string) (wantPrivate : bool) =
+let projectsQueryAsync (connString : string) (isPublic : bool) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
             // Due to https://github.com/fsprojects/SQLProvider/issues/631 the name of the
             // loop variable must be four letters or less, hence "proj" instead of "project"
             for proj in ctx.Testldapi.Projects do
-                where (if wantPrivate then proj.IsPublic = 0y else proj.IsPublic > 0y)
+                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
                 select (proj.Id, proj.Identifier, proj.CreatedOn, proj.Name, proj.Description)
         }
         let! projects = projectsQuery |> List.executeQueryAsync
@@ -193,12 +193,12 @@ let getUser (connString : string) username =
                 exactlyOneOrDefault }
     }
 
-let getProject (connString : string) (wantPrivate : bool) projectCode =
+let getProject (connString : string) (isPublic : bool) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
             for proj in ctx.Testldapi.Projects do
-                where (if wantPrivate then proj.IsPublic = 0y else proj.IsPublic > 0y)
+                where (if isPublic then proj.IsPublic > 0y else proj.IsPublic = 0y)
                 where (not proj.Identifier.IsNone)
                 where (proj.Identifier.Value = projectCode)
                 select (Some (Project.FromSql proj))

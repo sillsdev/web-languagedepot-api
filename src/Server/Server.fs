@@ -63,7 +63,7 @@ let webApp = router {
         task {
             // TODO: Verify login
             let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects true |> Async.StartAsTask
+            let! projects = listProjects false |> Async.StartAsTask
             return! json projects next ctx
         }
     )
@@ -72,7 +72,7 @@ let webApp = router {
         task {
             // TODO: Verify login
             let getProject = ctx.GetService<Model.GetProject>()
-            let! project = getProject true projId
+            let! project = getProject false projId
             match project with
             | Some project -> return! json project next ctx
             | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
@@ -82,7 +82,7 @@ let webApp = router {
     get "/api/project" (fun next ctx ->
         task {
             let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects false |> Async.StartAsTask
+            let! projects = listProjects true |> Async.StartAsTask
             return! json projects next ctx
         }
     )
@@ -90,7 +90,7 @@ let webApp = router {
     getf "/api/project/%s" (fun projId next ctx ->
         task {
             let getProject = ctx.GetService<Model.GetProject>()
-            let! project = getProject false projId
+            let! project = getProject true projId
             match project with
             | Some project -> return! json project next ctx
             | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
