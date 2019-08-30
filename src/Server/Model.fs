@@ -212,6 +212,7 @@ let getProject (connString : string) (isPublic : bool) projectCode =
 
 let createProject (connString : string) (project : Shared.CreateProject) =
     async {
+        // TODO: Handle case where project already exists, and reject if it does. Also, API shape needs to become Async<int option> instead of Async<int>
         let ctx = sql.GetDataContext connString
         let sqlProject = ctx.Testldapi.Projects.Create()
         // sqlProject.Id <- project.Id // int
@@ -231,7 +232,7 @@ let createProject (connString : string) (project : Shared.CreateProject) =
 let createUser (connString : string) (user : Shared.CreateUser) =
     async {
         let ctx = sql.GetDataContext connString
-        let hashedPassword = BCrypt.HashPassword user.CleartextPassword
+        let hashedPassword = BCrypt.HashPassword user.CleartextPassword  // TODO: Password hashing doesn't belong in the model
         let sqlUser = ctx.Testldapi.Users.Create()
         sqlUser.Firstname <- user.FirstName
         sqlUser.Lastname <- user.LastName
@@ -419,15 +420,13 @@ let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int
                 sqlMembership.UserId <- userId
                 sqlMembership.RoleId <- roleId
                 do! ctx.SubmitUpdatesAsync()
-                return true
             | Some sqlMembership ->
                 // Already exists; nothing to do
-                return true
+                ()
         else
             let! rowsToDelete = membershipQuery |> List.executeQueryAsync
             rowsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
             do! ctx.SubmitUpdatesAsync()
-            return true
     }
 
 let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleId : int) =
@@ -455,7 +454,8 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
         | _, _, false ->
             return false
         | Some sqlUser, Some sqlProject, true ->
-            return! addOrRemoveMembershipById connString isAdd sqlUser.Id sqlProject.Id roleId
+            do! addOrRemoveMembershipById connString isAdd sqlUser.Id sqlProject.Id roleId
+            return true
     }
 
 let archiveProject (connString : string) (isPublic : bool) (projectCode : string) =

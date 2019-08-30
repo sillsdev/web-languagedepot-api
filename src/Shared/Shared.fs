@@ -57,6 +57,7 @@ type ProjectForListing = {
     Identifier : string option // 20 chars
 }
 
+// TODO: Expand and rename to ProjectDTO, or maybe ProjectCreationDTO if we need multiple kinds of DTO
 type CreateProject = { // Just a subset of fields
     Name : string
     Description : string option // Long
