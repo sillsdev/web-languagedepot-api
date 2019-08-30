@@ -156,33 +156,49 @@ let webApp = router {
         | Some add, Some remove ->
             return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
         | Some add, None ->
-            // TODO: Actually do the add
             let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-            let! result = addMember add.Name projId 3 |> Async.StartAsTask  // TODO: get role in here as well
-            // let result = Ok (sprintf "Added %s to %s" add.Name projId)
-            // TODO: Fix up the result type (should be Result<string, string>, not just bool)
-            // TODO: Do the rest
+            let! success = addMember add.Name projId 3 |> Async.StartAsTask  // TODO: get role in here as well
+            let result =
+                if success then
+                    Ok (sprintf "Added %s to %s" add.Name projId)
+                else
+                    Error (sprintf "Failed to add %s to %s" add.Name projId)
             return! json result next ctx
         | None, Some remove ->
-            // TODO: Actually do the remove
-            let result = Ok (sprintf "Removed %s from %s" remove.Name projId)
+            let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
+            let! success = removeMember remove.Name projId -1 |> Async.StartAsTask  // TODO: Better API; it makes no sense to specify a role for the removal
+            let result =
+                if success then
+                    Ok (sprintf "Removed %s from %s" remove.Name projId)
+                else
+                    Error (sprintf "Failed to remove %s from %s" remove.Name projId)
             return! json result next ctx
         | None, None ->
             return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
     }))
 
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
-    postf "/api/project/%s/user/%s" (fun (projId,username) ->
-        // TODO: Actually do the add
-        let result = Ok (sprintf "Added %s to %s" username projId)
-        json result
-    )
+    postf "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
+        let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
+        let! success = addMember username projId 3 |> Async.StartAsTask  // TODO: get role in here as well
+        let result =
+            if success then
+                Ok (sprintf "Added %s to %s" username projId)
+            else
+                Error (sprintf "Failed to add %s to %s" username projId)
+        return! json result next ctx
+    })
 
-    deletef "/api/project/%s/user/%s" (fun (projId,username) ->
-        // TODO: Actually do the remove
-        let result = Ok (sprintf "Removed %s from %s" username projId)
-        json result
-    )
+    deletef "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
+        let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
+        let! success = removeMember username projId -1 |> Async.StartAsTask  // TODO: Better API; it makes no sense to specify a role for the removal
+        let result =
+            if success then
+                Ok (sprintf "Removed %s from %s" username projId)
+            else
+                Error (sprintf "Failed to remove %s from %s" username projId)
+        return! json result next ctx
+    })
 
     postf "/api/users/%s/projects/withRole/%i" (fun (login, roleId) ->
         bindJson<Shared.LoginInfo> (fun logininfo next ctx ->

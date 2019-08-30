@@ -91,7 +91,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             match Thoth.Json.Decode.Auto.fromString<Shared.CreateProject> json with
             | Ok data ->
                 let url = "/api/project"
-                // TODO: Use tryPost and make GetFormResult take a Result<int,string>, logging the error if one happens
                 nextModel, Cmd.OfPromise.perform (fun data -> Fetch.tryPost(url, data)) data GotFormResult
             | Error err ->
                 printfn "Decoding error (fix the form validation?): %s" err

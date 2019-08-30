@@ -388,6 +388,41 @@ let verifyLoginInfo (connString : string) (loginInfo : Shared.LoginInfo) =
         | Some user -> return verifyPass loginInfo.password user.HashedPassword
     }
 
+
+let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int) (projectId : int) (roleId : int) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let membershipQuery = query {
+            for memb in ctx.Testldapi.Members do
+                where (memb.ProjectId = projectId && memb.UserId = userId)
+                select memb }
+        if isAdd then
+            let withRole = query {
+                for memb in membershipQuery do
+                    where (memb.RoleId = roleId)
+                    select (Some memb)
+                    headOrDefault
+            }
+            match withRole with
+            | None -> // add
+                let sqlMembership = ctx.Testldapi.Members.Create()
+                sqlMembership.MailNotification <- 0y
+                sqlMembership.CreatedOn <- Some (System.DateTime.UtcNow)
+                sqlMembership.ProjectId <- projectId
+                sqlMembership.UserId <- userId
+                sqlMembership.RoleId <- roleId
+                do! ctx.SubmitUpdatesAsync()
+                return true
+            | Some sqlMembership ->
+                // Already exists; nothing to do
+                return true
+        else
+            let! rowsToDelete = membershipQuery |> List.executeQueryAsync
+            rowsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
+            do! ctx.SubmitUpdatesAsync()
+            return true
+    }
+
 let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleId : int) =
     async {
         let ctx = sql.GetDataContext connString
@@ -412,35 +447,7 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
         | _, _, false ->
             return false
         | Some sqlUser, Some sqlProject, true ->
-            let membershipQuery = query {
-                for memb in ctx.Testldapi.Members do
-                    where (memb.ProjectId = sqlProject.Id && memb.UserId = sqlUser.Id)
-                    select memb }
-            if isAdd then
-                let withRole = query {
-                    for memb in membershipQuery do
-                        where (memb.RoleId = roleId)
-                        select (Some memb)
-                        headOrDefault
-                }
-                match withRole with
-                | None -> // add
-                    let sqlMembership = ctx.Testldapi.Members.Create()
-                    sqlMembership.MailNotification <- 0y
-                    sqlMembership.CreatedOn <- Some (System.DateTime.UtcNow)
-                    sqlMembership.ProjectId <- sqlProject.Id
-                    sqlMembership.UserId <- sqlUser.Id
-                    sqlMembership.RoleId <- roleId
-                    do! ctx.SubmitUpdatesAsync()
-                    return true
-                | Some sqlMembership ->
-                    // Already exists; nothing to do
-                    return true
-            else
-                let! rowsToDelete = membershipQuery |> List.executeQueryAsync
-                rowsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
-                do! ctx.SubmitUpdatesAsync()
-                return true
+            return! addOrRemoveMembershipById connString isAdd sqlUser.Id sqlProject.Id roleId
     }
 
 module ModelRegistration =
