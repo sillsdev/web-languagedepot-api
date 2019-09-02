@@ -48,9 +48,9 @@ let webApp = router {
     postf "/api/users/%s/projects/withRole/%i" Controller.projectsAndRolesByUserRole
     get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<CreateUser> Controller.createUser)
-    putf "/api/users/%s" Controller.upsertUser
-    patchf "/api/users/%s" Controller.changePassword
-    postf "/api/users/%s/verify-password" Controller.verifyPassword
+    putf "/api/users/%s" (fun login -> bindJson<UpdateUser> (Controller.upsertUser login))
+    patchf "/api/users/%s" (fun login -> bindJson<ChangePassword> (Controller.changePassword login))
+    postf "/api/users/%s/verify-password" (fun login -> bindJson<LoginInfo> (Controller.verifyPassword login))
     post "/api/project" (bindJson<CreateProject> Controller.createProject)
     get "/api/count/users" Controller.countUsers
     get "/api/count/projects" Controller.countProjects
@@ -58,6 +58,7 @@ let webApp = router {
     get "/api/config" Controller.getMySqlSettings
     deletef "/api/project/%s" Controller.archiveProject
     deletef "/api/project/private/%s" Controller.archivePrivateProject
+    // Rejected API: POST /api/project/{projId}/add-user/{username}
 }
 
 let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
