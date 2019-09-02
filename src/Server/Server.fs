@@ -59,273 +59,33 @@ API surface rejected:
 POST /api/project/{projId}/add-user/{username}
 *)
 let webApp = router {
-    get "/api/project/private" (fun next ctx ->
-        task {
-            // TODO: Verify login
-            let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects false
-            return! json projects next ctx
-        }
-    )
-
-    getf "/api/project/private/%s" (fun projId next ctx ->
-        task {
-            // TODO: Verify login
-            let getProject = ctx.GetService<Model.GetProject>()
-            let! project = getProject false projId
-            match project with
-            | Some project -> return! json project next ctx
-            | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
-        }
-    )
-
-    get "/api/project" (fun next ctx ->
-        task {
-            let listProjects = ctx.GetService<Model.ListProjects>()
-            let! projects = listProjects true
-            return! json projects next ctx
-        }
-    )
-
-    getf "/api/project/%s" (fun projId next ctx ->
-        task {
-            let getProject = ctx.GetService<Model.GetProject>()
-            let! project = getProject true projId
-            match project with
-            | Some project -> return! json project next ctx
-            | None -> return! RequestErrors.notFound (json (Error (sprintf "Project code %s not found" projId))) next ctx
-        }
-    )
-
+    get "/api/project/private" Controller.getAllPrivateProjects
+    getf "/api/project/private/%s" Controller.getPrivateProject
+    get "/api/project" Controller.getAllPublicProjects
+    getf "/api/project/%s" Controller.getPublicProject
     // TODO: Not in real API spec. Why not? Probably need to add it
-    getf "/api/users/%s" (fun login next ctx ->
-        task {
-            let getUser = ctx.GetService<Model.GetUser>()
-            let! user = getUser login
-            match user with
-            | Some user -> return! json { user with HashedPassword = "***" } next ctx
-            | None -> return! RequestErrors.notFound (json (Error (sprintf "Username %s not found" login))) next ctx
-        }
-    )
-
-    getf "/api/project/exists/%s" (fun projId next ctx ->
-        // Returns true if project exists (NOTE: This is the INVERSE of what the old API did!)
-        task {
-            let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
-            let result = projectExists projId
-            return! json result next ctx
-        }
-    )
-
-    getf "/api/users/exists/%s" (fun login next ctx ->
-        // Returns true if username exists (NOTE: This is the INVERSE of what the old API did!)
-        task {
-            let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
-            let result = userExists login
-            return! json result next ctx
-        }
-    )
-
-    get "/api/users" (fun next ctx ->
-        // DEMO ONLY. Enumerates all users. TODO: Remove since it's not in real API spec
-        task {
-            let listUsers = ctx.GetService<Model.ListUsers>()
-            let! x = listUsers()
-            let logins = x |> List.map (fun user -> { user with HashedPassword = "***" })
-            return! json logins next ctx
-        }
-    )
-
-    postf "/api/users/%s/projects" (fun login ->
-        bindJson<Shared.LoginInfo> (fun loginInfo next ctx ->
-            task {
-                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-                let projectsAndRolesByUser = ctx.GetService<Model.ProjectsAndRolesByUser>()
-                let! goodLogin = verifyLoginInfo loginInfo
-                if goodLogin then
-                    let! projectList = projectsAndRolesByUser login
-                    return! json projectList next ctx
-                else
-                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
-            }
-        )
-    )
-
-    patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData next ctx -> task {
-        match patchData.addUser, patchData.removeUser with
-        | Some add, Some remove ->
-            return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
-        | Some add, None ->
-            let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-            let! success = addMember add.Name projId 3  // TODO: get role in here as well
-            let result =
-                if success then
-                    Ok (sprintf "Added %s to %s" add.Name projId)
-                else
-                    Error (sprintf "Failed to add %s to %s" add.Name projId)
-            return! json result next ctx
-        | None, Some remove ->
-            let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-            let! success = removeMember remove.Name projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
-            let result =
-                if success then
-                    Ok (sprintf "Removed %s from %s" remove.Name projId)
-                else
-                    Error (sprintf "Failed to remove %s from %s" remove.Name projId)
-            return! json result next ctx
-        | None, None ->
-            return! RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser")) next ctx
-    }))
-
+    getf "/api/users/%s" Controller.getUser
+    getf "/api/project/exists/%s" Controller.projectExists
+    getf "/api/users/exists/%s" Controller.userExists
+    get "/api/users" Controller.getAllUsers
+    postf "/api/users/%s/projects" Controller.projectsAndRolesByUser
+    patchf "/api/project/%s" Controller.addOrRemoveUserFromProject
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
-    postf "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
-        let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-        let! success = addMember username projId 3  // TODO: get role in here as well
-        let result =
-            if success then
-                Ok (sprintf "Added %s to %s" username projId)
-            else
-                Error (sprintf "Failed to add %s to %s" username projId)
-        return! json result next ctx
-    })
-
-    deletef "/api/project/%s/user/%s" (fun (projId,username) next ctx -> task {
-        let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-        let! success = removeMember username projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
-        let result =
-            if success then
-                Ok (sprintf "Removed %s from %s" username projId)
-            else
-                Error (sprintf "Failed to remove %s from %s" username projId)
-        return! json result next ctx
-    })
-
-    postf "/api/users/%s/projects/withRole/%i" (fun (login, roleId) ->
-        bindJson<Shared.LoginInfo> (fun logininfo next ctx ->
-            task {
-                let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-                let projectsAndRolesByUserRole = ctx.GetService<Model.ProjectsAndRolesByUserRole>()
-                let! goodLogin = verifyLoginInfo logininfo
-                if goodLogin then
-                    let! projectList = projectsAndRolesByUserRole login roleId
-                    return! json projectList next ctx
-                else
-                    return! RequestErrors.forbidden (json {| status = "error"; message = "Login failed" |}) next ctx
-            }
-        )
-    )
-
-    get "/api/roles" (fun next ctx ->
-        task {
-            let roleNames = ctx.GetService<Model.ListRoles>()
-            let! roles = roleNames()
-            return! json roles next ctx
-        }
-    )
-
-    post "/api/users" (bindJson<CreateUser> (fun user next ctx ->
-        task {
-            let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
-            let! alreadyExists = userExists user.Login
-            if alreadyExists then
-                return! json {| status = "error"; message = "Username already exists; pick another one" |} next ctx
-            else
-                let createUser = ctx.GetService<Model.CreateUser>()
-                let! newId = createUser user
-                return! json newId next ctx
-        }
-    ))
-
-    putf "/api/users/%s" (fun login -> bindJson<UpdateUser> (fun updateData next ctx ->
-        task {
-            let upsertUser = ctx.GetService<Model.UpsertUser>()
-            let! newId = upsertUser login updateData
-            return! json newId next ctx
-        }
-    ))
-
-    patchf "/api/users/%s" (fun login -> bindJson<ChangePassword> (fun updateData next ctx ->
-        task {
-            let changePassword = ctx.GetService<Model.ChangePassword>()
-            let! success = changePassword login updateData
-            return! json success next ctx
-        }
-    ))
-
-    postf "/api/users/%s/verify-password" (fun login -> bindJson<LoginInfo> (fun loginInfo next ctx ->
-        task {
-            let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-            let! goodLogin = verifyLoginInfo loginInfo
-            return! json goodLogin next ctx
-            // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
-        }
-    ))
-
-    post "/api/project" (bindJson<CreateProject> (fun proj next ctx ->
-        task {
-            let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
-            let projId = match proj.Identifier with
-                         | None -> "new-project-id"  // TODO: Build from project name and check whether it exists, appending numbers if needed
-                         | Some projId -> projId
-            let! alreadyExists = projectExists projId
-            if alreadyExists then
-                return! json {| status = "error"; message = "Project code already exists; pick another one" |} next ctx
-            else
-                let createProject = ctx.GetService<Model.CreateProject>()
-                let! newId = createProject { proj with Identifier = Some projId }
-                return! json newId next ctx
-        }
-    ))
-
-    get "/api/count/users" (fun next ctx ->
-        task {
-            do! Async.Sleep 500 // Simulate server load
-            let (Model.CountUsers countUsers) = ctx.GetService<Model.CountUsers>()
-            let! count = countUsers ()
-            return! json count next ctx
-        }
-    )
-
-    get "/api/count/projects" (fun next ctx ->
-        task {
-            do! Async.Sleep 750 // Simulate server load
-            let (Model.CountProjects countProjects) = ctx.GetService<Model.CountProjects>()
-            let! count = countProjects ()
-            return! json count next ctx
-        }
-    )
-
-    get "/api/count/non-test-projects" (fun next ctx ->
-        task {
-            do! Async.Sleep 1000 // Simulate server load
-            let (Model.CountRealProjects countRealProjects) = ctx.GetService<Model.CountRealProjects>()
-            let! count = countRealProjects ()
-            return! json count next ctx
-        }
-    )
-
-    get "/api/config" (fun next ctx ->
-        task {
-            let cfg = ctx |> getSettings<MySqlSettings>
-            return! json cfg next ctx
-        }
-    )
-
-    deletef "/api/project/%s" (fun projId next ctx -> task {
-        // TODO: Verify admin password before this is allowed
-        let archiveProject = ctx.GetService<Model.ArchiveProject>()
-        let! success = archiveProject true projId
-        return! json success next ctx
-    })
-
-    deletef "/api/project/private/%s" (fun projId next ctx -> task {
-        // TODO: Verify admin password before this is allowed
-        let archiveProject = ctx.GetService<Model.ArchiveProject>()
-        let! success = archiveProject false projId
-        return! json success next ctx
-    })
-
-
+    postf "/api/project/%s/user/%s" Controller.addUserToProject
+    deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
+    postf "/api/users/%s/projects/withRole/%i" Controller.projectsAndRolesByUserRole
+    get "/api/roles" Controller.getAllRoles
+    post "/api/users" (bindJson<CreateUser> Controller.createUser)
+    putf "/api/users/%s" Controller.upsertUser
+    patchf "/api/users/%s" Controller.changePassword
+    postf "/api/users/%s/verify-password" Controller.verifyPassword
+    post "/api/project" (bindJson<CreateProject> Controller.createProject)
+    get "/api/count/users" Controller.countUsers
+    get "/api/count/projects" Controller.countProjects
+    get "/api/count/non-test-projects" Controller.countRealProjects
+    get "/api/config" Controller.getMySqlSettings
+    deletef "/api/project/%s" Controller.archiveProject
+    deletef "/api/project/private/%s" Controller.archivePrivateProject
 }
 
 let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
