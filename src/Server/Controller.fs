@@ -70,7 +70,7 @@ let getPublicProject projId : HttpHandler =
 
 // TODO: Not in real API spec. Why not? Probably need to add it
 let getUser login = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
+    // Can't use withServiceFuncOrNotFound for this one since we need to tweak the return value in the success branch
     let getUser = ctx.GetService<Model.GetUser>()
     let! user = getUser login
     match user with
@@ -90,7 +90,11 @@ let projectsAndRolesByUser login : HttpHandler =
     withLoggedInServiceFunc
         (fun (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser login)
 
-let addUserToProject = (fun (projId,username) (next : HttpFunc) (ctx : HttpContext) -> task {
+let projectsAndRolesByUserRole (login,roleId) : HttpHandler =
+    withLoggedInServiceFunc
+        (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole login roleId)
+
+let addUserToProject (projId,username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
     let! success = addMember username projId 3  // TODO: get role in here as well
     let result =
@@ -99,9 +103,9 @@ let addUserToProject = (fun (projId,username) (next : HttpFunc) (ctx : HttpConte
         else
             Error (sprintf "Failed to add %s to %s" username projId)
     return! json result next ctx
-})
+}
 
-let removeUserFromProject = (fun (projId,username) (next : HttpFunc) (ctx : HttpContext) -> task {
+let removeUserFromProject (projId,username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
     let! success = removeMember username projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
     let result =
@@ -110,9 +114,9 @@ let removeUserFromProject = (fun (projId,username) (next : HttpFunc) (ctx : Http
         else
             Error (sprintf "Failed to remove %s from %s" username projId)
     return! json result next ctx
-})
+}
 
-let addOrRemoveUserFromProject = (fun projId -> bindJson<PatchProjects> (fun patchData ->
+let addOrRemoveUserFromProject projId (patchData : PatchProjects) =
     match patchData.addUser, patchData.removeUser with
     | Some add, Some remove ->
         RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser, not both"))
@@ -122,29 +126,22 @@ let addOrRemoveUserFromProject = (fun projId -> bindJson<PatchProjects> (fun pat
         removeUserFromProject (projId, remove.Name)
     | None, None ->
         RequestErrors.badRequest (json (Error "Specify either addUser or removeUser"))
-))
-
-let projectsAndRolesByUserRole (login,roleId) : HttpHandler =
-    withLoggedInServiceFunc
-        (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole login roleId)
 
 let getAllRoles : HttpHandler =
     withServiceFunc
         (fun (roleNames : Model.ListRoles) -> roleNames())
 
-let createUser = (fun (user : CreateUser) (next : HttpFunc) (ctx : HttpContext) ->
+let createUser (user : CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
-    task {
-        let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
-        let! alreadyExists = userExists user.Login
-        if alreadyExists then
-            return! jsonError "Username already exists; pick another one" next ctx
-        else
-            let createUser = ctx.GetService<Model.CreateUser>()
-            let! newId = createUser user
-            return! json newId next ctx
-    }
-)
+    let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
+    let! alreadyExists = userExists user.Login
+    if alreadyExists then
+        return! jsonError "Username already exists; pick another one" next ctx
+    else
+        let createUser = ctx.GetService<Model.CreateUser>()
+        let! newId = createUser user
+        return! json newId next ctx
+}
 
 let upsertUser (login : string) (updateData : UpdateUser) =
     withServiceFunc
@@ -159,21 +156,20 @@ let verifyPassword login (loginInfo : LoginInfo) =
     withServiceFunc
         (fun (verifyLoginInfo : Model.VerifyLoginInfo) -> verifyLoginInfo loginInfo)
 
-let createProject (proj : CreateProject) : HttpHandler = fun  (next : HttpFunc) (ctx : HttpContext) ->
+let createProject (proj : CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
-    task {
-        let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
-        let projId = match proj.Identifier with
-                        | None -> "new-project-id"  // TODO: Build from project name and check whether it exists, appending numbers if needed
-                        | Some projId -> projId
-        let! alreadyExists = projectExists projId
-        if alreadyExists then
-            return! json {| status = "error"; message = "Project code already exists; pick another one" |} next ctx
-        else
-            let createProject = ctx.GetService<Model.CreateProject>()
-            let! newId = createProject { proj with Identifier = Some projId }
-            return! json newId next ctx
-    }
+    let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
+    let projId = match proj.Identifier with
+                    | None -> "new-project-id"  // TODO: Build from project name and check whether it exists, appending numbers if needed
+                    | Some projId -> projId
+    let! alreadyExists = projectExists projId
+    if alreadyExists then
+        return! json {| status = "error"; message = "Project code already exists; pick another one" |} next ctx
+    else
+        let createProject = ctx.GetService<Model.CreateProject>()
+        let! newId = createProject { proj with Identifier = Some projId }
+        return! json newId next ctx
+}
 
 let countUsers : HttpHandler =
     withServiceFunc
@@ -196,12 +192,10 @@ let countRealProjects : HttpHandler =
                 return! countRealProjects()
         })
 
-let getMySqlSettings = (fun (next : HttpFunc) (ctx : HttpContext) ->
-    task {
-        let cfg = ctx |> getSettings<MySqlSettings>
-        return! json cfg next ctx
-    }
-)
+let getMySqlSettings : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    let cfg = ctx |> getSettings<MySqlSettings>
+    return! json cfg next ctx
+}
 
 let archiveProject projId : HttpHandler =
     withServiceFunc
