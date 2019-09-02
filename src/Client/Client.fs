@@ -23,8 +23,6 @@ open Shared
 type Msg =
 | UserProjectsUpdated of Shared.SharedUser
 | LogResult of Result<string,string>
-| ListAllUsers
-| UserListRetrieved of Shared.User list
 | RootPageMsg of RootPage.Msg
 | UserLoggedIn of Shared.SharedUser option
 | LoginPageMsg of LoginPage.Msg
@@ -97,12 +95,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match currentModel, msg with
     | _, UserProjectsUpdated _ ->
         currentModel, Cmd.none
-    | _, ListAllUsers ->
-        let url = "/api/users"
-        currentModel, Cmd.OfPromise.perform Fetch.get url UserListRetrieved
-    | _, UserListRetrieved users ->
-        let nextModel = { currentModel with UserList = users }
-        nextModel, Cmd.none
     | _, UserLoggedIn user ->
         let nextModel = { currentModel with CurrentUser = user }
         nextModel, Router.navigate ""

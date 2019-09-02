@@ -31,33 +31,6 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-(*
-API surface done:
-GET /api/project/private
-GET /api/project/private/{projId}
-GET /api/project
-GET /api/project/{projId}
-GET /api/project/exists/{projId}
-GET /api/users/exists/{username}
-POST /api/users/{username}/projects
-POST /api/users
-PUT /api/users/{username}
-PATCH /api/users/{username} - change password only
-POST /api/users/{username}/verify-password
-POST /api/project
-GET /api/count/users
-GET /api/count/projects
-GET /api/count/non-test-projects
-
-API surface NOT done:
-patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (fun patchData ->
-DELETE /api/project/{projId}/user/{username} - remove membership
-POST /api/project/{projId}/user/{username} - add membership
-DELETE /api/project/{projId}
-
-API surface rejected:
-POST /api/project/{projId}/add-user/{username}
-*)
 let webApp = router {
     get "/api/project/private" Controller.getAllPrivateProjects
     getf "/api/project/private/%s" Controller.getPrivateProject
@@ -67,7 +40,6 @@ let webApp = router {
     getf "/api/users/%s" Controller.getUser
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
-    get "/api/users" Controller.getAllUsers
     postf "/api/users/%s/projects" Controller.projectsAndRolesByUser
     patchf "/api/project/%s" Controller.addOrRemoveUserFromProject
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
