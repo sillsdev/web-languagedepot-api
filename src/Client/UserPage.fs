@@ -12,13 +12,15 @@ open Thoth.Json
 
 open TextInput
 open Shared
+open JsonHelpers
 
 type Msg =
     | FindUser of string
     | UserFound of User
     | UserNotFound
     | LogUserResult of User
-    | RoleListUpdated of Role list
+    | RoleListFetchFailed of exn
+    | RoleListUpdated of JsonResult<Role list>
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
@@ -32,10 +34,20 @@ type Model = { RoleList : Role list; ProjectList : (Project * Role) list; Curren
 
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
-    Cmd.OfPromise.perform Fetch.get "/api/roles" RoleListUpdated
+    Cmd.OfPromise.either Fetch.get "/api/roles" RoleListUpdated RoleListFetchFailed
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | RoleListFetchFailed e ->
+        if e.Message.StartsWith("504") then
+            // 504 Gateway Timeout usually simply means that we're recompiling
+            let tryAgain () = promise {
+                do! Promise.sleep 3000
+                // Compiler needs type hint here since it's not on same line as Cmd.OfPromise.either
+                return! Fetch.get<JsonResult<Role list>> "/api/roles" }
+            currentModel, Cmd.OfPromise.either tryAgain () RoleListUpdated RoleListFetchFailed
+        else
+            currentModel, Notifications.notifyException e
     | FindUser username ->
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url LogUserResult LogException
@@ -47,9 +59,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | LogUserResult user ->
         printfn "User ID %d, first name %s, last name %s, is_admin %A" user.Id user.FirstName user.LastName user.Admin
         currentModel, Cmd.none
-    | RoleListUpdated newRoleList ->
-        let nextModel = { currentModel with RoleList = newRoleList }
-        nextModel, Cmd.none
+    | RoleListUpdated jsonResult ->
+        match toResult jsonResult with
+        | Ok newRoleList ->
+            printfn "Got role list: %A" newRoleList
+            let nextModel = { currentModel with RoleList = newRoleList }
+            nextModel, Cmd.none
+        | Error msg ->
+            currentModel, Notifications.notifyError msg
     | NewUserPageNav username ->
         let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username; Email = "rmunn@pobox.com" } }
         nextModel, Cmd.none

@@ -21,6 +21,9 @@ let notifyError msg =
     |> Toast.withCloseButton
     |> Toast.error
 
+let notifyException (e : exn) =
+    notifyError (e.ToString())
+
 let notifyStrResult (result : Result<string, string>) =
     match result with
     | Ok s -> notifyOk s

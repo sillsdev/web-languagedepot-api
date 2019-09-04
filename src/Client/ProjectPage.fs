@@ -10,14 +10,17 @@ open Thoth.Elmish.FormBuilder
 open Thoth.Elmish.FormBuilder.BasicFields
 open Thoth.Fetch
 
+open JsonHelpers
+
 type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | ListAllProjects
-    | ProjectListRetrieved of Shared.ProjectForListing list
+    | ProjectListRetrieved of JsonResult<Shared.ProjectForListing list>
     | ClearProjects
     | FormSubmitted
-    | GotFormResult of Result<int,string>
+    | GotFormResult of JsonResult<int>
+    | HandleFetchError of exn
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
 
@@ -67,6 +70,8 @@ let init() =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | HandleFetchError e ->
+        currentModel, Notifications.notifyError e.Message
     | NewProjectPageNav projectCode ->
         let nextModel = { currentModel with CurrentlyViewedProject = projectCode }
         nextModel, Cmd.none
@@ -76,10 +81,13 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         nextModel, Cmd.map OnFormMsg formCmd
     | ListAllProjects ->
         let url = "/api/project"
-        currentModel, Cmd.OfPromise.perform Fetch.get url ProjectListRetrieved
-    | ProjectListRetrieved projects ->
-        let nextModel = { currentModel with ProjectList = projects }
-        nextModel, Cmd.none
+        currentModel, Cmd.OfPromise.either Fetch.get url ProjectListRetrieved HandleFetchError
+    | ProjectListRetrieved projectsResult ->
+        match toResult projectsResult with
+        | Ok projects ->
+            { currentModel with ProjectList = projects }, Cmd.none
+        | Error msg ->
+            currentModel, Notifications.notifyError msg
     | ClearProjects ->
         let nextModel = { currentModel with ProjectList = [] }
         nextModel, Cmd.none
@@ -91,14 +99,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             match Thoth.Json.Decode.Auto.fromString<Shared.CreateProject> json with
             | Ok data ->
                 let url = "/api/project"
-                nextModel, Cmd.OfPromise.perform (fun data -> Fetch.tryPost(url, data)) data GotFormResult
+                nextModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data GotFormResult HandleFetchError
             | Error err ->
                 printfn "Decoding error (fix the form validation?): %s" err
                 nextModel, Cmd.none
         else
             nextModel, Cmd.none  // TODO: Do something to report "invalid form not submitted"?
-    | GotFormResult result ->
-        match result with
+    | GotFormResult jsonResult ->
+        match toResult jsonResult with
         | Ok n ->
             printfn "Got ID %d from server" n
         | Error e ->
@@ -106,7 +114,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, [fun _ -> history.go -1]
     | GetConfig ->
         let url = "/api/config"
-        currentModel, Cmd.OfPromise.perform Fetch.get url GotConfig
+        currentModel, Cmd.OfPromise.either Fetch.get url GotConfig HandleFetchError
     | GotConfig mySqlSettings ->
         printfn "Got config: %A" mySqlSettings
         printfn "Port: %d" mySqlSettings.Port

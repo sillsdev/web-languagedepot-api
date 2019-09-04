@@ -1,5 +1,15 @@
 namespace Shared
 
+type JsonSuccess<'a> = {
+    ok : bool
+    data : 'a
+}
+
+type JsonError = {
+    ok : bool
+    message : string
+}
+
 type SharedUser = {
     Name : string
     Email : string

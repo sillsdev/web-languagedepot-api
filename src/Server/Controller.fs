@@ -18,8 +18,8 @@ open Shared.Settings
 
 // TODO: Define these two return types in Shared.fs
 // TODO: Then switch all client code to expect the success/error return type
-let jsonError (msg : string) : HttpHandler = json {| status = "error"; message = msg |}
-let jsonSuccess data : HttpHandler = json {| status = "success"; data = data |}
+let jsonError (msg : string) : HttpHandler = json { ok = false; message = msg }
+let jsonSuccess data : HttpHandler = json { ok = true; data = data }
 let jsonResult (result : Result<'a, string>) : HttpHandler =
     match result with
     | Ok data -> jsonSuccess data
@@ -28,7 +28,7 @@ let jsonResult (result : Result<'a, string>) : HttpHandler =
 let withServiceFunc (impl : 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
     let! result = impl serviceFunction
-    return! json result next ctx
+    return! jsonSuccess result next ctx
 }
 
 let withServiceFuncOrNotFound (impl : 'service -> Async<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
@@ -36,7 +36,7 @@ let withServiceFuncOrNotFound (impl : 'service -> Async<'a option>) (msg : strin
     let! resultOpt = impl serviceFunction
     match resultOpt with
     | Some result -> return! json result next ctx
-    | None -> return! RequestErrors.notFound (json (Error msg)) next ctx
+    | None -> return! RequestErrors.notFound (jsonError msg) next ctx
 }
 
 let withLoggedInServiceFunc (impl : 'service -> Async<'a>) =

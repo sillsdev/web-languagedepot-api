@@ -9,12 +9,13 @@ open Fulma
 open Thoth.Fetch
 
 open Shared
+open JsonHelpers
 
 type Msg =
     | RefreshCounts
-    | ProjectCountLoaded of int
-    | RealProjectCountLoaded of int
-    | UserCountLoaded of int
+    | ProjectCountLoaded of JsonResult<int>
+    | RealProjectCountLoaded of JsonResult<int>
+    | UserCountLoaded of JsonResult<int>
 
 type Model = { ProjectCount : int option
                RealProjectCount : int option
@@ -35,12 +36,27 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
         ]
         currentModel, cmds
-    | ProjectCountLoaded n ->
-        { currentModel with ProjectCount = Some n}, Cmd.none
-    | RealProjectCountLoaded n ->
-        { currentModel with RealProjectCount = Some n}, Cmd.none
-    | UserCountLoaded n ->
-        { currentModel with UserCount = Some n}, Cmd.none
+    | ProjectCountLoaded jsonResult ->
+        match toResult jsonResult with
+        | Ok n ->
+            { currentModel with ProjectCount = Some n}, Cmd.none
+        | Error msg ->
+            printfn "Error loading project count: %s" msg  // Just log to console, don't notify user
+            currentModel, Cmd.none
+    | RealProjectCountLoaded jsonResult ->
+        match toResult jsonResult with
+        | Ok n ->
+            { currentModel with RealProjectCount = Some n}, Cmd.none
+        | Error msg ->
+            printfn "Error loading real project count: %s" msg  // Just log to console, don't notify user
+            currentModel, Cmd.none
+    | UserCountLoaded jsonResult ->
+        match toResult jsonResult with
+        | Ok n ->
+            { currentModel with UserCount = Some n}, Cmd.none
+        | Error msg ->
+            printfn "Error loading user project count: %s" msg  // Just log to console, don't notify user
+            currentModel, Cmd.none
 
 let userCtx : IContext<SharedUser option * (SharedUser option -> unit)> = createContext (None, ignore)
 
