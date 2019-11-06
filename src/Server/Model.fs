@@ -30,6 +30,11 @@ type Shared.Project with
         UpdatedOn = sqlProject.UpdatedOn
         Identifier = sqlProject.Identifier
         Status = sqlProject.Status
+        Lft = None
+        Rgt = None
+        InheritMembers = false
+        DefaultVersionId = None
+        DefaultAssignedToId = None
     }
 
 type Shared.ProjectForListing with
@@ -48,8 +53,6 @@ type Shared.User with
         HashedPassword = sqlUser.HashedPassword
         FirstName = sqlUser.Firstname
         LastName = sqlUser.Lastname
-        Mail = sqlUser.Mail
-        MailNotification = sqlUser.MailNotification <> 0y
         Admin = sqlUser.Admin <> 0y
         Status = sqlUser.Status
         LastLoginOn = sqlUser.LastLoginOn
@@ -58,6 +61,22 @@ type Shared.User with
         CreatedOn = sqlUser.CreatedOn
         UpdatedOn = sqlUser.UpdatedOn
         Type = sqlUser.Type
+        IdentityUrl = sqlUser.IdentityUrl
+        MailNotification = sqlUser.MailNotification
+        Salt = sqlUser.Salt
+        MustChangePasswd = sqlUser.MustChangePasswd <> 0y
+        PasswdChangedOn = sqlUser.PasswdChangedOn
+    }
+
+type Shared.MailAddress with
+    static member FromSql (sqlMail : sql.dataContext.``testldapi.email_addressesEntity``) = {
+        Id = sqlMail.Id
+        UserId = sqlMail.UserId
+        Address = sqlMail.Address
+        IsDefault = sqlMail.IsDefault <> 0y
+        Notify = sqlMail.Notify <> 0y
+        CreatedOn = sqlMail.CreatedOn
+        UpdatedOn = sqlMail.UpdatedOn
     }
 
 type Shared.Role with
@@ -68,6 +87,11 @@ type Shared.Role with
         Assignable = (sqlRole.Assignable |> Option.defaultValue 0y) <> 0y
         Builtin = sqlRole.Builtin
         Permissions = sqlRole.Permissions
+        IssuesVisibility = sqlRole.IssuesVisibility
+        UsersVisibility = sqlRole.UsersVisibility
+        TimeEntriesVisibility = sqlRole.TimeEntriesVisibility
+        AllRolesManaged = sqlRole.AllRolesManaged <> 0y
+        Settings = sqlRole.Settings
     }
 
 type Shared.Membership with
@@ -75,9 +99,16 @@ type Shared.Membership with
         Id = sqlMember.Id
         UserId = sqlMember.UserId
         ProjectId = sqlMember.ProjectId
-        RoleId = sqlMember.RoleId
         CreatedOn = sqlMember.CreatedOn
         MailNotification = sqlMember.MailNotification <> 0y
+    }
+
+type Shared.MembershipRole with
+    static member FromSql (sqlMemberRole : sql.dataContext.``testldapi.member_rolesEntity``) = {
+        Id = sqlMemberRole.Id
+        MembershipId = sqlMemberRole.MemberId
+        RoleId = sqlMemberRole.RoleId
+        InheritedFrom = sqlMemberRole.InheritedFrom
     }
 
 type ListUsers = unit -> Async<User list>
@@ -227,7 +258,7 @@ let createProject (connString : string) (project : Shared.CreateProject) =
         return sqlProject.Id
     }
 
-let createUser (connString : string) (user : Shared.CreateUser) =
+let createUserImpl (connString : string) (user : Shared.CreateUser) =
     async {
         let ctx = sql.GetDataContext connString
         let hashedPassword = BCrypt.HashPassword user.CleartextPassword  // TODO: Password hashing doesn't belong in the model
@@ -236,10 +267,23 @@ let createUser (connString : string) (user : Shared.CreateUser) =
         sqlUser.Lastname <- user.LastName
         sqlUser.HashedPassword <- hashedPassword
         sqlUser.Login <- user.Login
-        sqlUser.Mail <- user.Mail
+
         do! ctx.SubmitUpdatesAsync()
+
+        if not (String.IsNullOrEmpty user.Mail) then
+            let sqlMail = ctx.Testldapi.EmailAddresses.Create()
+            let now = DateTime.UtcNow
+            sqlMail.UserId <- sqlUser.Id
+            sqlMail.Address <- user.Mail
+            sqlMail.IsDefault <- 1y
+            sqlMail.Notify <- 0y
+            sqlMail.CreatedOn <- now
+            sqlMail.UpdatedOn <- now
+            do! ctx.SubmitUpdatesAsync()
         return sqlUser.Id
     }
+
+let createUser (connString : string) (user : Shared.CreateUser) = createUserImpl connString user
 
 let upsertUser (connString : string) (login : string) (updatedUser : Shared.UpdateUser) =
     async {
@@ -250,28 +294,41 @@ let upsertUser (connString : string) (login : string) (updatedUser : Shared.Upda
                 select (Some user)
                 exactlyOneOrDefault
         }
-        let sqlUser = match maybeUser with
-                      | None -> ctx.Testldapi.Users.Create()
-                      | Some user -> user
-        sqlUser.Firstname <- updatedUser.User.FirstName
-        sqlUser.Lastname <- updatedUser.User.LastName
-        match maybeUser, updatedUser.NewPassword with
-        | None, None -> sqlUser.HashedPassword <- ""  // New user and no password specified: blank password so they can't log in yet
-        | Some user, None -> ()  // Existing user: not updating the password
-        | _, Some password -> sqlUser.HashedPassword <- BCrypt.HashPassword password
-        sqlUser.Login <- updatedUser.User.Login
-        sqlUser.Mail <- updatedUser.User.Mail
-        sqlUser.MailNotification <- if updatedUser.User.MailNotification then 1y else 0y
-        sqlUser.Admin <- if updatedUser.User.Admin then 1y else 0y
-        sqlUser.Status <- updatedUser.User.Status
-        sqlUser.LastLoginOn <- updatedUser.User.LastLoginOn
-        sqlUser.Language <- updatedUser.User.Language
-        sqlUser.AuthSourceId <- updatedUser.User.AuthSourceId
-        sqlUser.CreatedOn <- updatedUser.User.CreatedOn
-        sqlUser.UpdatedOn <- updatedUser.User.UpdatedOn
-        sqlUser.Type <- updatedUser.User.Type
-        do! ctx.SubmitUpdatesAsync()
-        return sqlUser.Id
+        match maybeUser with
+        | None ->
+            let createUser = {
+                Login = updatedUser.User.Login
+                CleartextPassword = ""  // TODO: Figure out how to deal with passwords in user-upsert model
+                FirstName = updatedUser.User.FirstName
+                LastName = updatedUser.User.LastName
+                Mail = ""  // TODO: Revamp user model to include email again. Deal with having multiple email addresses, one of which will be default
+            }
+            return! createUserImpl connString createUser  // TODO: Figure out what the data model for users in the API will be; surely it won't *exactly* match Redmine. Then write createUserImpl to take that data model, and use it here. (See above comment, too.)
+        | Some sqlUser ->
+            // let sqlUser = ctx.Testldapi.Users.Create()  // TODO: Write this
+            sqlUser.Firstname <- updatedUser.User.FirstName
+            sqlUser.Lastname <- updatedUser.User.LastName
+            match maybeUser, updatedUser.NewPassword with
+            | None, None -> sqlUser.HashedPassword <- ""  // New user and no password specified: blank password so they can't log in yet
+            | Some user, None -> ()  // Existing user: not updating the password
+            | _, Some password -> sqlUser.HashedPassword <- BCrypt.HashPassword password
+            sqlUser.Login <- updatedUser.User.Login
+            // TODO: Deal with email addresses changing -- API doesn't allow it now, but it should
+            sqlUser.Admin <- if updatedUser.User.Admin then 1y else 0y
+            sqlUser.Status <- updatedUser.User.Status
+            sqlUser.LastLoginOn <- updatedUser.User.LastLoginOn
+            sqlUser.Language <- updatedUser.User.Language
+            sqlUser.AuthSourceId <- updatedUser.User.AuthSourceId
+            sqlUser.CreatedOn <- updatedUser.User.CreatedOn
+            sqlUser.UpdatedOn <- updatedUser.User.UpdatedOn
+            sqlUser.Type <- updatedUser.User.Type
+            sqlUser.IdentityUrl <- updatedUser.User.IdentityUrl
+            sqlUser.MailNotification <- updatedUser.User.MailNotification
+            sqlUser.Salt <- updatedUser.User.Salt
+            sqlUser.MustChangePasswd <- if updatedUser.User.MustChangePasswd then 1y else 0y
+            sqlUser.PasswdChangedOn <- updatedUser.User.PasswdChangedOn
+            do! ctx.SubmitUpdatesAsync()
+            return sqlUser.Id
     }
 
 let changePassword (connString : string) (login : string) (changeRequest : Shared.ChangePassword) =
@@ -306,16 +363,27 @@ let projectsByUserRole (connString : string) username roleId =
         match requestedUser with
         | None -> return []
         | Some requestedUser ->
-            let projectsQuery = query {
-                for project in ctx.Testldapi.Projects do
-                    join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
-                    where (project.Status = ProjectStatus.Active)
-                    where (user.UserId = requestedUser.Id &&
-                        (if roleId < 0 then true else user.RoleId = roleId))
-                    select (Project.FromSql project)
-                }
-            return! projectsQuery |> List.executeQueryAsync
+            let projectsQuery =
+                query {
+                    for project in ctx.Testldapi.Projects do
+                        join membership in ctx.Testldapi.Members
+                            on (project.Id = membership.ProjectId)
+                        where (project.Status = ProjectStatus.Active)
+                        where (membership.UserId = requestedUser.Id)
+                        select (project, membership)
+                    }
+            let resultQuery =
+                if roleId < 0 then  // TODO: Now we can make roleId be an option
+                    query { for project, _ in projectsQuery do select (Project.FromSql project) }
+                else
+                    query {
+                        for project, membership in projectsQuery do
+                            join memberRole in ctx.Testldapi.MemberRoles
+                                on (membership.Id = memberRole.MemberId)
+                            where (memberRole.RoleId = roleId)
+                            select (Project.FromSql project)
+                    }
+            return! resultQuery |> List.executeQueryAsync
     }
 
 let projectsByUser username connString = projectsByUserRole connString username -1
@@ -333,15 +401,25 @@ let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
         | Some requestedUser ->
             let projectsQuery = query {
                 for project in ctx.Testldapi.Projects do
-                    join user in ctx.Testldapi.Members
-                        on (project.Id = user.ProjectId)
-                    join role in ctx.Testldapi.Roles on (user.RoleId = role.Id)
+                    join membership in ctx.Testldapi.Members
+                        on (project.Id = membership.ProjectId)
+                    join memberRole in ctx.Testldapi.MemberRoles
+                        on (membership.Id = memberRole.MemberId)
+                    join role in ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
                     where (project.Status = ProjectStatus.Active)
-                    where (user.UserId = requestedUser.Id &&
-                        (if roleId < 0 then true else user.RoleId = roleId))
-                    select (Project.FromSql project, Role.FromSql role)
+                    where (membership.UserId = requestedUser.Id)
+                    select (project, role)
                 }
-            return! projectsQuery |> List.executeQueryAsync
+            let resultQuery =
+                if roleId < 0 then  // TODO: Now we can make roleId be an option
+                    query { for project, role in projectsQuery do select (Project.FromSql project, Role.FromSql role) }
+                else
+                    query {
+                        for project, role in projectsQuery do
+                            where (role.Id = roleId)
+                            select (Project.FromSql project, Role.FromSql role)
+                    }
+            return! resultQuery |> List.executeQueryAsync
     }
 
 let projectsAndRolesByUser (connString : string) username =
@@ -366,6 +444,8 @@ let hexStrToBytes (hexStr : string) =
         result.[i/2] <- System.Convert.ToByte(hexStr.[i..i+1], 16)
     result
 
+// TODO: Add salt to this function. Redmine v4 uses SHA1(salt + SHA1(password)), where + is string concatenation.
+// If there is no salt, then the password is only SHA1'ed once, not twice.
 let verifyPass (clearPass : string) (hashPass : string) =
     if hashPass.StartsWith("$2") then
         // Bcrypt
@@ -405,25 +485,51 @@ let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int
         if isAdd then
             let withRole = query {
                 for membership in membershipQuery do
-                    where (membership.RoleId = roleId)
-                    select (Some membership)
+                    join memberRole in ctx.Testldapi.MemberRoles
+                        on (membership.Id = memberRole.MemberId)
+                    where (memberRole.RoleId = roleId)
+                    select (Some memberRole)
                     headOrDefault
             }
             match withRole with
             | None -> // add
-                let sqlMembership = ctx.Testldapi.Members.Create()
-                sqlMembership.MailNotification <- 0y
-                sqlMembership.CreatedOn <- Some (System.DateTime.UtcNow)
-                sqlMembership.ProjectId <- projectId
-                sqlMembership.UserId <- userId
-                sqlMembership.RoleId <- roleId
+                // First, was there a membership record?
+                // If not, we need to add it *and* the corresponding role
+                let! membershipResults = membershipQuery |> List.executeQueryAsync
+                match List.tryHead membershipResults with
+                | Some sqlMembership ->
+                    // Only need to add a new role to this member
+                    let sqlMemberRole = ctx.Testldapi.MemberRoles.Create()
+                    sqlMemberRole.MemberId <- sqlMembership.Id
+                    sqlMemberRole.RoleId <- roleId
+                    sqlMemberRole.InheritedFrom <- None
+                | None ->
+                    // Add a new membership *and* a new role
+                    let sqlMembership = ctx.Testldapi.Members.Create()
+                    sqlMembership.MailNotification <- 0y
+                    sqlMembership.CreatedOn <- Some (System.DateTime.UtcNow)
+                    sqlMembership.ProjectId <- projectId
+                    sqlMembership.UserId <- userId
+                    let sqlMemberRole = ctx.Testldapi.MemberRoles.Create()
+                    sqlMemberRole.MemberId <- sqlMembership.Id
+                    sqlMemberRole.RoleId <- roleId
+                    sqlMemberRole.InheritedFrom <- None
                 do! ctx.SubmitUpdatesAsync()
             | Some sqlMembership ->
                 // Already exists; nothing to do
                 ()
         else
-            let! rowsToDelete = membershipQuery |> List.executeQueryAsync
-            rowsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
+            let! memberRolesToDelete =
+                query {
+                    for membership in membershipQuery do
+                        join memberRole in ctx.Testldapi.MemberRoles
+                            on (membership.Id = memberRole.MemberId)
+                        where (memberRole.MemberId = membership.Id)
+                        select (memberRole)
+                } |> List.executeQueryAsync
+            let! membershipsToDelete = membershipQuery |> List.executeQueryAsync
+            memberRolesToDelete |> List.iter (fun sqlMemberRole -> sqlMemberRole.Delete())
+            membershipsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
             do! ctx.SubmitUpdatesAsync()
     }
 

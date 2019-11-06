@@ -1157,13 +1157,14 @@ CREATE TABLE `projects` (
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
 INSERT INTO `projects` (`id`, `name`, `description`, `homepage`, `is_public`, `parent_id`, `created_on`, `updated_on`, `identifier`, `status`, `lft`, `rgt`, `inherit_members`, `default_version_id`, `default_assigned_to_id`) VALUES
-(1, 'LD Test', 'LD API Test project', '', 0, NULL, '2009-07-23 09:56:52', '2017-02-24 09:56:52', 'ld-test', 1, 1, 2, 0, NULL, NULL),
+(1, 'LD Test', 'LD API Test project', '', 0, NULL, '2009-07-23 09:56:52', '2017-02-24 09:56:52', 'ld-test', 1, NULL, NULL, 0, NULL, NULL),
 (2, 'LD Test Dictionary', 'LD API Test Dictionary project', '', 1, NULL, '2011-07-24 05:24:19', '2017-02-24 02:33:33', 'test-ld-dictionary', 1, 3, 4, 0, NULL, NULL),
 (3, 'LD API Test Flex', 'LD API Test FLEx project', '', 1, NULL, '2012-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-flex', 1, 5, 6, 0, NULL, NULL),
 (4, 'LD API Test Demo', 'LD API Test Demo project', '', 1, NULL, '2013-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-demo', 1, 7, 8, 0, NULL, NULL),
 (5, 'LD API Test AdaptIT', 'LD API Test AdaptIT project', '', 1, NULL, '2014-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-adapt', 1, 9, 10, 0, NULL, NULL),
 (6, 'LD API Test Training', 'LD API Test Training project', '', 1, NULL, '2015-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-training', 1, 11, 12, 0, NULL, NULL),
 (7, 'LD API UTF8 Eñcoding', 'LD API Test UTF8 Eñcoding project', '', 1, NULL, '2016-08-10 07:30:45', '2017-03-01 08:10:20', 'test-ld-ütf8', 1, 13, 14, 0, NULL, NULL),
+(8, 'Missing project', NULL, NULL, 0, NULL, NULL, NULL, NULL, 1, NULL, NULL, 0, NULL, NULL),
 (9,'Thai Food Dictionary','A picture dictionary of Thai food.','',0,NULL,'2009-10-12 03:41:53','2019-10-04 13:22:14','tha-food',1,17,18,0,NULL,NULL),
 (1289,'Sherwood TestSena3 03','','',0,NULL,'2016-08-25 07:58:11','2019-10-04 13:22:22','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),
 (1894,'test-ws-1-flex','','',0,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),

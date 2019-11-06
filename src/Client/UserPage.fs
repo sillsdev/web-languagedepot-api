@@ -52,7 +52,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url LogUserResult LogException
     | UserFound user ->
-        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = sprintf "%s %s" user.FirstName user.LastName; Email = user.Mail } }
+        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = sprintf "%s %s" user.FirstName user.LastName; Email = "unknown@example.com" (* Can't get email until we redesign the API *) } }
         nextModel, Cmd.ofMsg (LogUserResult user)
     | UserNotFound ->
         currentModel, Cmd.none

@@ -7,9 +7,11 @@ open Shared
 open BCrypt.Net
 
 let userStorage = new ConcurrentDictionary<string, User>()
+let mailStorage = new ConcurrentDictionary<string, MailAddress>()
 let projectStorage = new ConcurrentDictionary<string, Project>()
 let roleStorage = new ConcurrentDictionary<int, Role>()
 let membershipStorage = new ConcurrentDictionary<int, Membership>()
+let membershipRoleStorage = new ConcurrentDictionary<int, MembershipRole>()
 
 let counter init =
     let mutable n = init
@@ -19,17 +21,19 @@ let counter init =
 
 let projectIdCounter = counter 0
 let userIdCounter = counter 0
+let mailIdCounter = counter 0
 let roleIdCounter = counter 0
 let membershipIdCounter = counter 0
+let memberRoleIdCounter = counter 0
 
 // TODO: Move this list to the unit test setup
 let roles : Role list = [
-    { Id = 1; Name = "Non member"; Position = Some 1; Assignable = true; Builtin = 1; Permissions = None }
-    { Id = 2; Name = "Anonymous"; Position = Some 2; Assignable = true; Builtin = 2; Permissions = None }
-    { Id = 3; Name = "Manager"; Position = Some 3; Assignable = true; Builtin = 0; Permissions = None }
-    { Id = 4; Name = "Contributer"; Position = Some 4; Assignable = true; Builtin = 0; Permissions = None }
-    { Id = 5; Name = "Obv - do not use"; Position = Some 5; Assignable = true; Builtin = 0; Permissions = None }
-    { Id = 6; Name = "LanguageDepotProgrammer"; Position = Some 6; Assignable = true; Builtin = 0; Permissions = None }
+    { Id = 1; Name = "Non member"; Position = Some 1; Assignable = true; Builtin = 1; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
+    { Id = 2; Name = "Anonymous"; Position = Some 2; Assignable = true; Builtin = 2; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
+    { Id = 3; Name = "Manager"; Position = Some 3; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
+    { Id = 4; Name = "Contributer"; Position = Some 4; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
+    { Id = 5; Name = "Obv - do not use"; Position = Some 5; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
+    { Id = 6; Name = "LanguageDepotProgrammer"; Position = Some 6; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
 ]
 
 let mkProjectForListing (project : Project) : ProjectForListing =
@@ -92,6 +96,19 @@ let projectsByPredicate pred projection =
         | false, _ -> None)
     |> List.ofSeq
 
+let projectsByRoleBasedPredicate pred projection =
+    let memberships = membershipStorage.Values |> Seq.filter (fun membership -> match membershipRoleStorage.TryGetValue membership.Id with | false, _ -> false | true, memberRole -> match roleStorage.TryGetValue memberRole.RoleId with | false, _ -> false | true, role -> pred membership role)
+    let projectsLookup =
+        new Dictionary<int, Project>(
+            projectStorage
+            |> Seq.map (fun kv -> let project = kv.Value in KeyValuePair(project.Id, project)))
+    memberships
+    |> Seq.choose (fun membership ->
+        match projectsLookup.TryGetValue membership.ProjectId with
+        | true, project -> Some (projection membership roleStorage.[membershipRoleStorage.[membership.Id].RoleId] project)
+        | false, _ -> None)
+    |> List.ofSeq
+
 let projectsByUser (username : string) = async {
     match userStorage.TryGetValue username with
     | false, _ ->
@@ -105,7 +122,7 @@ let projectsByUserRole (username : string) (roleId : int) = async {
     | false, _ ->
         return []
     | true, user ->
-        return projectsByPredicate (fun membership -> membership.UserId = user.Id && membership.RoleId = roleId) (fun _ project -> project)
+        return projectsByRoleBasedPredicate (fun membership role -> membership.UserId = user.Id && role.Id = roleId) (fun _ _ project -> project)
 }
 
 let projectsAndRolesByUser (username : string) =
@@ -114,7 +131,7 @@ let projectsAndRolesByUser (username : string) =
         | false, _ ->
             return []
         | true, user ->
-            return projectsByPredicate (fun membership -> membership.UserId = user.Id) (fun membership project -> project, roleStorage.[membership.RoleId])
+            return projectsByRoleBasedPredicate (fun membership _ -> membership.UserId = user.Id) (fun _ role project -> project, role)
     }
 
 let projectsAndRolesByUserRole (username : string) (roleId : int) = async {
@@ -122,7 +139,7 @@ let projectsAndRolesByUserRole (username : string) (roleId : int) = async {
     | false, _ ->
         return []
     | true, user ->
-        return projectsByPredicate (fun membership -> membership.UserId = user.Id && membership.RoleId = roleId) (fun membership project -> project, roleStorage.[membership.RoleId])
+        return projectsByRoleBasedPredicate (fun membership role -> membership.UserId = user.Id && role.Id = roleId) (fun _ role project -> project, role)
 }
 
 let userExists username = async {
@@ -169,21 +186,24 @@ let createProject (projectDto : CreateProject) = async {
                 UpdatedOn = Some now
                 Identifier = Some projectCode
                 Status = ProjectStatus.Active
+                Lft = None
+                Rgt = None
+                InheritMembers = false
+                DefaultVersionId = None
+                DefaultAssignedToId = None
             }
             projectStorage.AddOrUpdate(projectCode, newProject, fun _ _ -> newProject) |> ignore
             return newProject.Id
 }
 
-let mkUserFromDto (userDto : CreateUser) : User =
+let mkUserFromDto (userDto : CreateUser) : User * MailAddress =
     let now = DateTime.UtcNow
-    {
+    let user = {
         Id = userIdCounter()
         Login = userDto.Login
         HashedPassword = BCrypt.HashPassword userDto.CleartextPassword  // TODO: Match the model change once we make it
         FirstName = userDto.FirstName
         LastName = userDto.LastName
-        Mail = userDto.Mail
-        MailNotification = false
         Admin = userDto.Login = "admin"
         Status = UserStatus.Active
         LastLoginOn = None
@@ -192,14 +212,29 @@ let mkUserFromDto (userDto : CreateUser) : User =
         CreatedOn = Some now
         UpdatedOn = Some now
         Type = None
+        IdentityUrl = None
+        MailNotification = "only_my_events"
+        Salt = None
+        MustChangePasswd = false
+        PasswdChangedOn = None }
+    let mail = {
+        Id = mailIdCounter()
+        UserId = user.Id
+        Address = userDto.Mail
+        IsDefault = true
+        Notify = true
+        CreatedOn = now
+        UpdatedOn = now
     }
+    user, mail
 
 let createUser (userDto : CreateUser) = async {
     if userStorage.ContainsKey userDto.Login then
         return -1  // Would become None
     else
-        let newUser = mkUserFromDto userDto
+        let newUser, newMail = mkUserFromDto userDto
         userStorage.AddOrUpdate(userDto.Login, newUser, fun _ _ -> newUser) |> ignore
+        mailStorage.AddOrUpdate(userDto.Login, newMail, fun _ _ -> newMail) |> ignore
         return newUser.Id
 }
 
@@ -246,7 +281,7 @@ let verifyLoginInfo (loginInfo : LoginInfo) = async {
 let addOrRemoveMembershipById (isAdd : bool) (userId : int) (projectId : int) (roleId : int) =
         let membershipFilter (membership : Membership) =
             membership.UserId = userId && membership.ProjectId = projectId &&
-            (if isAdd then membership.RoleId = roleId else true)
+            (if isAdd then roleStorage.[membership.Id].Id = roleId else true)
         let results = membershipStorage.Values |> Seq.filter membershipFilter |> List.ofSeq
         match results with
         | [] ->
@@ -257,15 +292,25 @@ let addOrRemoveMembershipById (isAdd : bool) (userId : int) (projectId : int) (r
                     Id = newId
                     UserId = userId
                     ProjectId = projectId
-                    RoleId = roleId
                     CreatedOn = Some now
                     MailNotification = false
                 }
+                let newMemberRoleId = memberRoleIdCounter()
+                let newMemberRole : MembershipRole = {
+                    Id = newMemberRoleId
+                    MembershipId = newId
+                    RoleId = roleId
+                    InheritedFrom = None
+                }
                 membershipStorage.AddOrUpdate(newId, newMembership, fun _ _ -> newMembership) |> ignore
+                membershipRoleStorage.AddOrUpdate(newMemberRoleId, newMemberRole, fun _ _ -> newMemberRole) |> ignore
             // If removing, no items found = nothing to remove, so success
         | items ->
             if not isAdd then
-                items |> List.iter(fun membership -> membershipStorage.Remove membership.Id |> ignore)
+                items |> List.iter(fun membership ->
+                                    membershipStorage.Remove membership.Id |> ignore
+                                    let memberRoles = membershipRoleStorage.Values |> Seq.filter (fun r -> r.MembershipId = membership.Id) |> List.ofSeq
+                                    memberRoles |> List.iter (fun r -> membershipRoleStorage.Remove r.Id |> ignore))
             // If adding, then existing items mean we're already done
 
 let addOrRemoveMembership (isAdd : bool) (username : string) (projectCode : string) (roleId : int) = async {
