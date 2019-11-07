@@ -26,8 +26,8 @@ type Msg =
 | RootPageMsg of RootPage.Msg
 | UserLoggedIn of Shared.SharedUser option
 | LoginPageMsg of LoginPage.Msg
-| ProjectPageMsg of ProjectPage.Msg
-| UserPageMsg of UserPage.Msg
+| ProjectPageMsg of SingleProjectPage.Msg
+| UserPageMsg of SingleUserPage.Msg
 | NotImplementedPageMsg of NotImplementedPage.Msg
 | UrlChanged of string list
 
@@ -42,8 +42,8 @@ module Nav =
     let parseUrl = function
     // For pages with internal models based on the URL, pass on a message so they can update their internal model
     | [] -> RootPage, Cmd.none
-    | ["user"; login] -> UserPage login, UserPage.Msg.NewUserPageNav login |> UserPageMsg |> Cmd.ofMsg
-    | ["project"; code] -> ProjectPage code, ProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
+    | ["user"; login] -> UserPage login, SingleUserPage.Msg.NewUserPageNav login |> UserPageMsg |> Cmd.ofMsg
+    | ["project"; code] -> ProjectPage code, SingleProjectPage.Msg.NewProjectPageNav code |> ProjectPageMsg |> Cmd.ofMsg
     | ["login"] -> LoginPage, Cmd.none
     | ["logout"] -> RootPage, Cmd.ofMsg (UserLoggedIn None)
     | ["not-implemented"] -> NotImplementedPage, Cmd.none

@@ -1,4 +1,4 @@
-module ProjectPage
+module SingleProjectPage
 
 open Browser
 open Elmish

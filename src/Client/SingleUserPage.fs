@@ -1,4 +1,4 @@
-module UserPage
+module SingleUserPage
 
 open Browser
 open Elmish
@@ -16,9 +16,9 @@ open JsonHelpers
 
 type Msg =
     | FindUser of string
-    | UserFound of User
+    | UserFound of UserDetails
     | UserNotFound
-    | LogUserResult of User
+    | LogUserResult of UserDetails
     | RoleListFetchFailed of exn
     | RoleListUpdated of JsonResult<Role list>
     | NewUserPageNav of string
@@ -27,10 +27,10 @@ type Msg =
     | LogResult of Result<string,string>
     | GetProjectsForUser
     | GetProjectsByRole of int
-    | ProjectsListRetrieved of (Project * Role) list
+    | ProjectsListRetrieved of (ProjectDetails * Role) list
     | LogException of System.Exception
 
-type Model = { RoleList : Role list; ProjectList : (Project * Role) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : Role list; ProjectList : (ProjectDetails * Role) list; CurrentlyViewedUser : SharedUser option; }
 
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
