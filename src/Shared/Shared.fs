@@ -36,13 +36,19 @@ type RoleType =
     | Observer
     | Programmer
     with
-        member _.ToString =
-            function
+        override this.ToString() =
+            match this with
             | Manager -> "Manager"
             | Contributor -> "Contributor"
             | Observer -> "Observer"  // TODO: Switch back to the "do not use" text if it turns out we still want to disallow the Observer role
             | Programmer -> "Programmer"
-        member _.TryOfString (s : string) =
+        member this.ToNumericId() =  // Map to the role IDs used in Redmine database, hardcoded to save a DB lookup
+            match this with
+            | Manager -> 3
+            | Contributor -> 4
+            | Observer -> 5
+            | Programmer -> 6
+        static member TryOfString (s : string) =
            match s.ToLowerInvariant() with
             | "manager" -> Some Manager
             | "contributer" -> Some Contributor  // Misspelling of contributor, but this is how it's spelled in Redmine so we have to deal with it
@@ -53,10 +59,17 @@ type RoleType =
             | "obv - do not use" -> Some Observer
             | "observer" -> Some Observer
             | _ -> None
-        member this.OfString s =
-            match this.TryOfString s with
+        static member OfString s =
+            match RoleType.TryOfString s with
             | Some value -> value
             | None -> failwith (sprintf "Unknown role type %s" s)
+        static member OfNumericId n =
+            match n with
+            | 3 -> Manager
+            | 4 -> Contributor
+            | 5 -> Observer
+            | 6 -> Programmer
+            | _ -> failwith (sprintf "Unknown role ID %d" n)
 
 // TODO: Decide how to convert between role names in Redmine and the role types (Manager, etc) that our future model will use.
 // Right now we just hardcode strings since they're not likely to change anytime soon.

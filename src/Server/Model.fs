@@ -1,7 +1,6 @@
 module Model
 
 open System
-open BCrypt.Net
 open FSharp.Data.Sql
 open Shared
 
@@ -18,98 +17,29 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            UseOptionTypes = true>
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
-type Shared.Project with
+type Dto.ProjectDetails with
     static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
-        Id = sqlProject.Id
-        Name = sqlProject.Name
-        Description = sqlProject.Description
-        Homepage = sqlProject.Homepage
-        IsPublic = sqlProject.IsPublic <> 0y
-        ParentId = sqlProject.ParentId
-        CreatedOn = sqlProject.CreatedOn
-        UpdatedOn = sqlProject.UpdatedOn
-        Identifier = sqlProject.Identifier
-        Status = sqlProject.Status
-        Lft = None
-        Rgt = None
-        InheritMembers = false
-        DefaultVersionId = None
-        DefaultAssignedToId = None
+        Dto.ProjectDetails.code = sqlProject.Identifier |> Option.defaultWith (fun _ -> sqlProject.Name.ToLowerInvariant().Replace(" ", "_"))
+        Dto.ProjectDetails.name = sqlProject.Name
+        Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
+        Dto.ProjectDetails.membership = None  // TODO: Write function to populate this from a query
     }
 
-type Shared.ProjectForListing with
-    static member FromSql ((id,identifier,createdOn,name,description) : int * Option<string> * Option<DateTime> * string * Option<string>) = {
-        Id = id
-        Name = name
-        CreatedOn = createdOn
-        Identifier = identifier
-        Typ = GuessProjectType.guessType identifier name description
-    }
-
-type Shared.User with
+type Dto.UserDetails with
     static member FromSql (sqlUser : sql.dataContext.``testldapi.usersEntity``) = {
-        Id = sqlUser.Id
-        Login = sqlUser.Login
-        HashedPassword = sqlUser.HashedPassword
-        FirstName = sqlUser.Firstname
-        LastName = sqlUser.Lastname
-        Admin = sqlUser.Admin <> 0y
-        Status = sqlUser.Status
-        LastLoginOn = sqlUser.LastLoginOn
-        Language = sqlUser.Language
-        AuthSourceId = sqlUser.AuthSourceId
-        CreatedOn = sqlUser.CreatedOn
-        UpdatedOn = sqlUser.UpdatedOn
-        Type = sqlUser.Type
-        IdentityUrl = sqlUser.IdentityUrl
-        MailNotification = sqlUser.MailNotification
-        Salt = sqlUser.Salt
-        MustChangePasswd = sqlUser.MustChangePasswd <> 0y
-        PasswdChangedOn = sqlUser.PasswdChangedOn
+        Dto.UserDetails.username = sqlUser.Login
+        Dto.UserDetails.firstName = sqlUser.Firstname
+        Dto.UserDetails.lastName = sqlUser.Lastname
+        Dto.UserDetails.emailAddresses = []  // TODO: Populate from query
+        Dto.UserDetails.language = sqlUser.Language |> Option.defaultValue "en"
     }
 
-type Shared.MailAddress with
-    static member FromSql (sqlMail : sql.dataContext.``testldapi.email_addressesEntity``) = {
-        Id = sqlMail.Id
-        UserId = sqlMail.UserId
-        Address = sqlMail.Address
-        IsDefault = sqlMail.IsDefault <> 0y
-        Notify = sqlMail.Notify <> 0y
-        CreatedOn = sqlMail.CreatedOn
-        UpdatedOn = sqlMail.UpdatedOn
-    }
-
-type Shared.Role with
+type Dto.RoleDetails with
     static member FromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = {
-        Id = sqlRole.Id
-        Name = sqlRole.Name
-        Position = sqlRole.Position
-        Assignable = (sqlRole.Assignable |> Option.defaultValue 0y) <> 0y
-        Builtin = sqlRole.Builtin
-        Permissions = sqlRole.Permissions
-        IssuesVisibility = sqlRole.IssuesVisibility
-        UsersVisibility = sqlRole.UsersVisibility
-        TimeEntriesVisibility = sqlRole.TimeEntriesVisibility
-        AllRolesManaged = sqlRole.AllRolesManaged <> 0y
-        Settings = sqlRole.Settings
+        Dto.RoleDetails.name = sqlRole.Name
+        Dto.RoleDetails.``type`` = RoleType.OfString sqlRole.Name
     }
-
-type Shared.Membership with
-    static member FromSql (sqlMember : sql.dataContext.``testldapi.membersEntity``) = {
-        Id = sqlMember.Id
-        UserId = sqlMember.UserId
-        ProjectId = sqlMember.ProjectId
-        CreatedOn = sqlMember.CreatedOn
-        MailNotification = sqlMember.MailNotification <> 0y
-    }
-
-type Shared.MembershipRole with
-    static member FromSql (sqlMemberRole : sql.dataContext.``testldapi.member_rolesEntity``) = {
-        Id = sqlMemberRole.Id
-        MembershipId = sqlMemberRole.MemberId
-        RoleId = sqlMemberRole.RoleId
-        InheritedFrom = sqlMemberRole.InheritedFrom
-    }
+    static member TypeFromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = RoleType.OfString sqlRole.Name
 
 type ListUsers = unit -> Async<Dto.UserDetails list>
 type ListProjects = bool -> Async<Dto.ProjectList>
@@ -141,7 +71,7 @@ let usersQueryAsync (connString : string) () =
         let ctx = sql.GetDataContext connString
         let usersQuery = query {
             for user in ctx.Testldapi.Users do
-                select (User.FromSql user)
+                select (Dto.UserDetails.FromSql user)
         }
         return! usersQuery |> List.executeQueryAsync
     }
@@ -153,10 +83,9 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
             for project in ctx.Testldapi.Projects do
                 where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
                 where (project.Status = ProjectStatus.Active)
-                select (project.Id, project.Identifier, project.CreatedOn, project.Name, project.Description)
+                select (Dto.ProjectDetails.FromSql project)
         }
-        let! projects = projectsQuery |> List.executeQueryAsync
-        return projects |> List.map ProjectForListing.FromSql
+        return! projectsQuery |> List.executeQueryAsync
     }
 
 let projectsCountAsync (connString : string) () =
@@ -172,18 +101,11 @@ let projectsCountAsync (connString : string) () =
 
 let realProjectsCountAsync (connString : string) () =
     async {
-        let ctx = sql.GetDataContext connString
-        let projectsQuery = query {
-            for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
-                where (project.Status = ProjectStatus.Active)
-                select (project.Id, project.Identifier, project.CreatedOn, project.Name, project.Description)
-            }
-        let! projects = projectsQuery |> Seq.executeQueryAsync
+        let! projects = projectsQueryAsync connString true
         return
             projects
-            |> Seq.map ProjectForListing.FromSql
-            |> Seq.filter (fun project -> project.Typ <> Test && not ((defaultArg project.Identifier "").StartsWith "test"))
+            |> Seq.map (fun project -> project, GuessProjectType.guessType project.code project.name project.description)
+            |> Seq.filter (fun (project, projectType) -> projectType <> Test && not (project.code.StartsWith "test"))
             |> Seq.length
     }
 
@@ -223,7 +145,7 @@ let getUser (connString : string) username =
         return query {
             for user in ctx.Testldapi.Users do
                 where (user.Login = username)
-                select (Some (User.FromSql user))
+                select (Some (Dto.UserDetails.FromSql user))
                 exactlyOneOrDefault }
     }
 
@@ -235,7 +157,7 @@ let getProject (connString : string) (isPublic : bool) projectCode =
                 where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
                 where (not project.Identifier.IsNone)
                 where (project.Identifier.Value = projectCode)
-                select (Some (ProjectDetails.FromSql project))
+                select (Some (Dto.ProjectDetails.FromSql project))
                 exactlyOneOrDefault }
     }
 
@@ -245,47 +167,51 @@ let createProject (connString : string) (project : Api.CreateProject) =
         let ctx = sql.GetDataContext connString
         let sqlProject = ctx.Testldapi.Projects.Create()
         // sqlProject.Id <- project.Id // int
-        sqlProject.Name <- project.Name // string
-        sqlProject.Description <- project.Description // string option // Long
+        sqlProject.Name <- project.name // string
+        sqlProject.Description <- project.description // string option // Long
         // sqlProject.Homepage <- project.Homepage // string option // Long
         // sqlProject.IsPublic <- if project.IsPublic then 1y else 0y
         // sqlProject.ParentId <- project.ParentId // int option
-        // sqlProject.CreatedOn <- project.CreatedOn // System.DateTime option
-        // sqlProject.UpdatedOn <- project.UpdatedOn // System.DateTime option
-        sqlProject.Identifier <- project.Identifier // string option // 20 chars
+        let now = DateTime.UtcNow  // TODO: Pass in the "now" value to use, so unit tests can be more deterministic
+        sqlProject.CreatedOn <- Some now
+        sqlProject.UpdatedOn <- Some now
+        sqlProject.Identifier <- Some project.code // string option // 20 chars
         sqlProject.Status <- ProjectStatus.Active
         do! ctx.SubmitUpdatesAsync()
         return sqlProject.Id
     }
 
-let createUserImpl (connString : string) (user : Shared.CreateUser) =
+let createUserImpl (connString : string) (user : Api.CreateUser) =
     async {
         let ctx = sql.GetDataContext connString
-        let hashedPassword = BCrypt.HashPassword user.CleartextPassword  // TODO: Password hashing doesn't belong in the model
+        let salt = PasswordHashing.createSalt (Guid.NewGuid())
+        let hashedPassword = PasswordHashing.hashPassword salt user.password
+
         let sqlUser = ctx.Testldapi.Users.Create()
-        sqlUser.Firstname <- user.FirstName
-        sqlUser.Lastname <- user.LastName
+        sqlUser.Firstname <- user.firstName
+        sqlUser.Lastname <- user.lastName
         sqlUser.HashedPassword <- hashedPassword
-        sqlUser.Login <- user.Login
+        sqlUser.Login <- user.username
+        do! ctx.SubmitUpdatesAsync()  // This populates sqlUser.Id, which we'll need when we create email address records
 
-        do! ctx.SubmitUpdatesAsync()
-
-        if not (String.IsNullOrEmpty user.Mail) then
-            let sqlMail = ctx.Testldapi.EmailAddresses.Create()
-            let now = DateTime.UtcNow
-            sqlMail.UserId <- sqlUser.Id
-            sqlMail.Address <- user.Mail
-            sqlMail.IsDefault <- 1y
-            sqlMail.Notify <- 0y
-            sqlMail.CreatedOn <- now
-            sqlMail.UpdatedOn <- now
+        let now = DateTime.UtcNow
+        if not (List.isEmpty user.emailAddresses) then
+            user.emailAddresses |> List.iter (fun email ->
+                let sqlMail = ctx.Testldapi.EmailAddresses.Create()
+                sqlMail.UserId <- sqlUser.Id
+                sqlMail.Address <- email
+                sqlMail.IsDefault <- 1y
+                sqlMail.Notify <- 0y
+                sqlMail.CreatedOn <- now
+                sqlMail.UpdatedOn <- now
+            )
             do! ctx.SubmitUpdatesAsync()
         return sqlUser.Id
     }
 
-let createUser (connString : string) (user : Shared.CreateUser) = createUserImpl connString user
+let createUser (connString : string) (user : Api.CreateUser) = createUserImpl connString user
 
-let upsertUser (connString : string) (login : string) (updatedUser : Shared.UpdateUser) =
+let upsertUser (connString : string) (login : string) (updatedUser : Api.CreateUser) =
     async {
         let ctx = sql.GetDataContext connString
         let maybeUser = query {
@@ -296,42 +222,21 @@ let upsertUser (connString : string) (login : string) (updatedUser : Shared.Upda
         }
         match maybeUser with
         | None ->
-            let createUser = {
-                Login = updatedUser.User.Login
-                CleartextPassword = ""  // TODO: Figure out how to deal with passwords in user-upsert model
-                FirstName = updatedUser.User.FirstName
-                LastName = updatedUser.User.LastName
-                Mail = ""  // TODO: Revamp user model to include email again. Deal with having multiple email addresses, one of which will be default
-            }
-            return! createUserImpl connString createUser  // TODO: Figure out what the data model for users in the API will be; surely it won't *exactly* match Redmine. Then write createUserImpl to take that data model, and use it here. (See above comment, too.)
+            return! createUserImpl connString updatedUser
         | Some sqlUser ->
-            // let sqlUser = ctx.Testldapi.Users.Create()  // TODO: Write this
-            sqlUser.Firstname <- updatedUser.User.FirstName
-            sqlUser.Lastname <- updatedUser.User.LastName
-            match maybeUser, updatedUser.NewPassword with
-            | None, None -> sqlUser.HashedPassword <- ""  // New user and no password specified: blank password so they can't log in yet
-            | Some user, None -> ()  // Existing user: not updating the password
-            | _, Some password -> sqlUser.HashedPassword <- BCrypt.HashPassword password
-            sqlUser.Login <- updatedUser.User.Login
+            sqlUser.Login <- updatedUser.username
+            sqlUser.Firstname <- updatedUser.firstName
+            sqlUser.Lastname <- updatedUser.lastName
+            // Password should be changed with changePassword API, so we don't update the password here
             // TODO: Deal with email addresses changing -- API doesn't allow it now, but it should
-            sqlUser.Admin <- if updatedUser.User.Admin then 1y else 0y
-            sqlUser.Status <- updatedUser.User.Status
-            sqlUser.LastLoginOn <- updatedUser.User.LastLoginOn
-            sqlUser.Language <- updatedUser.User.Language
-            sqlUser.AuthSourceId <- updatedUser.User.AuthSourceId
-            sqlUser.CreatedOn <- updatedUser.User.CreatedOn
-            sqlUser.UpdatedOn <- updatedUser.User.UpdatedOn
-            sqlUser.Type <- updatedUser.User.Type
-            sqlUser.IdentityUrl <- updatedUser.User.IdentityUrl
-            sqlUser.MailNotification <- updatedUser.User.MailNotification
-            sqlUser.Salt <- updatedUser.User.Salt
-            sqlUser.MustChangePasswd <- if updatedUser.User.MustChangePasswd then 1y else 0y
-            sqlUser.PasswdChangedOn <- updatedUser.User.PasswdChangedOn
+            sqlUser.Language <- updatedUser.language
+            sqlUser.UpdatedOn <- Some DateTime.UtcNow  // TODO: Pass in "now" value to use, so unit tests can be deterministic
+            sqlUser.MustChangePasswd <- if updatedUser.mustChangePassword then 1y else 0y
             do! ctx.SubmitUpdatesAsync()
             return sqlUser.Id
     }
 
-let changePassword (connString : string) (login : string) (changeRequest : Shared.ChangePassword) =
+let changePassword (connString : string) (login : string) (changeRequest : Api.ChangePassword) =
     async {
         let ctx = sql.GetDataContext connString
         let maybeUser = query {
@@ -343,230 +248,164 @@ let changePassword (connString : string) (login : string) (changeRequest : Share
         match maybeUser with
         | None -> return false
         | Some sqlUser ->
-            let verified = BCrypt.Verify(changeRequest.OldPassword, sqlUser.HashedPassword)
-            if verified then
-                sqlUser.HashedPassword <- BCrypt.HashPassword changeRequest.NewPassword
+            let allowed = sqlUser.Admin <> 0y || sqlUser.Login = changeRequest.username
+            // TODO: This puts business logic (admins can change passwords) into the model, and it really belongs in the controller. Fix this.
+            if allowed then
+                sqlUser.HashedPassword <- PasswordHashing.hashPassword (sqlUser.Salt |> Option.defaultValue "") changeRequest.password
                 do! ctx.SubmitUpdatesAsync()
                 return true
             else
                 return false
     }
 
-let projectsByUserRole (connString : string) username (roleId : RoleType) =
-    async {
-        let ctx = sql.GetDataContext connString
-        let requestedUser = query {
-            for user in ctx.Testldapi.Users do
-                where (user.Login = username)
-                select (Some user)
-                exactlyOneOrDefault }
-        match requestedUser with
-        | None -> return []
-        | Some requestedUser ->
-            let projectsQuery =
-                query {
-                    for project in ctx.Testldapi.Projects do
-                        join membership in ctx.Testldapi.Members
-                            on (project.Id = membership.ProjectId)
-                        where (project.Status = ProjectStatus.Active)
-                        where (membership.UserId = requestedUser.Id)
-                        select (project, membership)
-                    }
-            let resultQuery =
-                if roleId < 0 then  // TODO: Now we can make roleId be an option
-                    query { for project, _ in projectsQuery do select (ProjectDetails.FromSql project) }
-                else
-                    query {
-                        for project, membership in projectsQuery do
-                            join memberRole in ctx.Testldapi.MemberRoles
-                                on (membership.Id = memberRole.MemberId)
-                            where (memberRole.RoleId = roleId)
-                            select (ProjectDetails.FromSql project)
-                    }
-            return! resultQuery |> List.executeQueryAsync
+let projectsAndRolesByUser (connString : string) username = async {
+    let ctx = sql.GetDataContext connString
+    let projectsQuery = query {
+        for user in ctx.Testldapi.Users do
+        where (user.Login = username)
+        join membership in ctx.Testldapi.Members
+            on (user.Id = membership.UserId)
+        join project in ctx.Testldapi.Projects
+            on (membership.ProjectId = project.Id)
+        where (project.Status = ProjectStatus.Active)
+        join memberRole in ctx.Testldapi.MemberRoles
+            on (membership.Id = memberRole.MemberId)
+
+        select (Dto.ProjectDetails.FromSql project, RoleType.OfNumericId memberRole.RoleId)
     }
+    let! projectsAndRoles = projectsQuery |> List.executeQueryAsync
+    return projectsAndRoles |> List.groupBy fst |> List.map (fun (proj, projAndRoles) -> (proj, List.map snd projAndRoles))
+}
 
-let projectsByUser username connString = projectsByUserRole connString username -1
+let projectsAndRolesByUserRole connString username (roleType : RoleType) = async {
+    let! projectsAndRoles = projectsAndRolesByUser connString username
+    return projectsAndRoles |> List.filter (fun (proj, roles) -> roles |> List.contains roleType)
+}
 
-// This should produce something like:
-// SELECT identifier,users.login,roles.name FROM
-//   projects
-//     RIGHT JOIN members ON members.project_id = projects.id
-//     RIGHT JOIN member_roles ON members.id = member_id
-//     LEFT JOIN users ON user_id = users.id
-//     LEFT JOIN roles ON role_id = roles.id ;
+let projectsByUserRole connString username (roleType : RoleType) = async {
+    let! projectsAndRoles = projectsAndRolesByUser connString username
+    return projectsAndRoles |> List.filter (fun (proj, roles) -> roles |> List.contains roleType) |> List.map fst
+}
 
-let projectsAndRolesByUserRole (connString : string) username (roleId : RoleType) =
-    async {
-        let ctx = sql.GetDataContext connString
-        let requestedUser = query {
-            for user in ctx.Testldapi.Users do
-                where (user.Login = username)
-                select (Some user)
-                exactlyOneOrDefault }
-        match requestedUser with
-        | None -> return []
-        | Some requestedUser ->
-            let projectsQuery = query {
-                for project in ctx.Testldapi.Projects do
-                    join membership in ctx.Testldapi.Members
-                        on (project.Id = membership.ProjectId)
-                    join memberRole in ctx.Testldapi.MemberRoles
-                        on (membership.Id = memberRole.MemberId)
-                    join role in ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
-                    where (project.Status = ProjectStatus.Active)
-                    where (membership.UserId = requestedUser.Id)
-                    select (project, role)
-                }
-            let resultQuery =
-                if roleId < 0 then  // TODO: Now we can make roleId be an option
-                    query { for project, role in projectsQuery do select (Project.FromSql project, Role.FromSql role) }
-                else
-                    query {
-                        for project, role in projectsQuery do
-                            where (role.Id = roleId)
-                            select (Project.FromSql project, Role.FromSql role)
-                    }
-            return! resultQuery |> List.executeQueryAsync
-    }
-
-let projectsAndRolesByUser (connString : string) username =
-    projectsAndRolesByUserRole connString username -1
+let projectsByUser connString username = async {
+    let! projectsAndRoles = projectsAndRolesByUser connString username
+    return projectsAndRoles |> List.map fst
+}
 
 let roleNames (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         let roleQuery = query {
             for role in ctx.Testldapi.Roles do
-                select (Role.FromSql role)
+                select (Dto.RoleDetails.FromSql role)
         }
         return! roleQuery |> List.executeQueryAsync
     }
 
-let hexStrToBytes (hexStr : string) =
-    let len = hexStr.Length
-    if len % 2 <> 0 then
-        raise (ArgumentException("hexStr", "Hex-encoded byte strings must have an even length"))
-    let result = Array.zeroCreate (len / 2)
-    for i in 0..2..len - 1 do
-        result.[i/2] <- System.Convert.ToByte(hexStr.[i..i+1], 16)
-    result
+let verifyPass (clearPass : string) (salt : string) (hashPass : string) =
+    let calculatedHash = PasswordHashing.hashPassword salt clearPass
+    calculatedHash = hashPass
 
-// TODO: Add salt to this function. Redmine v4 uses SHA1(salt + SHA1(password)), where + is string concatenation.
-// If there is no salt, then the password is only SHA1'ed once, not twice.
-let verifyPass (clearPass : string) (hashPass : string) =
-    if hashPass.StartsWith("$2") then
-        // Bcrypt
-        false  // TODO: Implement
-    elif hashPass.Length = 32 then
-        // MD5
-        false  // TODO: Implement? Or just reject that one bit of test data?
-    elif hashPass.Length = 40 then
-        // SHA1
-        let utf8 = System.Text.UTF8Encoding(false)
-        let clearBytes = utf8.GetBytes(clearPass)
-        let hashBytes = hexStrToBytes hashPass
-        use sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider()
-        sha1.ComputeHash(clearBytes) = hashBytes
-    else
-        false
-
-let verifyLoginInfo (connString : string) (loginInfo : Shared.LoginInfo) =
+let verifyLoginInfo (connString : string) (loginCredentials : Api.LoginCredentials) =
     async {
         let ctx = sql.GetDataContext connString
         let! user = query { for user in ctx.Testldapi.Users do
-                                where (user.Login = loginInfo.username)
+                                where (user.Login = loginCredentials.username)
                                 select user } |> Seq.tryHeadAsync
         match user with
         | None -> return false
-        | Some user -> return verifyPass loginInfo.password user.HashedPassword
+        | Some user -> return verifyPass loginCredentials.password (user.Salt |> Option.defaultValue "") user.HashedPassword
     }
 
-
-let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int) (projectId : int) (roleId : int) =
+let addMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =
     async {
         let ctx = sql.GetDataContext connString
         let membershipQuery = query {
             for membership in ctx.Testldapi.Members do
                 where (membership.ProjectId = projectId && membership.UserId = userId)
                 select membership }
-        if isAdd then
-            let withRole = query {
+        let withRole = query {
+            for membership in membershipQuery do
+                join memberRole in ctx.Testldapi.MemberRoles
+                    on (membership.Id = memberRole.MemberId)
+                where (memberRole.RoleId = roleId)
+                select (Some memberRole)
+                headOrDefault
+        }
+        match withRole with
+        | Some _ -> () // Already exists, no need to change it
+        | None -> // add
+            // First, was there a membership record?
+            // If not, we need to add it *and* the corresponding role
+            let! maybeMember = membershipQuery |> Seq.tryHeadAsync
+            match maybeMember with
+            | Some membership ->
+                // User is a member already but with a different role
+                let memberRole = ctx.Testldapi.MemberRoles.Create()
+                memberRole.MemberId <- membership.Id
+                memberRole.RoleId <- roleId
+                memberRole.InheritedFrom <- None
+                do! ctx.SubmitUpdatesAsync()
+            | None ->
+                // User is not yet a member under any role
+                let membership = ctx.Testldapi.Members.Create()
+                membership.MailNotification <- 0y
+                membership.CreatedOn <- Some (System.DateTime.UtcNow)
+                membership.ProjectId <- projectId
+                membership.UserId <- userId
+                do! ctx.SubmitUpdatesAsync()  // Populate membership.Id
+                let memberRole = ctx.Testldapi.MemberRoles.Create()
+                memberRole.MemberId <- membership.Id
+                memberRole.RoleId <- roleId
+                memberRole.InheritedFrom <- None
+                do! ctx.SubmitUpdatesAsync()
+    }
+
+let removeMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let membershipQuery = query {
+            for membership in ctx.Testldapi.Members do
+                where (membership.ProjectId = projectId && membership.UserId = userId)
+                select membership }
+        let! memberRolesToDelete =
+            query {
                 for membership in membershipQuery do
                     join memberRole in ctx.Testldapi.MemberRoles
                         on (membership.Id = memberRole.MemberId)
-                    where (memberRole.RoleId = roleId)
-                    select (Some memberRole)
-                    headOrDefault
-            }
-            match withRole with
-            | None -> // add
-                // First, was there a membership record?
-                // If not, we need to add it *and* the corresponding role
-                let! membershipResults = membershipQuery |> List.executeQueryAsync
-                match List.tryHead membershipResults with
-                | Some sqlMembership ->
-                    // Only need to add a new role to this member
-                    let sqlMemberRole = ctx.Testldapi.MemberRoles.Create()
-                    sqlMemberRole.MemberId <- sqlMembership.Id
-                    sqlMemberRole.RoleId <- roleId
-                    sqlMemberRole.InheritedFrom <- None
-                | None ->
-                    // Add a new membership *and* a new role
-                    let sqlMembership = ctx.Testldapi.Members.Create()
-                    sqlMembership.MailNotification <- 0y
-                    sqlMembership.CreatedOn <- Some (System.DateTime.UtcNow)
-                    sqlMembership.ProjectId <- projectId
-                    sqlMembership.UserId <- userId
-                    let sqlMemberRole = ctx.Testldapi.MemberRoles.Create()
-                    sqlMemberRole.MemberId <- sqlMembership.Id
-                    sqlMemberRole.RoleId <- roleId
-                    sqlMemberRole.InheritedFrom <- None
-                do! ctx.SubmitUpdatesAsync()
-            | Some sqlMembership ->
-                // Already exists; nothing to do
-                ()
-        else
-            let! memberRolesToDelete =
-                query {
-                    for membership in membershipQuery do
-                        join memberRole in ctx.Testldapi.MemberRoles
-                            on (membership.Id = memberRole.MemberId)
-                        where (memberRole.MemberId = membership.Id)
-                        select (memberRole)
-                } |> List.executeQueryAsync
-            let! membershipsToDelete = membershipQuery |> List.executeQueryAsync
-            memberRolesToDelete |> List.iter (fun sqlMemberRole -> sqlMemberRole.Delete())
-            membershipsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
-            do! ctx.SubmitUpdatesAsync()
+                    where (memberRole.MemberId = membership.Id)
+                    select (memberRole)
+            } |> List.executeQueryAsync
+        let! membershipsToDelete = membershipQuery |> List.executeQueryAsync
+        memberRolesToDelete |> List.iter (fun sqlMemberRole -> sqlMemberRole.Delete())
+        membershipsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
+        do! ctx.SubmitUpdatesAsync()
     }
 
-let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleId : RoleType) =
+let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleType : RoleType) =
+    // Most of the code checking usernames and project codes and fetching numeric IDs is shared between add and remove operations
     async {
         let ctx = sql.GetDataContext connString
-        let maybeUser = query {
+        let roleId = roleType.ToNumericId()
+        let maybeUserId = query {
             for user in ctx.Testldapi.Users do
                 where (user.Login = username)
-                select (Some user)
+                select (Some user.Id)
                 exactlyOneOrDefault }
-        let maybeProject = query {
+        let maybeProjectId = query {
             for project in ctx.Testldapi.Projects do
-                where (project.Status = ProjectStatus.Active)
-                where (project.Identifier.IsSome)
-                where (project.Identifier.Value = projectCode)
-                select (Some project)
+                where (project.Status = ProjectStatus.Active &&
+                       project.Identifier.IsSome &&
+                       project.Identifier.Value = projectCode)
+                select (Some project.Id)
                 exactlyOneOrDefault }
-        let validRole = query {
-            for role in ctx.Testldapi.Roles do
-                select role.Id
-                contains roleId }
-        match maybeUser, maybeProject, validRole with
-        | None, _, _
-        | _, None, _
-        | _, _, false ->
+        match maybeUserId, maybeProjectId with
+        | None, _
+        | _, None ->
             return false
-        | Some sqlUser, Some sqlProject, true ->
-            do! addOrRemoveMembershipById connString isAdd sqlUser.Id sqlProject.Id roleId
+        | Some userId, Some projectId ->
+            let fn = if isAdd then addMembershipById else removeMembershipById
+            do! fn connString userId projectId roleId
             return true
     }
 
@@ -609,8 +448,8 @@ module ModelRegistration =
             .AddSingleton<ChangePassword>(changePassword connString)
             .AddSingleton<ProjectsByUser>(projectsByUser connString)
             .AddSingleton<ProjectsByUserRole>(projectsByUserRole connString)
-            .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser connString)
             .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole connString)
+            .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser connString)
             .AddSingleton<VerifyLoginInfo>(verifyLoginInfo connString)
             .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership connString true))
             .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership connString false))

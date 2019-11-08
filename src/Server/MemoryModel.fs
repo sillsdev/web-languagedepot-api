@@ -44,7 +44,7 @@ let countProjects = Model.CountProjects (fun() -> async {
 })
 
 let isRealProject (proj : Dto.ProjectDetails) =
-    let projType = GuessProjectType.guessType (Some proj.code) proj.name (Some proj.description)
+    let projType = GuessProjectType.guessType proj.code proj.name proj.description
     projType <> Test && not (proj.code.StartsWith "test")
 
 let countRealProjects = Model.CountRealProjects (fun() -> async {

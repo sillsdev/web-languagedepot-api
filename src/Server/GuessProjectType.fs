@@ -72,8 +72,8 @@ let guessTypeFromNameOrDescription (nameOrDesc : string) =
     else
         Unknown
 
-let guessType (identifier : string option) (name : string) (description : string option) =
-    let guessFromId = guessTypeFromId (defaultArg identifier "")
+let guessType (identifier : string) (name : string) (description : string) =
+    let guessFromId = guessTypeFromId identifier
     if guessFromId <> Unknown then
         // printfn "Guessed %A from id %s" guessFromId (defaultArg identifier "(no id)")
         guessFromId
@@ -84,4 +84,4 @@ let guessType (identifier : string option) (name : string) (description : string
             guessFromName
         else
             // printfn "Guessed %A from description %s" (guessTypeFromNameOrDescription (defaultArg description "")) (defaultArg description "")
-            guessTypeFromNameOrDescription (defaultArg description "")
+            guessTypeFromNameOrDescription description
