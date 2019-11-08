@@ -4,15 +4,40 @@ open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open Shared
-open BCrypt.Net
+open PasswordHashing
 
-let userStorage = new ConcurrentDictionary<string, User>()
-let mailStorage = new ConcurrentDictionary<string, MailAddress>()
-let projectStorage = new ConcurrentDictionary<string, Project>()
-let roleStorage = new ConcurrentDictionary<int, Role>()
-let membershipStorage = new ConcurrentDictionary<int, Membership>()
-let membershipRoleStorage = new ConcurrentDictionary<int, MembershipRole>()
+// REVAMP. This is going to produce DTO results rather than mimicking the MySQL database.
+// So it'll be a bit like a mock server.
 
+type PasswordDetails = {
+    salt: string
+    hashedPassword: string
+}
+
+let userStorage = new ConcurrentDictionary<string, Dto.UserDetails>()
+let projectStorage = new ConcurrentDictionary<string, Dto.ProjectDetails>()
+let passwordStorage = new ConcurrentDictionary<string, PasswordDetails>()
+// MemoryStorage doesn't keep track of the "must change password" bool since that's not in Dto.UserDetails, so some tests might not work. TODO: Add that bool into userStorage
+
+let storeNewPassword username cleartextPassword =
+    passwordStorage.AddOrUpdate(username,
+        (fun _ -> let salt = createSalt (Guid.NewGuid()) in { salt = salt; hashedPassword = hashPassword salt cleartextPassword }),
+        (fun _ oldPassword -> { oldPassword with hashedPassword = hashPassword oldPassword.salt cleartextPassword })) |> ignore
+
+let blankUserRecord : Dto.UserDetails = {
+    username = ""
+    firstName = ""
+    lastName = ""
+    emailAddresses = []
+    language = "" }
+
+let blankProjectRecord : Dto.ProjectDetails = {
+    code = ""
+    name = ""
+    description = ""
+    membership = None }
+
+(* Not needed now that the API design is username/projectCode-centric
 let counter init =
     let mutable n = init
     fun() ->
@@ -25,18 +50,112 @@ let mailIdCounter = counter 0
 let roleIdCounter = counter 0
 let membershipIdCounter = counter 0
 let memberRoleIdCounter = counter 0
+*)
 
 // TODO: Move this list to the unit test setup
-let roles : Role list = [
-    { Id = 1; Name = "Non member"; Position = Some 1; Assignable = true; Builtin = 1; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-    { Id = 2; Name = "Anonymous"; Position = Some 2; Assignable = true; Builtin = 2; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-    { Id = 3; Name = "Manager"; Position = Some 3; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-    { Id = 4; Name = "Contributer"; Position = Some 4; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-    { Id = 5; Name = "Obv - do not use"; Position = Some 5; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-    { Id = 6; Name = "LanguageDepotProgrammer"; Position = Some 6; Assignable = true; Builtin = 0; Permissions = None; IssuesVisibility = "default"; UsersVisibility = "all"; TimeEntriesVisibility = "all"; AllRolesManaged = true; Settings = None }
-]
+let roles = Dto.standardRoles
 
-let mkProjectForListing (project : Project) : ProjectForListing =
+type KeyReplacementError =
+    | TargetKeyAlreadyExists
+    | InvalidTargetKey
+    | OriginalKeyNotFound
+
+let isValidUsername (username : string) = // TODO: Move to some kind of validation module
+    System.Text.RegularExpressions.Regex(@"^[-_@.a-zA-Z0-9]+$").IsMatch username
+    // Alphanumerics plus hyphen, underscore, dot, and @ sign (so emails can double as usernames)
+    // TODO: Decide whether to remove @ from valid usernames, but then allow logging in with email addresses
+
+let isValidProjectCode (projectCode : string) = // TODO: Move to some kind of validation module
+    // Lowercase alphanumerics plus hyphen or underscore, but NOT nothing but digits
+    System.Text.RegularExpressions.Regex(@"^[-_a-z0-9]+$").IsMatch projectCode
+    && not (System.Text.RegularExpressions.Regex(@"^\d+$").IsMatch projectCode)
+
+let usernameReplacementLock = obj()
+let projectCodeReplacementLock = obj()
+
+let replaceUsername oldUsername newUsername =
+    let mutable replacements = []
+    let listReplace old ``new`` lst = lst |> List.map (fun x -> if x = old then ``new`` else x)
+    let mkNewMembers (oldMembers : Dto.MemberList) : Dto.MemberList = {
+        managers = oldMembers.managers |> listReplace oldUsername newUsername
+        contributors = oldMembers.contributors |> listReplace oldUsername newUsername
+        observers = oldMembers.observers |> listReplace oldUsername newUsername
+        programmers = oldMembers.programmers |> listReplace oldUsername newUsername
+    }
+    let mkNewProject _projectCode (oldProject : Dto.ProjectDetails) =
+        match oldProject.membership with
+        | None -> oldProject
+        | Some members ->
+            { oldProject with membership = Some (mkNewMembers members) }
+    for item in projectStorage do
+        let projectCode, project = item.Key, item.Value
+        match project.membership with
+        | None -> ()
+        | Some members ->
+            if members.managers |> List.contains oldUsername ||
+               members.contributors |> List.contains oldUsername ||
+               members.observers |> List.contains oldUsername ||
+               members.programmers |> List.contains oldUsername then
+                replacements <- (projectCode, project) :: replacements
+    // Check for overlapping username as late as possible; this won't eliminate race conditions, but it will minimize them as much as we can
+    if not <| isValidUsername newUsername then
+        Error InvalidTargetKey
+    elif userStorage.ContainsKey newUsername then
+        Error TargetKeyAlreadyExists
+    else
+        match userStorage.TryGetValue oldUsername with
+        | false, _ -> Error OriginalKeyNotFound
+        | true, oldUserRecord ->
+            lock usernameReplacementLock (fun () ->
+                for projectCode, project in replacements do
+                    projectStorage.AddOrUpdate(projectCode, project, mkNewProject) |> ignore
+                let newUserRecord = { oldUserRecord with username = newUsername }
+                userStorage.AddOrUpdate(newUsername, newUserRecord, fun _ _ -> newUserRecord) |> ignore
+                userStorage.TryRemove(oldUsername) |> ignore
+                match passwordStorage.TryGetValue oldUsername with
+                | false, _ -> ()
+                | true, passwordRecord ->
+                    passwordStorage.AddOrUpdate(newUsername, passwordRecord, fun _ _ -> passwordRecord) |> ignore
+                    passwordStorage.TryRemove(oldUsername) |> ignore
+                Ok ()
+        )
+
+let replaceProjectCode oldCode newCode =
+    if not <| isValidProjectCode newCode then
+        Error InvalidTargetKey
+    elif projectStorage.ContainsKey newCode then
+        Error TargetKeyAlreadyExists
+    else
+        match projectStorage.TryGetValue oldCode with
+        | false, _ -> Error OriginalKeyNotFound
+        | true, oldProjectRecord ->
+            lock projectCodeReplacementLock (fun () ->
+                let newProjectRecord = { oldProjectRecord with code = newCode }
+                projectStorage.AddOrUpdate(newCode, newProjectRecord, fun _ _ -> newProjectRecord) |> ignore
+                projectStorage.TryRemove(oldCode) |> ignore
+                Ok ()
+        )
+
+let addUser username userDetails =
+    userStorage.AddOrUpdate(username, userDetails, fun _ _ -> userDetails)
+
+let addProject projectCode projectDetails =
+    userStorage.AddOrUpdate(projectCode, projectDetails, fun _ _ -> projectDetails)
+
+let editUser username (editFn : Dto.UserDetails -> Dto.UserDetails) =
+    userStorage.AddOrUpdate(username, blankUserRecord, fun _ -> editFn)
+
+let editProject projectCode (editFn : Dto.ProjectDetails -> Dto.ProjectDetails) =
+    projectStorage.AddOrUpdate(projectCode, blankProjectRecord, fun _ -> editFn)
+
+let delUser username =
+    userStorage.TryRemove username |> ignore
+
+let delProject projectCode =
+    projectStorage.TryRemove projectCode |> ignore
+
+(*
+let mkProjectForListing (project : ProjectDetails) : ProjectForListing =
     {
         Id = project.Id
         Name = project.Name
@@ -78,7 +197,7 @@ let listRoles() = async {
     return roleStorage.Values |> List.ofSeq
 }
 
-let withUsernameCheck (username : string) (cont : User -> 'a list) =
+let withUsernameCheck (username : string) (cont : UserDetails -> 'a list) =
     match userStorage.TryGetValue username with
     | false, _ -> []
     | true, user -> cont user
@@ -86,7 +205,7 @@ let withUsernameCheck (username : string) (cont : User -> 'a list) =
 let projectsByPredicate pred projection =
     let memberships = membershipStorage.Values |> Seq.filter pred
     let projectsLookup =
-        new Dictionary<int, Project>(
+        new Dictionary<int, ProjectDetails>(
             projectStorage
             |> Seq.map (fun kv -> let project = kv.Value in KeyValuePair(project.Id, project)))
     memberships
@@ -99,7 +218,7 @@ let projectsByPredicate pred projection =
 let projectsByRoleBasedPredicate pred projection =
     let memberships = membershipStorage.Values |> Seq.filter (fun membership -> match membershipRoleStorage.TryGetValue membership.Id with | false, _ -> false | true, memberRole -> match roleStorage.TryGetValue memberRole.RoleId with | false, _ -> false | true, role -> pred membership role)
     let projectsLookup =
-        new Dictionary<int, Project>(
+        new Dictionary<int, ProjectDetails>(
             projectStorage
             |> Seq.map (fun kv -> let project = kv.Value in KeyValuePair(project.Id, project)))
     memberships
@@ -175,7 +294,7 @@ let createProject (projectDto : CreateProject) = async {
             return -1  // Would become None
         else
             let now = DateTime.UtcNow
-            let newProject : Project = {
+            let newProject : ProjectDetails = {
                 Id = projectIdCounter()
                 Name = projectDto.Name
                 Description = projectDto.Description
@@ -196,7 +315,7 @@ let createProject (projectDto : CreateProject) = async {
             return newProject.Id
 }
 
-let mkUserFromDto (userDto : CreateUser) : User * MailAddress =
+let mkUserFromDto (userDto : CreateUser) : UserDetails * MailAddress =
     let now = DateTime.UtcNow
     let user = {
         Id = userIdCounter()
@@ -370,3 +489,4 @@ module MemoryStorageRegistration =
             .AddSingleton<Model.RemoveMembership>(Model.RemoveMembership (addOrRemoveMembership false))
             .AddSingleton<Model.ArchiveProject>(archiveProject)
         |> ignore
+*)

@@ -11,8 +11,10 @@
         <Compile Include="..\Shared\Shared.fs" />
         <Compile Include="SettingsHelper.fs" />
         <Compile Include="GuessProjectType.fs" />
+        <Compile Include="PasswordHashing.fs" />
         <Compile Include="Model.fs" />
         <Compile Include="MemoryStorage.fs" />
+        <Compile Include="MemoryModel.fs" />
         <Compile Include="Controller.fs" />
         <Compile Include="Server.fs" />
     </ItemGroup>

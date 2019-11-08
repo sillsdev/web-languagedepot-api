@@ -111,29 +111,29 @@ type Shared.MembershipRole with
         InheritedFrom = sqlMemberRole.InheritedFrom
     }
 
-type ListUsers = unit -> Async<User list>
-type ListProjects = bool -> Async<ProjectForListing list>
+type ListUsers = unit -> Async<Dto.UserDetails list>
+type ListProjects = bool -> Async<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
 type CountUsers = CountUsers of (unit -> Async<int>)
 type CountProjects = CountProjects of (unit -> Async<int>)
 type CountRealProjects = CountRealProjects of (unit -> Async<int>)
-type ListRoles = unit -> Async<Role list>
-type ProjectsByUser = string -> Async<Project list>
-type ProjectsByUserRole = string -> int -> Async<Project list>
-type ProjectsAndRolesByUser = string -> Async<(Project * Role) list>
-type ProjectsAndRolesByUserRole = string -> int -> Async<(Project * Role) list>
+type ListRoles = unit -> Async<Dto.RoleDetails list>
+type ProjectsByUser = string -> Async<Dto.ProjectDetails list>
+type ProjectsByUserRole = string -> RoleType -> Async<Dto.ProjectDetails list>
+type ProjectsAndRolesByUser = string -> Async<(Dto.ProjectDetails * RoleType list) list>
+type ProjectsAndRolesByUserRole = string -> RoleType -> Async<(Dto.ProjectDetails * RoleType list) list>
 // Ditto for these two FooExists types: need a DU
 type UserExists = UserExists of (string -> Async<bool>)
 type ProjectExists = ProjectExists of (string -> Async<bool>)
-type GetUser = string -> Async<User option>
-type GetProject = bool -> string -> Async<Project option>
-type CreateProject = Shared.CreateProject -> Async<int>
-type CreateUser = Shared.CreateUser -> Async<int>
-type UpsertUser = string -> Shared.UpdateUser -> Async<int>
-type ChangePassword = string -> Shared.ChangePassword -> Async<bool>
-type VerifyLoginInfo = LoginInfo -> Async<bool>
-type AddMembership = AddMembership of (string -> string -> int -> Async<bool>)
-type RemoveMembership = RemoveMembership of (string -> string -> int -> Async<bool>)
+type GetUser = string -> Async<Dto.UserDetails option>
+type GetProject = bool -> string -> Async<Dto.ProjectDetails option>
+type CreateProject = Api.CreateProject -> Async<int>
+type CreateUser = Api.CreateUser -> Async<int>
+type UpsertUser = string -> Api.CreateUser -> Async<int>
+type ChangePassword = string -> Api.ChangePassword -> Async<bool>
+type VerifyLoginInfo = Api.LoginCredentials -> Async<bool>
+type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
+type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
 
 let usersQueryAsync (connString : string) () =
@@ -235,11 +235,11 @@ let getProject (connString : string) (isPublic : bool) projectCode =
                 where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
                 where (not project.Identifier.IsNone)
                 where (project.Identifier.Value = projectCode)
-                select (Some (Project.FromSql project))
+                select (Some (ProjectDetails.FromSql project))
                 exactlyOneOrDefault }
     }
 
-let createProject (connString : string) (project : Shared.CreateProject) =
+let createProject (connString : string) (project : Api.CreateProject) =
     async {
         // TODO: Handle case where project already exists, and reject if it does. Also, API shape needs to become Async<int option> instead of Async<int>
         let ctx = sql.GetDataContext connString
@@ -352,7 +352,7 @@ let changePassword (connString : string) (login : string) (changeRequest : Share
                 return false
     }
 
-let projectsByUserRole (connString : string) username roleId =
+let projectsByUserRole (connString : string) username (roleId : RoleType) =
     async {
         let ctx = sql.GetDataContext connString
         let requestedUser = query {
@@ -374,21 +374,29 @@ let projectsByUserRole (connString : string) username roleId =
                     }
             let resultQuery =
                 if roleId < 0 then  // TODO: Now we can make roleId be an option
-                    query { for project, _ in projectsQuery do select (Project.FromSql project) }
+                    query { for project, _ in projectsQuery do select (ProjectDetails.FromSql project) }
                 else
                     query {
                         for project, membership in projectsQuery do
                             join memberRole in ctx.Testldapi.MemberRoles
                                 on (membership.Id = memberRole.MemberId)
                             where (memberRole.RoleId = roleId)
-                            select (Project.FromSql project)
+                            select (ProjectDetails.FromSql project)
                     }
             return! resultQuery |> List.executeQueryAsync
     }
 
 let projectsByUser username connString = projectsByUserRole connString username -1
 
-let projectsAndRolesByUserRole (connString : string) username (roleId : int) =
+// This should produce something like:
+// SELECT identifier,users.login,roles.name FROM
+//   projects
+//     RIGHT JOIN members ON members.project_id = projects.id
+//     RIGHT JOIN member_roles ON members.id = member_id
+//     LEFT JOIN users ON user_id = users.id
+//     LEFT JOIN roles ON role_id = roles.id ;
+
+let projectsAndRolesByUserRole (connString : string) username (roleId : RoleType) =
     async {
         let ctx = sql.GetDataContext connString
         let requestedUser = query {
@@ -533,7 +541,7 @@ let addOrRemoveMembershipById (connString : string) (isAdd : bool) (userId : int
             do! ctx.SubmitUpdatesAsync()
     }
 
-let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleId : int) =
+let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleId : RoleType) =
     async {
         let ctx = sql.GetDataContext connString
         let maybeUser = query {
