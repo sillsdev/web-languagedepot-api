@@ -146,23 +146,17 @@ module Api =
 
     type MembershipRecordApiCall = {
         username : string
-        role : string  // One of four values allowed : "manager", "contributor", "observer", "programmer" -- will be converted to MembershipType
+        role : string  // One of four values allowed : "manager", "contributor", "observer", "programmer" -- will be converted to RoleType
     }
-
-    type MembershipType =
-        | Manager
-        | Contributor
-        | Observer
-        | Programmer
 
     type MembershipRecordInternal = {
         username : string
-        role : MembershipType
+        role : RoleType
     }
 
     type EditProjectMembershipApiCall = {
         login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        projectCode : string
+        // projectCode : string  // Not needed; the URL provides this
         add : MembershipRecordApiCall list option
         remove : MembershipRecordApiCall list option
         removeUser : string option

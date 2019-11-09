@@ -82,14 +82,16 @@ let userExists projectCode : HttpHandler =
     withServiceFunc
         (fun (Model.UserExists userExists) -> userExists projectCode)
 
-let projectsAndRolesByUser login : HttpHandler =
-    withLoggedInServiceFunc
-        (fun (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser login)
+let projectsAndRolesByUser username (loginCredentials : Api.LoginCredentials) : HttpHandler =
+    withLoggedInServiceFunc loginCredentials
+        (fun (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser username)
 
-let projectsAndRolesByUserRole (login, roleTypeStr) : HttpHandler =
-    let roleType = RoleType.TryOfString
-    withLoggedInServiceFunc
-        (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole login roleType)
+let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
+    match RoleType.TryOfString roleName with
+    | None -> jsonError (sprintf "Unrecognized role name %s" roleName)
+    | Some roleType ->
+        withLoggedInServiceFunc loginCredentials
+            (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole username roleType)
 
 let addUserToProjectWithRoleType (projectCode, username, roleType) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
@@ -104,22 +106,25 @@ let addUserToProjectWithRoleType (projectCode, username, roleType) : HttpHandler
 
 let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     match RoleType.TryOfString roleName with
-    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName)
+    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName) next ctx
     | Some roleType ->
         return! addUserToProjectWithRoleType (projectCode,username,roleType) next ctx
 }
 
 let addUserToProject (projectCode, username) = addUserToProjectWithRoleType (projectCode,username,Contributor)
 
-let removeUserFromProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let removeUserFromProject (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-    let! success = removeMember username projectCode -1  // TODO: Better API; it makes no sense to specify a role for the removal
-    let result =
-        if success then
-            Ok (sprintf "Removed %s from %s" username projectCode)
-        else
-            Error (sprintf "Failed to remove %s from %s" username projectCode)
-    return! jsonResult result next ctx
+    match RoleType.TryOfString roleName with
+    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName) next ctx
+    | Some roleType ->
+        let! success = removeMember username projectCode roleType  // TODO: Add the "removeUserFromAllRolesInProject" function (or whatever I want to call it) mentioned in a TODO in Model.fs
+        let result =
+            if success then
+                Ok (sprintf "Removed %s from %s" username projectCode)
+            else
+                Error (sprintf "Failed to remove %s from %s" username projectCode)
+        return! jsonResult result next ctx
 }
 
 let addOrRemoveUserFromProjectInternal projectCode (patchData : Api.EditProjectMembershipInternalDetails) =
@@ -128,7 +133,15 @@ let addOrRemoveUserFromProjectInternal projectCode (patchData : Api.EditProjectM
     | Api.EditProjectMembershipInternalDetails.RemoveUserRoles memberships -> RequestErrors.badRequest (json (Error "Remove not yet implemented"))
     | Api.EditProjectMembershipInternalDetails.RemoveUserEntirely username -> RequestErrors.badRequest (json (Error "RemoveUser not yet implemented"))
 
-let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershipApiCall) =
+let mapRoles (apiRoles : Api.MembershipRecordApiCall list) : Result<Api.MembershipRecordInternal list, string> =
+    let roleTypes = apiRoles |> List.map (fun apiRole -> apiRole, RoleType.TryOfString apiRole.role)
+    let errors = roleTypes |> List.choose (fun (apiRole, roleType) -> if roleType.IsNone then Some apiRole else None)
+    if List.isEmpty errors then
+        roleTypes |> List.map (fun (apiRole, roleType) -> { username = apiRole.username; role = roleType.Value } : Api.MembershipRecordInternal) |> Ok
+    else
+        errors |> List.map (fun apiRole -> apiRole.role) |> String.concat ", " |> sprintf "Unrecognized role names: %s" |> Error
+
+let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershipApiCall) : HttpHandler =
     match patchData.add, patchData.remove, patchData.removeUser with
     | Some _, Some _, Some _
     | Some _, Some _, None
@@ -136,9 +149,17 @@ let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershi
     | None,   Some _, Some _ ->
         RequestErrors.badRequest (json (Error "Specify exactly one of add, remove, or removeUser"))
     | Some add, None, None ->
-        addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.AddUserRoles add)
+        match mapRoles add with
+        | Ok addInternal ->
+            addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.AddUserRoles addInternal)
+        | Error msg ->
+            jsonError msg
     | None, Some remove, None ->
-        addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserRoles remove)
+        match mapRoles remove with
+        | Ok removeInternal ->
+            addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserRoles removeInternal)
+        | Error msg ->
+            jsonError msg
     | None, None, Some removeUser ->
         addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserEntirely removeUser)
     | None, None, None ->
@@ -169,7 +190,7 @@ let changePassword login (updateData : Api.ChangePassword) =
         (fun (changePassword : Model.ChangePassword) -> changePassword login updateData)
 
 // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
-let verifyPassword login (loginCredentials : Api.LoginCredentials) =
+let verifyPassword username (loginCredentials : Api.LoginCredentials) =
     withServiceFunc
         (fun (verifyLoginInfo : Model.VerifyLoginCredentials) -> verifyLoginInfo loginCredentials)
 
@@ -180,7 +201,7 @@ let createProject (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFun
     if alreadyExists then
         return! jsonError "Project code already exists; pick another one" next ctx
     else
-        return! withServiceFunc (fun (createProject : Model.CreateProject) -> createProject proj)
+        return! withServiceFunc (fun (createProject : Model.CreateProject) -> createProject proj) next ctx
 }
 
 let countUsers : HttpHandler =

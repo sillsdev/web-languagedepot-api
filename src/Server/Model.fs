@@ -64,6 +64,7 @@ type ChangePassword = string -> Api.ChangePassword -> Async<bool>
 type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
 type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
+// TODO: Add a RemoveUserEntirelyFromProject that's similar to RemoveMembership but doesn't specify a role
 type ArchiveProject = bool -> string -> Async<bool>
 
 let usersQueryAsync (connString : string) () =
