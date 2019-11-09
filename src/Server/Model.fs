@@ -1,6 +1,7 @@
 module Model
 
 open System
+open System.Linq
 open FSharp.Data.Sql
 open Shared
 
@@ -22,17 +23,35 @@ type Dto.ProjectDetails with
         Dto.ProjectDetails.code = sqlProject.Identifier |> Option.defaultWith (fun _ -> sqlProject.Name.ToLowerInvariant().Replace(" ", "_"))
         Dto.ProjectDetails.name = sqlProject.Name
         Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
-        Dto.ProjectDetails.membership = None  // TODO: Write function to populate this from a query
+        Dto.ProjectDetails.membership = None
     }
+    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * int * string) list) =
+        match sqlProjectAndRoles |> List.tryHead with
+        | None -> None
+        | Some (sqlProject, _, _) ->
+            try
+                let memberships = sqlProjectAndRoles |> List.map (fun (_, roleId, username) -> RoleType.OfNumericId roleId, username)
+                let byRole roleType = memberships |> List.filter (fst >> ((=) roleType)) |> List.map snd
+                { Dto.ProjectDetails.FromSql sqlProject with
+                    membership = Some {
+                        managers = byRole Manager
+                        contributors = byRole Contributor
+                        observers = byRole Observer
+                        programmers = byRole Programmer
+                } } |> Some
+            with _ -> None  // Note: This "swallows" the exception. TODO: Convert to a Result<'a, string> or something similar so we can propagate the exception
 
 type Dto.UserDetails with
-    static member FromSql (sqlUser : sql.dataContext.``testldapi.usersEntity``) = {
-        Dto.UserDetails.username = sqlUser.Login
-        Dto.UserDetails.firstName = sqlUser.Firstname
-        Dto.UserDetails.lastName = sqlUser.Lastname
-        Dto.UserDetails.emailAddresses = []  // TODO: Populate from query
-        Dto.UserDetails.language = sqlUser.Language |> Option.defaultValue "en"
-    }
+    static member FromSql (sqlUserAndEmails : (sql.dataContext.``testldapi.usersEntity`` * (sbyte * string)) list) =
+        let sqlUser = sqlUserAndEmails |> List.head |> fst
+        let emails = sqlUserAndEmails |> List.sortBy snd |> List.map (fun (_, (_, address)) -> address)
+        {
+            Dto.UserDetails.username = sqlUser.Login
+            Dto.UserDetails.firstName = sqlUser.Firstname
+            Dto.UserDetails.lastName = sqlUser.Lastname
+            Dto.UserDetails.emailAddresses = emails
+            Dto.UserDetails.language = sqlUser.Language |> Option.defaultValue "en"
+        }
 
 type Dto.RoleDetails with
     static member FromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = {
@@ -64,7 +83,7 @@ type ChangePassword = string -> Api.ChangePassword -> Async<bool>
 type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
 type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
-// TODO: Add a RemoveUserEntirelyFromProject that's similar to RemoveMembership but doesn't specify a role
+type RemoveUserFromAllRolesInProject = RemoveUserFromAllRolesInProject of (string -> string -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
 
 let usersQueryAsync (connString : string) () =
@@ -72,9 +91,12 @@ let usersQueryAsync (connString : string) () =
         let ctx = sql.GetDataContext connString
         let usersQuery = query {
             for user in ctx.Testldapi.Users do
-                select (Dto.UserDetails.FromSql user)
+            join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+            select (user, (mail.IsDefault * -1y, mail.Address))  // Multiply by -1 so sorting in FromSql will work right
         }
-        return! usersQuery |> List.executeQueryAsync
+        let! users = usersQuery |> List.executeQueryAsync
+        let usersAndEmails = users |> List.groupBy fst |> List.map (snd >> Dto.UserDetails.FromSql)
+        return usersAndEmails
     }
 
 let projectsQueryAsync (connString : string) (isPublic : bool) =
@@ -82,9 +104,9 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
             for project in ctx.Testldapi.Projects do
-                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
-                where (project.Status = ProjectStatus.Active)
-                select (Dto.ProjectDetails.FromSql project)
+            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+            where (project.Status = ProjectStatus.Active)
+            select (Dto.ProjectDetails.FromSql project)
         }
         return! projectsQuery |> List.executeQueryAsync
     }
@@ -94,9 +116,9 @@ let projectsCountAsync (connString : string) () =
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
-                where (project.Status = ProjectStatus.Active)
-                count
+            where (project.IsPublic > 0y)
+            where (project.Status = ProjectStatus.Active)
+            count
         }
     }
 
@@ -124,8 +146,8 @@ let userExists (connString : string) username =
         let ctx = sql.GetDataContext connString
         return query {
             for user in ctx.Testldapi.Users do
-                select user.Login
-                contains username }
+            select user.Login
+            contains username }
     }
 
 let projectExists (connString : string) projectCode =
@@ -133,21 +155,26 @@ let projectExists (connString : string) projectCode =
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Testldapi.Projects do
-                where (project.IsPublic > 0y)
-                // We do NOT check where (project.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
-                where (project.Identifier.IsSome)
-                select project.Identifier.Value
-                contains projectCode }
+            where (project.IsPublic > 0y)
+            // We do NOT check where (project.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
+            where (project.Identifier.IsSome)
+            select project.Identifier.Value
+            contains projectCode }
     }
 
 let getUser (connString : string) username =
     async {
         let ctx = sql.GetDataContext connString
-        return query {
-            for user in ctx.Testldapi.Users do
+        let! userAndEmails =
+            query {
+                for user in ctx.Testldapi.Users do
                 where (user.Login = username)
-                select (Some (Dto.UserDetails.FromSql user))
-                exactlyOneOrDefault }
+                join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                select (user, (mail.IsDefault * -1y, mail.Address))  // Multiply by -1 so sorting in FromSql will work right
+            } |> List.executeQueryAsync
+        if userAndEmails |> List.isEmpty
+        then return None
+        else return userAndEmails |> Dto.UserDetails.FromSql |> Some
     }
 
 let getProject (connString : string) (isPublic : bool) projectCode =
@@ -155,11 +182,28 @@ let getProject (connString : string) (isPublic : bool) projectCode =
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Testldapi.Projects do
-                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
-                where (not project.Identifier.IsNone)
-                where (project.Identifier.Value = projectCode)
-                select (Some (Dto.ProjectDetails.FromSql project))
-                exactlyOneOrDefault }
+            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+            where (not project.Identifier.IsNone)
+            where (project.Identifier.Value = projectCode)
+            select (Some (Dto.ProjectDetails.FromSql project))
+            exactlyOneOrDefault }
+    }
+
+let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
+    async {
+        let ctx = sql.GetDataContext connString
+        let projectQuery = query {
+            for project in ctx.Testldapi.Projects do
+            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+            where (not project.Identifier.IsNone)
+            where (project.Identifier.Value = projectCode)
+            join membership in ctx.Testldapi.Members on (project.Id = membership.ProjectId)
+            join role in ctx.Testldapi.MemberRoles on (membership.Id = role.MemberId)
+            join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
+            select (project, role.RoleId, user.Login)
+        }
+        let! projectAndRoles = projectQuery |> List.executeQueryAsync
+        return  Dto.ProjectDetails.FromSqlWithRoles projectAndRoles
     }
 
 let createProject (connString : string) (project : Api.CreateProject) =
@@ -362,13 +406,9 @@ let addMembershipById (connString : string) (userId : int) (projectId : int) (ro
                 do! ctx.SubmitUpdatesAsync()
     }
 
-let removeMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =
+let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql.dataContext.``testldapi.membersEntity``>) =
     async {
         let ctx = sql.GetDataContext connString
-        let membershipQuery = query {
-            for membership in ctx.Testldapi.Members do
-                where (membership.ProjectId = projectId && membership.UserId = userId)
-                select membership }
         let! memberRolesToDelete =
             query {
                 for membership in membershipQuery do
@@ -381,6 +421,30 @@ let removeMembershipById (connString : string) (userId : int) (projectId : int) 
         memberRolesToDelete |> List.iter (fun sqlMemberRole -> sqlMemberRole.Delete())
         membershipsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
         do! ctx.SubmitUpdatesAsync()
+    }
+
+let removeMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let membershipQuery = query {
+            for membership in ctx.Testldapi.Members do
+                where (membership.ProjectId = projectId && membership.UserId = userId)
+                select membership }
+        do! removeMembershipImpl connString membershipQuery
+    }
+
+let removeUserFromAllRolesInProject (connString : string) (username : string) (projectCode : string) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let membershipQuery = query {
+            for membership in ctx.Testldapi.Members do
+            join project in ctx.Testldapi.Projects on (membership.ProjectId = project.Id)
+            where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
+            join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
+            where (user.Login = username)
+            select membership }
+        do! removeMembershipImpl connString membershipQuery
+        return true
     }
 
 let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleType : RoleType) =
@@ -442,7 +506,7 @@ module ModelRegistration =
             .AddSingleton<UserExists>(UserExists (userExists connString))
             .AddSingleton<ProjectExists>(ProjectExists (projectExists connString))
             .AddSingleton<GetUser>(getUser connString)
-            .AddSingleton<GetProject>(getProject connString)
+            .AddSingleton<GetProject>(getProjectWithRoles connString)
             .AddSingleton<CreateProject>(createProject connString)
             .AddSingleton<CreateUser>(createUser connString)
             .AddSingleton<UpsertUser>(upsertUser connString)
@@ -454,5 +518,6 @@ module ModelRegistration =
             .AddSingleton<VerifyLoginCredentials>(verifyLoginInfo connString)
             .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership connString true))
             .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership connString false))
+            .AddSingleton<RemoveUserFromAllRolesInProject>(RemoveUserFromAllRolesInProject (removeUserFromAllRolesInProject connString))
             .AddSingleton<ArchiveProject>(archiveProject connString)
         |> ignore

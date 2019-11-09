@@ -23,7 +23,7 @@ type CreateUser = Api.CreateUser -> Async<int>
 type UpsertUser = string -> Api.CreateUser -> Async<int>
 type ChangePassword = string -> Api.ChangePassword -> Async<bool>
 type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
-type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)  // TODO: Change this in Model.fs as well
+type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
 
@@ -94,8 +94,6 @@ let projectsByUserRole : Model.ProjectsByUserRole = fun username roleType -> asy
     let! projectsAndRoles = projectsAndRolesByUserRole username roleType
     return projectsAndRoles |> List.map fst
 }
-
-// TODO: Keep implementing the internal API below.
 
 let userExists = Model.UserExists (fun username -> async {
     return MemoryStorage.userStorage.ContainsKey username
@@ -207,6 +205,33 @@ let addOrRemoveMembership isAdd username projectCode (roleType : RoleType) = asy
 let addMembership = Model.AddMembership (addOrRemoveMembership true)
 let removeMembership = Model.RemoveMembership (addOrRemoveMembership false)
 
+let removeUserFromAllRolesInProject = Model.RemoveUserFromAllRolesInProject (fun (username : string) (projectCode : string) -> async {
+    match MemoryStorage.userStorage.TryGetValue username with
+    | false, _ -> return false
+    | true, _ ->  // We don't need user details, we just want to make sure the user exists
+        match MemoryStorage.projectStorage.TryGetValue projectCode with
+        | false, _ -> return false
+        | true, projectDetails ->
+            let update (details : Dto.ProjectDetails) =
+                let memberList = details.membership |> Option.defaultWith (fun _ -> {
+                    managers = []
+                    contributors = []
+                    observers = []
+                    programmers = []
+                })
+                let newMemberList =
+                    { memberList with
+                        managers = addOrRemoveInList false username memberList.managers
+                        contributors = addOrRemoveInList false username memberList.contributors
+                        observers = addOrRemoveInList false username memberList.observers
+                        programmers = addOrRemoveInList false username memberList.programmers }
+                { details with membership = Some newMemberList }
+            MemoryStorage.projectStorage.AddOrUpdate(username,
+                (fun _ -> update projectDetails),
+                (fun _ oldDetails -> update oldDetails)) |> ignore
+            return true
+})
+
 let archiveProject : Model.ArchiveProject = fun isPublic projectCode -> raise (System.NotImplementedException("Not implemented"))
 
 module ModelRegistration =
@@ -235,5 +260,6 @@ module ModelRegistration =
             .AddSingleton<Model.VerifyLoginCredentials>(verifyLoginCredentials)
             .AddSingleton<Model.AddMembership>(addMembership)
             .AddSingleton<Model.RemoveMembership>(removeMembership)
+            .AddSingleton<Model.RemoveUserFromAllRolesInProject>(removeUserFromAllRolesInProject)
             .AddSingleton<Model.ArchiveProject>(archiveProject)
         |> ignore

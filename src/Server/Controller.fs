@@ -31,16 +31,23 @@ let withServiceFunc (impl : 'service -> Async<'a>) (next : HttpFunc) (ctx : Http
     return! jsonSuccess result next ctx
 }
 
+let withServiceFuncWrappingExceptions (impl : 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+    try
+        return! withServiceFunc impl next ctx
+    with e ->
+        return! jsonError e.Message next ctx
+}
+
 let withServiceFuncOrNotFound (impl : 'service -> Async<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
+
     let! resultOpt = impl serviceFunction
     match resultOpt with
-    | Some result -> return! json result next ctx
+    | Some result -> return! jsonSuccess result next ctx
     | None -> return! RequestErrors.notFound (jsonError msg) next ctx
 }
 
 let withLoggedInServiceFunc (loginCredentials : Api.LoginCredentials) (impl : 'service -> Async<'a>) =
-    // TODO: Rewrite functinos that call this to pass login credentials from their API data
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
         let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
         let! goodLogin = verifyLoginCredentials loginCredentials
@@ -113,7 +120,7 @@ let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = f
 
 let addUserToProject (projectCode, username) = addUserToProjectWithRoleType (projectCode,username,Contributor)
 
-let removeUserFromProject (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let removeUserFromOneRoleInProject (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
     match RoleType.TryOfString roleName with
     | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName) next ctx
@@ -121,12 +128,22 @@ let removeUserFromProject (projectCode, username, roleName) : HttpHandler = fun 
         let! success = removeMember username projectCode roleType  // TODO: Add the "removeUserFromAllRolesInProject" function (or whatever I want to call it) mentioned in a TODO in Model.fs
         let result =
             if success then
-                Ok (sprintf "Removed %s from %s" username projectCode)
+                Ok (sprintf "Removed %s from role %s in %s" username roleName projectCode)
             else
-                Error (sprintf "Failed to remove %s from %s" username projectCode)
+                Error (sprintf "Failed to remove %s from role %s in %s" username roleName projectCode)
         return! jsonResult result next ctx
 }
 
+let removeUserFromAllRolesInProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    let (Model.RemoveUserFromAllRolesInProject removeUserFromAllRolesInProject) = ctx.GetService<Model.RemoveUserFromAllRolesInProject>()
+    let! success = removeUserFromAllRolesInProject username projectCode
+    let result =
+        if success then
+            Ok (sprintf "Removed %s from %s" username projectCode)
+        else
+            Error (sprintf "Failed to remove %s from %s" username projectCode)
+    return! jsonResult result next ctx
+}
 let addOrRemoveUserFromProjectInternal projectCode (patchData : Api.EditProjectMembershipInternalDetails) =
     match patchData with
     | Api.EditProjectMembershipInternalDetails.AddUserRoles memberships -> RequestErrors.badRequest (json (Error "Add not yet implemented"))
