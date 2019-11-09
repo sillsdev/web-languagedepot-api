@@ -22,7 +22,7 @@ type CreateProject = Api.CreateProject -> Async<int>
 type CreateUser = Api.CreateUser -> Async<int>
 type UpsertUser = string -> Api.CreateUser -> Async<int>
 type ChangePassword = string -> Api.ChangePassword -> Async<bool>
-type VerifyLoginInfo = Api.LoginCredentials -> Async<bool>
+type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
 type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)  // TODO: Change this in Model.fs as well
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
@@ -163,7 +163,7 @@ let changePassword : Model.ChangePassword = fun username changePasswordApiData -
     return true
 }
 
-let verifyLoginInfo : Model.VerifyLoginInfo = fun loginCredentials -> async {
+let verifyLoginCredentials : Model.VerifyLoginCredentials = fun loginCredentials -> async {
     match MemoryStorage.passwordStorage.TryGetValue loginCredentials.username with
     | false, _ -> return false  // User not found also returns false, so we don't disclose the lack of a username
     | true, passwordDetails ->
@@ -232,7 +232,7 @@ module ModelRegistration =
             .AddSingleton<Model.ProjectsByUserRole>(projectsByUserRole)
             .AddSingleton<Model.ProjectsAndRolesByUser>(projectsAndRolesByUser)
             .AddSingleton<Model.ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole)
-            .AddSingleton<Model.VerifyLoginInfo>(verifyLoginInfo)
+            .AddSingleton<Model.VerifyLoginCredentials>(verifyLoginCredentials)
             .AddSingleton<Model.AddMembership>(addMembership)
             .AddSingleton<Model.RemoveMembership>(removeMembership)
             .AddSingleton<Model.ArchiveProject>(archiveProject)

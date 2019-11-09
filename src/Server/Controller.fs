@@ -39,102 +39,119 @@ let withServiceFuncOrNotFound (impl : 'service -> Async<'a option>) (msg : strin
     | None -> return! RequestErrors.notFound (jsonError msg) next ctx
 }
 
-let withLoggedInServiceFunc (impl : 'service -> Async<'a>) =
-    bindJson<Shared.LoginInfo> (fun loginInfo (next : HttpFunc) (ctx : HttpContext) -> task {
-        let verifyLoginInfo = ctx.GetService<Model.VerifyLoginInfo>()
-        let! goodLogin = verifyLoginInfo loginInfo
+let withLoggedInServiceFunc (loginCredentials : Api.LoginCredentials) (impl : 'service -> Async<'a>) =
+    // TODO: Rewrite functinos that call this to pass login credentials from their API data
+    fun (next : HttpFunc) (ctx : HttpContext) -> task {
+        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
+        let! goodLogin = verifyLoginCredentials loginCredentials
         if goodLogin then
             return! withServiceFunc impl next ctx
         else
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
-)
 
 let getAllPrivateProjects : HttpHandler =
     withServiceFunc
         (fun (listProjects : Model.ListProjects) -> listProjects false)
 
-let getPrivateProject projId : HttpHandler =
+let getPrivateProject projectCode : HttpHandler =
     withServiceFuncOrNotFound
-        (fun (getProject : Model.GetProject) -> getProject false projId)
-        (sprintf "Project code %s not found" projId)
+        (fun (getProject : Model.GetProject) -> getProject false projectCode)
+        (sprintf "Project code %s not found" projectCode)
 
 let getAllPublicProjects : HttpHandler =
     withServiceFunc
         (fun (listProjects : Model.ListProjects) -> listProjects true)
 
-let getPublicProject projId : HttpHandler =
+let getPublicProject projectCode : HttpHandler =
     withServiceFuncOrNotFound
-        (fun (getProject : Model.GetProject) -> getProject true projId)
-        (sprintf "Project code %s not found" projId)
+        (fun (getProject : Model.GetProject) -> getProject true projectCode)
+        (sprintf "Project code %s not found" projectCode)
 
 // TODO: Not in real API spec. Why not? Probably need to add it
-let getUser login = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    // Can't use withServiceFuncOrNotFound for this one since we need to tweak the return value in the success branch
-    let getUser = ctx.GetService<Model.GetUser>()
-    let! user = getUser login
-    match user with
-    | Some user -> return! json { user with HashedPassword = "***" } next ctx
-    | None -> return! RequestErrors.notFound (json (Error (sprintf "Username %s not found" login))) next ctx
-}
+let getUser login : HttpHandler =
+    withServiceFuncOrNotFound
+        (fun (getUser : Model.GetUser) -> getUser login)
+        (sprintf "Username %s not found" login)
 
-let projectExists projId : HttpHandler =
+let projectExists projectCode : HttpHandler =
     withServiceFunc
-        (fun (Model.ProjectExists projectExists) -> projectExists projId)
+        (fun (Model.ProjectExists projectExists) -> projectExists projectCode)
 
-let userExists projId : HttpHandler =
+let userExists projectCode : HttpHandler =
     withServiceFunc
-        (fun (Model.UserExists userExists) -> userExists projId)
+        (fun (Model.UserExists userExists) -> userExists projectCode)
 
 let projectsAndRolesByUser login : HttpHandler =
     withLoggedInServiceFunc
         (fun (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser login)
 
-let projectsAndRolesByUserRole (login,roleId) : HttpHandler =
+let projectsAndRolesByUserRole (login, roleTypeStr) : HttpHandler =
+    let roleType = RoleType.TryOfString
     withLoggedInServiceFunc
-        (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole login roleId)
+        (fun (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole login roleType)
 
-let addUserToProject (projId,username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let addUserToProjectWithRoleType (projectCode, username, roleType) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-    let! success = addMember username projId 3  // TODO: get role in here as well
+    let! success = addMember username projectCode roleType
     let result =
         if success then
-            Ok (sprintf "Added %s to %s" username projId)
+            Ok (sprintf "Added %s to %s" username projectCode)
         else
-            Error (sprintf "Failed to add %s to %s" username projId)
-    return! json result next ctx
+            Error (sprintf "Failed to add %s to %s" username projectCode)
+    return! jsonResult result next ctx
 }
 
-let removeUserFromProject (projId,username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    match RoleType.TryOfString roleName with
+    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName)
+    | Some roleType ->
+        return! addUserToProjectWithRoleType (projectCode,username,roleType) next ctx
+}
+
+let addUserToProject (projectCode, username) = addUserToProjectWithRoleType (projectCode,username,Contributor)
+
+let removeUserFromProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-    let! success = removeMember username projId -1  // TODO: Better API; it makes no sense to specify a role for the removal
+    let! success = removeMember username projectCode -1  // TODO: Better API; it makes no sense to specify a role for the removal
     let result =
         if success then
-            Ok (sprintf "Removed %s from %s" username projId)
+            Ok (sprintf "Removed %s from %s" username projectCode)
         else
-            Error (sprintf "Failed to remove %s from %s" username projId)
-    return! json result next ctx
+            Error (sprintf "Failed to remove %s from %s" username projectCode)
+    return! jsonResult result next ctx
 }
 
-let addOrRemoveUserFromProject projId (patchData : PatchProjects) =
-    match patchData.addUser, patchData.removeUser with
-    | Some add, Some remove ->
-        RequestErrors.badRequest (json (Error "Specify exactly one of addUser or removeUser, not both"))
-    | Some add, None ->
-        addUserToProject (projId, add.Name)
-    | None, Some remove ->
-        removeUserFromProject (projId, remove.Name)
-    | None, None ->
-        RequestErrors.badRequest (json (Error "Specify either addUser or removeUser"))
+let addOrRemoveUserFromProjectInternal projectCode (patchData : Api.EditProjectMembershipInternalDetails) =
+    match patchData with
+    | Api.EditProjectMembershipInternalDetails.AddUserRoles memberships -> RequestErrors.badRequest (json (Error "Add not yet implemented"))
+    | Api.EditProjectMembershipInternalDetails.RemoveUserRoles memberships -> RequestErrors.badRequest (json (Error "Remove not yet implemented"))
+    | Api.EditProjectMembershipInternalDetails.RemoveUserEntirely username -> RequestErrors.badRequest (json (Error "RemoveUser not yet implemented"))
+
+let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershipApiCall) =
+    match patchData.add, patchData.remove, patchData.removeUser with
+    | Some _, Some _, Some _
+    | Some _, Some _, None
+    | Some _, None,   Some _
+    | None,   Some _, Some _ ->
+        RequestErrors.badRequest (json (Error "Specify exactly one of add, remove, or removeUser"))
+    | Some add, None, None ->
+        addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.AddUserRoles add)
+    | None, Some remove, None ->
+        addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserRoles remove)
+    | None, None, Some removeUser ->
+        addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserEntirely removeUser)
+    | None, None, None ->
+        RequestErrors.badRequest (json (Error "No command included in JSON: should be one of add, remove, or removeUser"))
 
 let getAllRoles : HttpHandler =
     withServiceFunc
         (fun (roleNames : Model.ListRoles) -> roleNames())
 
-let createUser (user : CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let createUser (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
     let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
-    let! alreadyExists = userExists user.Login
+    let! alreadyExists = userExists user.username
     if alreadyExists then
         return! jsonError "Username already exists; pick another one" next ctx
     else
@@ -143,32 +160,27 @@ let createUser (user : CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : 
         return! json newId next ctx
 }
 
-let upsertUser (login : string) (updateData : UpdateUser) =
+let upsertUser (login : string) (updateData : Api.CreateUser) =
     withServiceFunc
         (fun (upsertUser : Model.UpsertUser) -> upsertUser login updateData)
 
-let changePassword login (updateData : ChangePassword) =
+let changePassword login (updateData : Api.ChangePassword) =
     withServiceFunc
         (fun (changePassword : Model.ChangePassword) -> changePassword login updateData)
 
 // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
-let verifyPassword login (loginInfo : LoginInfo) =
+let verifyPassword login (loginCredentials : Api.LoginCredentials) =
     withServiceFunc
-        (fun (verifyLoginInfo : Model.VerifyLoginInfo) -> verifyLoginInfo loginInfo)
+        (fun (verifyLoginInfo : Model.VerifyLoginCredentials) -> verifyLoginInfo loginCredentials)
 
-let createProject (proj : CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let createProject (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
     let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
-    let projId = match proj.Identifier with
-                    | None -> "new-project-id"  // TODO: Build from project name and check whether it exists, appending numbers if needed
-                    | Some projId -> projId
-    let! alreadyExists = projectExists projId
+    let! alreadyExists = projectExists proj.code
     if alreadyExists then
-        return! json {| status = "error"; message = "Project code already exists; pick another one" |} next ctx
+        return! jsonError "Project code already exists; pick another one" next ctx
     else
-        let createProject = ctx.GetService<Model.CreateProject>()
-        let! newId = createProject { proj with Identifier = Some projId }
-        return! json newId next ctx
+        return! withServiceFunc (fun (createProject : Model.CreateProject) -> createProject proj)
 }
 
 let countUsers : HttpHandler =
@@ -197,10 +209,10 @@ let getMySqlSettings : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -
     return! json cfg next ctx
 }
 
-let archiveProject projId : HttpHandler =
+let archiveProject projectCode : HttpHandler =
     withServiceFunc
-        (fun (archiveProject : Model.ArchiveProject) -> archiveProject true projId)
+        (fun (archiveProject : Model.ArchiveProject) -> archiveProject true projectCode)
 
-let archivePrivateProject projId : HttpHandler =
+let archivePrivateProject projectCode : HttpHandler =
     withServiceFunc
-        (fun (archiveProject : Model.ArchiveProject) -> archiveProject false projId)
+        (fun (archiveProject : Model.ArchiveProject) -> archiveProject false projectCode)

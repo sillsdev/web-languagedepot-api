@@ -41,17 +41,18 @@ let webApp = router {
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" Controller.projectsAndRolesByUser
-    patchf "/api/project/%s" (fun projId -> bindJson<PatchProjects> (Controller.addOrRemoveUserFromProject projId))
+    patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
-    postf "/api/project/%s/user/%s" Controller.addUserToProject
+    postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
+    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "contributor"
     deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
-    postf "/api/users/%s/projects/withRole/%i" Controller.projectsAndRolesByUserRole
+    postf "/api/users/%s/projects/withRole/%s" Controller.projectsAndRolesByUserRole
     get "/api/roles" Controller.getAllRoles
-    post "/api/users" (bindJson<CreateUser> Controller.createUser)
-    putf "/api/users/%s" (fun login -> bindJson<UpdateUser> (Controller.upsertUser login))
-    patchf "/api/users/%s" (fun login -> bindJson<ChangePassword> (Controller.changePassword login))
-    postf "/api/users/%s/verify-password" (fun login -> bindJson<LoginInfo> (Controller.verifyPassword login))
-    post "/api/project" (bindJson<CreateProject> Controller.createProject)
+    post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
+    putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
+    patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
+    postf "/api/users/%s/verify-password" (fun login -> bindJson<Api.LoginCredentials> (Controller.verifyPassword login))
+    post "/api/project" (bindJson<Api.CreateProject> Controller.createProject)
     get "/api/count/users" Controller.countUsers
     get "/api/count/projects" Controller.countProjects
     get "/api/count/non-test-projects" Controller.countRealProjects

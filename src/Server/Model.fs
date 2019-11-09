@@ -61,7 +61,7 @@ type CreateProject = Api.CreateProject -> Async<int>
 type CreateUser = Api.CreateUser -> Async<int>
 type UpsertUser = string -> Api.CreateUser -> Async<int>
 type ChangePassword = string -> Api.ChangePassword -> Async<bool>
-type VerifyLoginInfo = Api.LoginCredentials -> Async<bool>
+type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
 type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
@@ -450,7 +450,7 @@ module ModelRegistration =
             .AddSingleton<ProjectsByUserRole>(projectsByUserRole connString)
             .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole connString)
             .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser connString)
-            .AddSingleton<VerifyLoginInfo>(verifyLoginInfo connString)
+            .AddSingleton<VerifyLoginCredentials>(verifyLoginInfo connString)
             .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership connString true))
             .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership connString false))
             .AddSingleton<ArchiveProject>(archiveProject connString)
