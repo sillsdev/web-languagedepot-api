@@ -32,7 +32,6 @@ group Client
     nuget Fable.Elmish.HMR ~> 4
     nuget Fable.Elmish.React ~> 3
     nuget Thoth.Fetch ~> 1
-    nuget Thoth.Json 3.3.0  // Thoth.Json 3.4 and up need newer fable-compiler version
     nuget Thoth.Elmish.Toast ~> 2
     nuget Thoth.Elmish.FormBuilder
     nuget Thoth.Elmish.FormBuilder.BasicFields
