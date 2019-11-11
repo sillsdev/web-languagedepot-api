@@ -906,6 +906,7 @@ INSERT INTO `member_roles` (`id`, `member_id`, `role_id`, `inherited_from`) VALU
 (5, 6, 4, NULL),
 (6, 7, 3, NULL),
 (7, 8, 6, NULL),
+(8, 8, 3, NULL),
 (45, 69, 3, NULL),
 (46, 70, 4, NULL),
 (352, 500, 3, NULL),
@@ -1290,7 +1291,7 @@ CREATE TABLE `repositories` (
 
 LOCK TABLES `repositories` WRITE;
 /*!40000 ALTER TABLE `repositories` DISABLE KEYS */;
-INSERT INTO `repositories` (`id`, `project_id`, `url`, `login`, `password`, `root_url`, `type`, `path_encoding`, `log_encoding`, `extra_info`, `identifier`, `is_default`, `created_on`) VALUES
+-- INSERT INTO `repositories` (`id`, `project_id`, `url`, `login`, `password`, `root_url`, `type`, `path_encoding`, `log_encoding`, `extra_info`, `identifier`, `is_default`, `created_on`) VALUES
 -- TODO: Auto-create this from projects table (with F# script)
 /*!40000 ALTER TABLE `repositories` ENABLE KEYS */;
 UNLOCK TABLES;
