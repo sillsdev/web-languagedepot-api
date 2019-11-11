@@ -17,7 +17,8 @@ module SettingsHelper =
 
     let getSettingsValue<'settings when 'settings : equality> (config : IConfiguration) =
         let typ = typeof<'settings>
-        let section = config.GetSection (getSectionName<'settings>())
+        let sectionName = getSectionName<'settings>()
+        let section = config.GetSection (sectionName)
         let maybeSettings = section.Get<'settings>()
         // IConfigurationSection.Get can return null if there's no such section at all in the config
         let settings =

@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Hosting
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Giraffe.HttpStatusCodeHandlers

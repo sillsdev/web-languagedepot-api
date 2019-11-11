@@ -8,6 +8,9 @@ type JsonResult<'a> =
     | Success of JsonSuccess<'a>
     | Failure of JsonError
 
+let success data = Success { ok = true; data = data }
+let failure msg = Failure { ok = false; message = msg }
+
 let toResult (jsonResult : JsonResult<'a>) =
     match jsonResult with
     | Success { ok = true; data = data } -> Ok data
