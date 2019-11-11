@@ -16,6 +16,8 @@
         <Compile Include="Hashes.fs" />
         <Compile Include="JsonHelpers.fs" />
         <Compile Include="TextInput.fs" />
+        <Compile Include="SampleData.fs" />
+        <Compile Include="MockServer.fs" />
         <Compile Include="RootPage.fs" />
         <Compile Include="NotImplementedPage.fs" />
         <Compile Include="LoginPage.fs" />
