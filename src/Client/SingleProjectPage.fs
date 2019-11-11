@@ -11,12 +11,13 @@ open Thoth.Elmish.FormBuilder.BasicFields
 open Thoth.Fetch
 
 open JsonHelpers
+open Shared
 
 type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | ListAllProjects
-    | ProjectListRetrieved of JsonResult<Shared.ProjectForListing list>
+    | ProjectListRetrieved of JsonResult<Dto.ProjectList>
     | ClearProjects
     | FormSubmitted
     | GotFormResult of JsonResult<int>
@@ -24,7 +25,7 @@ type Msg =
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
 
-type Model = { CurrentlyViewedProject : string; ProjectList : Shared.ProjectForListing list; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : string; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -96,7 +97,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = { currentModel with FormState = newFormState }
         if isValid then
             let json = Form.toJson formConfig newFormState
-            match Thoth.Json.Decode.Auto.fromString<Shared.CreateProject> json with
+            match Thoth.Json.Decode.Auto.fromString<Api.CreateProject> json with
             | Ok data ->
                 let url = "/api/project"
                 nextModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data GotFormResult HandleFetchError
@@ -161,5 +162,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ str "Clear Project list" ])
         ul [ ]
            [ for project in model.ProjectList ->
-                li [ ] [ str (sprintf "%s: %A" project.Name project.Typ) ] ]
+                li [ ] [ str (sprintf "%s: %A" project.name project.membership) ] ]
         ]

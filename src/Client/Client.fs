@@ -63,15 +63,15 @@ module Nav =
 // in this case, we are keeping track of a counter
 // we mark it as optional, because initially it will not be available from the client
 // the initial value will be requested from server
-type Model = { UserList : Shared.User list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : ProjectPage.Model; UserModel : UserPage.Model; NotImplementedModel : NotImplementedPage.Model }
+type Model = { UserList : Dto.UserDetails list; CurrentUser : SharedUser option; Page : Nav.Route; RootModel : RootPage.Model; LoginModel : LoginPage.Model; ProjectModel : SingleProjectPage.Model; UserModel : SingleUserPage.Model; NotImplementedModel : NotImplementedPage.Model }
 
 // defines the initial state and initial command (= side-effect) of the application
 let init() : Model * Cmd<Msg> =
     let initialRootModel, rootCmds = RootPage.init()
     let notImplementedModel, notImplementedCmds = NotImplementedPage.init()
     let loginModel, loginCmds = LoginPage.init()
-    let projectModel, projectCmds = ProjectPage.init()
-    let userModel, userCmds = UserPage.init()
+    let projectModel, projectCmds = SingleProjectPage.init()
+    let userModel, userCmds = SingleUserPage.init()
     let initialModel = { Page = Nav.RootPage
                          CurrentUser = None
                          UserList = []
@@ -115,11 +115,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let nextModel = { currentModel with LoginModel = nextLoginModel }
         nextModel, nextLoginCmds |> Cmd.map LoginPageMsg
     | { ProjectModel = projectModel }, ProjectPageMsg projectMsg ->
-        let nextProjectModel, nextProjectCmds = projectModel |> ProjectPage.update projectMsg
+        let nextProjectModel, nextProjectCmds = projectModel |> SingleProjectPage.update projectMsg
         let nextModel = { currentModel with ProjectModel = nextProjectModel }
         nextModel, nextProjectCmds |> Cmd.map ProjectPageMsg
     | { UserModel = userModel }, UserPageMsg userMsg ->
-        let nextUserModel, nextUserCmds = userModel |> UserPage.update userMsg
+        let nextUserModel, nextUserCmds = userModel |> SingleUserPage.update userMsg
         let nextModel = { currentModel with UserModel = nextUserModel }
         nextModel, nextUserCmds |> Cmd.map UserPageMsg
     | { NotImplementedModel = pageModel }, NotImplementedPageMsg pageMsg ->
@@ -132,8 +132,8 @@ let routingView (model : Model) (dispatch : Msg -> unit) =
         match model.Page with
         | Nav.RootPage -> RootPage.view model.RootModel (RootPageMsg >> dispatch)
         | Nav.LoginPage -> LoginPage.view model.LoginModel (LoginPageMsg >> dispatch)
-        | Nav.ProjectPage _ -> ProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
-        | Nav.UserPage _ -> UserPage.view model.UserModel (UserPageMsg >> dispatch)
+        | Nav.ProjectPage _ -> SingleProjectPage.view model.ProjectModel (ProjectPageMsg >> dispatch)
+        | Nav.UserPage _ -> SingleUserPage.view model.UserModel (UserPageMsg >> dispatch)
         | Nav.NotImplementedPage -> NotImplementedPage.view model.NotImplementedModel (NotImplementedPageMsg >> dispatch)
     let root = contextProvider RootPage.userCtx (model.CurrentUser, UserLoggedIn >> dispatch) [ pageView ]
     Router.router [

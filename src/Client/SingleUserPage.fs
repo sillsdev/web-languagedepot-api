@@ -12,25 +12,26 @@ open Thoth.Json
 
 open TextInput
 open Shared
+open Shared.Api
 open JsonHelpers
 
 type Msg =
     | FindUser of string
-    | UserFound of UserDetails
+    | UserFound of Dto.UserDetails
     | UserNotFound
-    | LogUserResult of UserDetails
+    | LogUserResult of Dto.UserDetails
     | RoleListFetchFailed of exn
-    | RoleListUpdated of JsonResult<Role list>
+    | RoleListUpdated of JsonResult<RoleType list>
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
     | LogResult of Result<string,string>
     | GetProjectsForUser
     | GetProjectsByRole of int
-    | ProjectsListRetrieved of (ProjectDetails * Role) list
+    | ProjectsListRetrieved of (Dto.ProjectDetails * RoleType) list
     | LogException of System.Exception
 
-type Model = { RoleList : Role list; ProjectList : (ProjectDetails * Role) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : RoleType list; ProjectList : (Dto.ProjectDetails * RoleType) list; CurrentlyViewedUser : SharedUser option; }
 
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
@@ -44,7 +45,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let tryAgain () = promise {
                 do! Promise.sleep 3000
                 // Compiler needs type hint here since it's not on same line as Cmd.OfPromise.either
-                return! Fetch.get<JsonResult<Role list>> "/api/roles" }
+                return! Fetch.get<JsonResult<RoleType list>> "/api/roles" }
             currentModel, Cmd.OfPromise.either tryAgain () RoleListUpdated RoleListFetchFailed
         else
             currentModel, Notifications.notifyException e
@@ -52,12 +53,12 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url LogUserResult LogException
     | UserFound user ->
-        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = sprintf "%s %s" user.FirstName user.LastName; Email = "unknown@example.com" (* Can't get email until we redesign the API *) } }
+        let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = sprintf "%s %s" user.firstName user.lastName; Email = "unknown@example.com" (* Can't get email until we redesign the API *) } }
         nextModel, Cmd.ofMsg (LogUserResult user)
     | UserNotFound ->
         currentModel, Cmd.none
     | LogUserResult user ->
-        printfn "User ID %d, first name %s, last name %s, is_admin %A" user.Id user.FirstName user.LastName user.Admin
+        printfn "Username %s, first name %s, last name %s" user.username user.firstName user.lastName
         currentModel, Cmd.none
     | RoleListUpdated jsonResult ->
         match toResult jsonResult with
@@ -76,7 +77,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel, Cmd.none
         | Some user ->
             let url = sprintf "/api/users/%s/projects" user.Name
-            let data = { username = user.Name; password = "s3kr3t" }
+            let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
     | GetProjectsByRole roleId ->
         match currentModel.CurrentlyViewedUser with
@@ -84,7 +85,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel, Cmd.none
         | Some user ->
             let url = sprintf "/api/users/%s/projects/withRole/%d" user.Name roleId
-            let data = { username = user.Name; password = "s3kr3t" }
+            let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
     | ProjectsListRetrieved projects ->
         let nextModel = { currentModel with ProjectList = projects }
@@ -94,7 +95,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let data = { addUser = Some user; removeUser = None }
+            let login : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let data : Api.EditProjectMembershipApiCall = { login = login; add = Some [{ username = user.Name; role = "contributor" }]; remove = None; removeUser = None }
             let url = sprintf "/api/project/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult
             currentModel, Cmd.OfPromise.result promise
@@ -103,7 +105,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let data = { addUser = None; removeUser = Some user }
+            let login : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let data : Api.EditProjectMembershipApiCall = { login = login; add = None; remove = Some [{ username = user.Name; role = "contributor" }]; removeUser = None }
             let url = sprintf "/api/project/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult
             currentModel, Cmd.OfPromise.result promise
@@ -119,7 +122,7 @@ let RoleSelector =
         let selected = Hooks.useState "0"
         Select.select
             [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
-            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.Id.ToString()); Key (role.Id.ToString()) ] [ str role.Name ] ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.ToNumericId().ToString()); Key (role.ToNumericId().ToString()) ] [ str (role.ToString()) ] ]
               Button.a
                 [ Button.Size IsSmall
                   Button.Color IsPrimary
@@ -143,7 +146,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                   Button.OnClick (fun _ -> dispatch GetProjectsForUser) ]
                 [ str "Projects" ]
               ul [ ]
-                 [ for (project, role) in model.ProjectList -> li [ ] [ str ((project.Identifier |> Option.defaultValue "(no id)") + ": " + role.Name) ] ]
+                 [ for (project, role) in model.ProjectList -> li [ ] [ str (project.code + ": " + role.ToString()) ] ]
               roleSelector model dispatch
               br [ ]
               br [ ]
