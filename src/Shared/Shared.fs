@@ -58,6 +58,8 @@ type RoleType =
             | "programmer" -> Some Programmer
             | "obv - do not use" -> Some Observer
             | "observer" -> Some Observer
+            | "non member" -> Some Observer
+            | "anonymous" -> Some Observer
             | _ -> None
         static member OfString s =
             match RoleType.TryOfString s with

@@ -17,7 +17,9 @@ type Msg =
     | NewProjectPageNav of string
     | OnFormMsg of FormBuilder.Types.Msg
     | ListAllProjects
+    | ListSingleProject of string
     | ProjectListRetrieved of JsonResult<Dto.ProjectList>
+    | SingleProjectRetrieved of JsonResult<Dto.ProjectDetails>
     | ClearProjects
     | FormSubmitted
     | GotFormResult of JsonResult<int>
@@ -83,6 +85,16 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | ListAllProjects ->
         let url = "/api/project"
         currentModel, Cmd.OfPromise.either Fetch.get url ProjectListRetrieved HandleFetchError
+    | ListSingleProject projectCode ->
+        let url = sprintf "/api/project/%s" projectCode
+        currentModel, Cmd.OfPromise.either Fetch.get url SingleProjectRetrieved HandleFetchError
+    | SingleProjectRetrieved projectResult ->
+        match toResult projectResult with
+        | Ok project ->
+            printfn "%A" project
+            { currentModel with ProjectList = [project] }, Cmd.none
+        | Error msg ->
+            currentModel, Notifications.notifyError msg
     | ProjectListRetrieved projectsResult ->
         match toResult projectsResult with
         | Ok projects ->
@@ -129,6 +141,24 @@ let formActions (formState : FormBuilder.Types.State) dispatch =
             ]
             [ str "Submit" ] ]
 
+let membershipView (membership : Dto.MemberList option) =
+    match membership with
+    | None -> str " (member list not provided)"
+    | Some members ->
+        // if List.length members.managers +
+        //    List.length members.contributors +
+        //    List.length members.programmers +
+        //    List.length members.observers = 0 then
+        //     str (sprintf " (no members in %A)" [members.managers; members.contributors; members.programmers; members.observers])
+        //     // str (if List.isEmpty members.managers then sprintf "Manager list is empty: %A" members.managers else sprintf "Manager list is NOT empty: %A" members.managers)
+        // else
+            let toStr title (lst : string list) = (*if List.length lst = 0 then "empty;" else *)title + ": " + String.concat "," lst + ";"
+            // TODO: Investigate why List.isEmpty and List.length lst = 0 both seem to be returning *incorrect* results!
+            str ((toStr "Managers" members.managers +
+                  toStr "Contributors" members.contributors +
+                  toStr "Observers" members.observers +
+                  toStr "Programmers" members.programmers).TrimEnd(';'))
+
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [
         str "Sorry, haven't made this form fancy yet"
@@ -162,5 +192,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ str "Clear Project list" ])
         ul [ ]
            [ for project in model.ProjectList ->
-                li [ ] [ str (sprintf "%s: %A" project.name project.membership) ] ]
+                li [ ] [ a [ OnClick (fun _ -> dispatch (ListSingleProject project.code)) ] [ str (sprintf "%s:" project.name); membershipView project.membership ] ] ]
         ]

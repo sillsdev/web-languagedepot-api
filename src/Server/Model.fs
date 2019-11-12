@@ -107,7 +107,7 @@ let usersQueryAsync (connString : string) () =
         let ctx = sql.GetDataContext connString
         let usersQuery = query {
             for user in ctx.Testldapi.Users do
-            join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+            join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
             select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
         }
         let! users = usersQuery |> List.executeQueryAsync
@@ -184,8 +184,8 @@ let getUser (connString : string) username =
         let! userAndEmails =
             query {
                 for user in ctx.Testldapi.Users do
+                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
                 where (user.Login = username)
-                join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
                 select ((user.Login, user.Firstname, user.Lastname, user.Language), ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
             } |> List.executeQueryAsync
         // for pair in userAndEmails do
@@ -213,12 +213,11 @@ let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
         let ctx = sql.GetDataContext connString
         let projectQuery = query {
             for project in ctx.Testldapi.Projects do
-            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
-            where (not project.Identifier.IsNone)
-            where (project.Identifier.Value = projectCode)
-            join membership in ctx.Testldapi.Members on (project.Id = membership.ProjectId)
+            join membership in !! ctx.Testldapi.Members on (project.Id = membership.ProjectId)
             join role in ctx.Testldapi.MemberRoles on (membership.Id = role.MemberId)
             join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
+            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+            where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             select (project, role.RoleId, user.Login)
         }
         let! projectAndRoles = projectQuery |> List.executeQueryAsync
@@ -326,14 +325,14 @@ let projectsAndRolesByUser (connString : string) username = async {
     let ctx = sql.GetDataContext connString
     let projectsQuery = query {
         for user in ctx.Testldapi.Users do
-        where (user.Login = username)
-        join membership in ctx.Testldapi.Members
+        join membership in !! ctx.Testldapi.Members
             on (user.Id = membership.UserId)
         join project in ctx.Testldapi.Projects
             on (membership.ProjectId = project.Id)
-        where (project.Status = ProjectStatus.Active)
-        join memberRole in ctx.Testldapi.MemberRoles
+        join memberRole in !! ctx.Testldapi.MemberRoles
             on (membership.Id = memberRole.MemberId)
+        where (user.Login = username)
+        where (project.Status = ProjectStatus.Active)
 
         select (Dto.ProjectDetails.FromSql project, RoleType.OfNumericId memberRole.RoleId)
     }
@@ -371,15 +370,17 @@ let verifyPass (clearPass : string) (salt : string) (hashPass : string) =
     calculatedHash = hashPass
 
 let verifyLoginInfo (connString : string) (loginCredentials : Api.LoginCredentials) =
-    async {
-        let ctx = sql.GetDataContext connString
-        let! user = query { for user in ctx.Testldapi.Users do
-                                where (user.Login = loginCredentials.username)
-                                select user } |> Seq.tryHeadAsync
-        match user with
-        | None -> return false
-        | Some user -> return verifyPass loginCredentials.password (user.Salt |> Option.defaultValue "") user.HashedPassword
-    }
+    // During development of the client UI, just accept any credentials. TODO: Natually, restore real code before going to production
+    async { return true }
+    // async {
+    //     let ctx = sql.GetDataContext connString
+    //     let! user = query { for user in ctx.Testldapi.Users do
+    //                             where (user.Login = loginCredentials.username)
+    //                             select user } |> Seq.tryHeadAsync
+    //     match user with
+    //     | None -> return false
+    //     | Some user -> return verifyPass loginCredentials.password (user.Salt |> Option.defaultValue "") user.HashedPassword
+    // }
 
 let addMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =
     async {
@@ -390,7 +391,7 @@ let addMembershipById (connString : string) (userId : int) (projectId : int) (ro
                 select membership }
         let withRole = query {
             for membership in membershipQuery do
-                join memberRole in ctx.Testldapi.MemberRoles
+                join memberRole in !! ctx.Testldapi.MemberRoles
                     on (membership.Id = memberRole.MemberId)
                 where (memberRole.RoleId = roleId)
                 select (Some memberRole)
@@ -431,7 +432,7 @@ let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql
         let! memberRolesToDelete =
             query {
                 for membership in membershipQuery do
-                    join memberRole in ctx.Testldapi.MemberRoles
+                    join memberRole in !! ctx.Testldapi.MemberRoles
                         on (membership.Id = memberRole.MemberId)
                     where (memberRole.MemberId = membership.Id)
                     select (memberRole)
@@ -458,8 +459,8 @@ let removeUserFromAllRolesInProject (connString : string) (username : string) (p
         let membershipQuery = query {
             for membership in ctx.Testldapi.Members do
             join project in ctx.Testldapi.Projects on (membership.ProjectId = project.Id)
-            where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
+            where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             where (user.Login = username)
             select membership }
         do! removeMembershipImpl connString membershipQuery

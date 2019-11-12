@@ -74,7 +74,7 @@ let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigu
 
 let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
     let x = getSettingsValue<MySqlSettings> context.Configuration
-    MemoryModel.ModelRegistration.registerServices svc x.ConnString
+    Model.ModelRegistration.registerServices svc x.ConnString
 
 let hostConfig (builder : IWebHostBuilder) =
     builder
