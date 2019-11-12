@@ -184,8 +184,8 @@ let getUser (connString : string) username =
         let! userAndEmails =
             query {
                 for user in ctx.Testldapi.Users do
-                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
                 where (user.Login = username)
+                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
                 select ((user.Login, user.Firstname, user.Lastname, user.Language), ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
             } |> List.executeQueryAsync
         // for pair in userAndEmails do
@@ -325,14 +325,14 @@ let projectsAndRolesByUser (connString : string) username = async {
     let ctx = sql.GetDataContext connString
     let projectsQuery = query {
         for user in ctx.Testldapi.Users do
-        join membership in !! ctx.Testldapi.Members
+        where (user.Login = username)
+        join membership in ctx.Testldapi.Members
             on (user.Id = membership.UserId)
         join project in ctx.Testldapi.Projects
             on (membership.ProjectId = project.Id)
-        join memberRole in !! ctx.Testldapi.MemberRoles
-            on (membership.Id = memberRole.MemberId)
-        where (user.Login = username)
         where (project.Status = ProjectStatus.Active)
+        join memberRole in ctx.Testldapi.MemberRoles
+            on (membership.Id = memberRole.MemberId)
 
         select (Dto.ProjectDetails.FromSql project, RoleType.OfNumericId memberRole.RoleId)
     }

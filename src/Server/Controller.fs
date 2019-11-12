@@ -83,7 +83,6 @@ let getUser login : HttpHandler =
 
 // TODO: Remove before going to production
 let listUsers : HttpHandler =
-    printfn "Listing users"
     withServiceFunc
         (fun (listUsers : Model.ListUsers) -> listUsers())
 
