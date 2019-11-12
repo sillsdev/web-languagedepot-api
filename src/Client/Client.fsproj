@@ -16,13 +16,15 @@
         <Compile Include="Hashes.fs" />
         <Compile Include="JsonHelpers.fs" />
         <Compile Include="TextInput.fs" />
-        <Compile Include="SampleData.fs" />
+        <Compile Include="..\Shared\SampleData.fs" />
         <Compile Include="MockServer.fs" />
         <Compile Include="RootPage.fs" />
         <Compile Include="NotImplementedPage.fs" />
         <Compile Include="LoginPage.fs" />
         <Compile Include="SingleProjectPage.fs" />
         <Compile Include="SingleUserPage.fs" />
+        <Compile Include="AllUsersPage.fs" />
+        <Compile Include="AllProjectsPage.fs" />
         <Compile Include="Client.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

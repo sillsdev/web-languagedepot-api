@@ -162,11 +162,13 @@ let changePassword : Model.ChangePassword = fun username changePasswordApiData -
 }
 
 let verifyLoginCredentials : Model.VerifyLoginCredentials = fun loginCredentials -> async {
-    match MemoryStorage.passwordStorage.TryGetValue loginCredentials.username with
-    | false, _ -> return false  // User not found also returns false, so we don't disclose the lack of a username
-    | true, passwordDetails ->
-        let hashedPassword = PasswordHashing.hashPassword passwordDetails.salt loginCredentials.password
-        return hashedPassword = passwordDetails.hashedPassword
+    // Skip verifying login credentials until I update the sample data to have "x" as the default password everywhere
+    return true
+    // match MemoryStorage.passwordStorage.TryGetValue loginCredentials.username with
+    // | false, _ -> return false  // User not found also returns false, so we don't disclose the lack of a username
+    // | true, passwordDetails ->
+    //     let hashedPassword = PasswordHashing.hashPassword passwordDetails.salt loginCredentials.password
+    //     return hashedPassword = passwordDetails.hashedPassword
 }
 
 let addOrRemoveInList isAdd item lst =
@@ -238,6 +240,7 @@ module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
 
     let registerServices (builder : IServiceCollection) (connString : string) =
+        MemoryStorage.initFromData SampleData.Users SampleData.Projects
         builder
             .AddSingleton<Model.ListUsers>(listUsers)
             .AddSingleton<Model.ListProjects>(listProjects)

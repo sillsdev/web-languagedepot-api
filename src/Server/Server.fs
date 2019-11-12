@@ -39,6 +39,7 @@ let webApp = router {
     getf "/api/project/%s" Controller.getPublicProject
     // TODO: Not in real API spec. Why not? Probably need to add it
     getf "/api/users/%s" Controller.getUser
+    get "/api/users" Controller.listUsers
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
@@ -73,7 +74,7 @@ let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigu
 
 let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
     let x = getSettingsValue<MySqlSettings> context.Configuration
-    Model.ModelRegistration.registerServices svc x.ConnString
+    MemoryModel.ModelRegistration.registerServices svc x.ConnString
 
 let hostConfig (builder : IWebHostBuilder) =
     builder

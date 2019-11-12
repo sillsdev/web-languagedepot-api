@@ -19,6 +19,12 @@ let projectStorage = new ConcurrentDictionary<string, Dto.ProjectDetails>()
 let passwordStorage = new ConcurrentDictionary<string, PasswordDetails>()
 // MemoryStorage doesn't keep track of the "must change password" bool since that's not in Dto.UserDetails, so some tests might not work. TODO: Add that bool into userStorage
 
+let initFromData (users : Shared.Dto.UserList) (projects : Shared.Dto.ProjectList) =
+    for user in users do
+        userStorage.GetOrAdd (user.username, (fun _ -> user)) |> ignore
+    for project in projects do
+        projectStorage.GetOrAdd (project.code, (fun _ -> project)) |> ignore
+
 let storeNewPassword username cleartextPassword =
     passwordStorage.AddOrUpdate(username,
         (fun _ -> let salt = createSalt (Guid.NewGuid()) in { salt = salt; hashedPassword = hashPassword salt cleartextPassword }),

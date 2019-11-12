@@ -21,17 +21,24 @@ type Msg =
     | UserNotFound
     | LogUserResult of Dto.UserDetails
     | RoleListFetchFailed of exn
-    | RoleListUpdated of JsonResult<RoleType list>
+    | RoleListUpdated of JsonResult<Dto.RoleDetails list>
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
     | LogResult of Result<string,string>
     | GetProjectsForUser
-    | GetProjectsByRole of int
-    | ProjectsListRetrieved of (Dto.ProjectDetails * RoleType) list
+    | GetProjectsByRole of string
+    | ProjectsListRetrieved of JsonResult<(Dto.ProjectDetails * RoleType) list>
     | LogException of System.Exception
 
-type Model = { RoleList : RoleType list; ProjectList : (Dto.ProjectDetails * RoleType) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : Dto.RoleDetails list; ProjectList : (Dto.ProjectDetails * RoleType) list; CurrentlyViewedUser : SharedUser option; }
+
+let unpackJsonResult currentModel jsonResult fn =
+        match toResult jsonResult with
+        | Ok newData ->
+            fn newData
+        | Error msg ->
+            currentModel, Notifications.notifyError msg
 
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
@@ -45,7 +52,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let tryAgain () = promise {
                 do! Promise.sleep 3000
                 // Compiler needs type hint here since it's not on same line as Cmd.OfPromise.either
-                return! Fetch.get<JsonResult<RoleType list>> "/api/roles" }
+                return! Fetch.get<JsonResult<Dto.RoleDetails list>> "/api/roles" }
             currentModel, Cmd.OfPromise.either tryAgain () RoleListUpdated RoleListFetchFailed
         else
             currentModel, Notifications.notifyException e
@@ -61,13 +68,10 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         printfn "Username %s, first name %s, last name %s" user.username user.firstName user.lastName
         currentModel, Cmd.none
     | RoleListUpdated jsonResult ->
-        match toResult jsonResult with
-        | Ok newRoleList ->
+        unpackJsonResult currentModel jsonResult (fun newRoleList ->
             printfn "Got role list: %A" newRoleList
             let nextModel = { currentModel with RoleList = newRoleList }
-            nextModel, Cmd.none
-        | Error msg ->
-            currentModel, Notifications.notifyError msg
+            nextModel, Cmd.none)
     | NewUserPageNav username ->
         let nextModel = { currentModel with CurrentlyViewedUser = Some { Name = username; Email = "rmunn@pobox.com" } }
         nextModel, Cmd.none
@@ -79,17 +83,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let url = sprintf "/api/users/%s/projects" user.Name
             let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
-    | GetProjectsByRole roleId ->
+    | GetProjectsByRole roleName ->
         match currentModel.CurrentlyViewedUser with
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let url = sprintf "/api/users/%s/projects/withRole/%d" user.Name roleId
+            let url = sprintf "/api/users/%s/projects/withRole/%s" user.Name roleName
             let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
-    | ProjectsListRetrieved projects ->
-        let nextModel = { currentModel with ProjectList = projects }
-        nextModel, Cmd.none
+    | ProjectsListRetrieved jsonResult ->
+        unpackJsonResult currentModel jsonResult (fun projects ->
+            let nextModel = { currentModel with ProjectList = projects }
+            nextModel, Cmd.none)
     | AddProject projCode ->
         match currentModel.CurrentlyViewedUser with
         | None ->
@@ -119,14 +124,15 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 
 let RoleSelector =
     FunctionComponent.Of (fun (props : {| model : Model; dispatch : Msg -> unit |}) ->
-        let selected = Hooks.useState "0"
+        let selected = Hooks.useState "Contributor"
+        // TODO: Find out why React is making "Manager" selected by default, despite the line above
         Select.select
             [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
-            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.ToNumericId().ToString()); Key (role.ToNumericId().ToString()) ] [ str (role.ToString()) ] ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.``type``.ToString()); Key (role.``type``.ToString()) ] [ str (role.name) ] ]
               Button.a
                 [ Button.Size IsSmall
                   Button.Color IsPrimary
-                  Button.OnClick (fun _ -> printfn "Selected %A" selected.current; selected.current |> System.Int32.Parse |> GetProjectsByRole |> props.dispatch ) ]
+                  Button.OnClick (fun _ -> printfn "Selected %A" selected.current; selected.current |> GetProjectsByRole |> props.dispatch ) ]
                 [ str "By Role" ] ]
 )
 

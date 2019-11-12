@@ -9,6 +9,7 @@
         <Compile Include="..\Shared\DefaultHelpers.fs" />
         <Compile Include="..\Shared\Settings.fs" />
         <Compile Include="..\Shared\Shared.fs" />
+        <Compile Include="..\Shared\SampleData.fs" />
         <Compile Include="SettingsHelper.fs" />
         <Compile Include="GuessProjectType.fs" />
         <Compile Include="PasswordHashing.fs" />

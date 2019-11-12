@@ -81,6 +81,12 @@ let getUser login : HttpHandler =
         (fun (getUser : Model.GetUser) -> getUser login)
         (sprintf "Username %s not found" login)
 
+// TODO: Remove before going to production
+let listUsers : HttpHandler =
+    printfn "Listing users"
+    withServiceFunc
+        (fun (listUsers : Model.ListUsers) -> listUsers())
+
 let projectExists projectCode : HttpHandler =
     withServiceFunc
         (fun (Model.ProjectExists projectExists) -> projectExists projectCode)

@@ -43,6 +43,9 @@ type Dto.ProjectDetails with
 
 type Dto.UserDetails with
     static member FromSql (sqlUserAndEmails : (sql.dataContext.``testldapi.usersEntity`` * (sbyte * string)) list) =
+        // for pair in sqlUserAndEmails do
+        //     let user = fst pair
+        //     printfn "Found %A: %s (%s %s) with email(s) %A" user user.Login user.Firstname user.Lastname (snd pair)
         let sqlUser = sqlUserAndEmails |> List.head |> fst
         let emails = sqlUserAndEmails |> List.sortBy snd |> List.map (fun (_, (_, address)) -> address)
         {
@@ -51,6 +54,19 @@ type Dto.UserDetails with
             Dto.UserDetails.lastName = sqlUser.Lastname
             Dto.UserDetails.emailAddresses = emails
             Dto.UserDetails.language = sqlUser.Language |> Option.defaultValue "en"
+        }
+    static member FromSqlWithEmails (sqlUserAndEmails : ((string * string * string * string option) * (sbyte * string)) list) =
+        // for pair in sqlUserAndEmails do
+        //     let (login, firstname, lastname, language) = fst pair
+        //     printfn "Found %s (%s %s) with email(s) %A" login firstname lastname (snd pair)
+        let (login, firstname, lastname, language) = sqlUserAndEmails |> List.head |> fst
+        let emails = sqlUserAndEmails |> List.sortBy snd |> List.map (fun (_, (_, address)) -> address)
+        {
+            Dto.UserDetails.username = login
+            Dto.UserDetails.firstName = firstname
+            Dto.UserDetails.lastName = lastname
+            Dto.UserDetails.emailAddresses = emails
+            Dto.UserDetails.language = language |> Option.defaultValue "en"
         }
 
 type Dto.RoleDetails with
@@ -92,7 +108,7 @@ let usersQueryAsync (connString : string) () =
         let usersQuery = query {
             for user in ctx.Testldapi.Users do
             join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
-            select (user, (mail.IsDefault * -1y, mail.Address))  // Multiply by -1 so sorting in FromSql will work right
+            select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
         }
         let! users = usersQuery |> List.executeQueryAsync
         let usersAndEmails = users |> List.groupBy fst |> List.map (snd >> Dto.UserDetails.FromSql)
@@ -170,11 +186,14 @@ let getUser (connString : string) username =
                 for user in ctx.Testldapi.Users do
                 where (user.Login = username)
                 join mail in ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
-                select (user, (mail.IsDefault * -1y, mail.Address))  // Multiply by -1 so sorting in FromSql will work right
+                select ((user.Login, user.Firstname, user.Lastname, user.Language), ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
             } |> List.executeQueryAsync
+        // for pair in userAndEmails do
+        //     let (login, firstname, lastname, language) = fst pair
+        //     printfn "In getUser: found %s (%s %s) with language %A and email(s) %A" login firstname lastname language (snd pair)
         if userAndEmails |> List.isEmpty
         then return None
-        else return userAndEmails |> Dto.UserDetails.FromSql |> Some
+        else return userAndEmails |> Dto.UserDetails.FromSqlWithEmails |> Some
     }
 
 let getProject (connString : string) (isPublic : bool) projectCode =

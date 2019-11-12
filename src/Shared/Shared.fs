@@ -65,6 +65,8 @@ type RoleType =
             | None -> failwith (sprintf "Unknown role type %s" s)
         static member OfNumericId n =
             match n with
+            | 1 -> Contributor  // Just so we don't fail on data that uses these... we never actually need them
+            | 2 -> Contributor  // Just so we don't fail on data that uses these... we never actually need them
             | 3 -> Manager
             | 4 -> Contributor
             | 5 -> Observer
