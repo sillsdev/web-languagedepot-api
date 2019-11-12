@@ -531,9 +531,10 @@ INSERT INTO `email_addresses` (`id`, `user_id`, `address`, `is_default`, `notify
 (11, 234,  'friar_tuck@example.org',     1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
 (12, 235,  'noone@example.com',          1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
 (13, 236,  'nobody@example.org',         1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
-(14, 1094, 'robin_hood@example.org',     1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
-(15, 1947, 'ws1@example.org',            1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
-(16, 4159, 'alan_a_dale@example.org',    1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30');
+(14, 1094, 'robin_hood@example.org',     0, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
+(15, 1094, 'rhood@example.com',          1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
+(16, 1947, 'ws1@example.org',            1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
+(17, 4159, 'alan_a_dale@example.org',    1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30');
 /*!40000 ALTER TABLE `email_addresses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -907,6 +908,7 @@ INSERT INTO `member_roles` (`id`, `member_id`, `role_id`, `inherited_from`) VALU
 (6, 7, 3, NULL),
 (7, 8, 6, NULL),
 (8, 8, 3, NULL),
+(9, 9, 3, NULL),
 (45, 69, 3, NULL),
 (46, 70, 4, NULL),
 (352, 500, 3, NULL),
@@ -959,6 +961,7 @@ INSERT INTO `members` (`id`, `user_id`, `project_id`, `created_on`, `mail_notifi
 (6, 21,  3, '2009-07-27 02:03:33', 0),
 (7, 170, 3, '2017-01-02 03-04:55', 0),
 (8, 170, 4, '2017-02-02 04-04:55', 0),
+(9, 170, 7, '2017-02-02 04-04:55', 0),
 (69, 3, 9, "2009-10-12 03:42:10", 0),
 (70, 20, 9, "2009-10-12 03:42:19", 0),
 (500, 234, 9, "2011-09-13 06:26:57", 0),
@@ -1166,15 +1169,15 @@ INSERT INTO `projects` (`id`, `name`, `description`, `homepage`, `is_public`, `p
 (6, 'LD API Test Training', 'LD API Test Training project', '', 1, NULL, '2015-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-training', 1, 11, 12, 0, NULL, NULL),
 (7, 'LD API UTF8 Eñcoding', 'LD API Test UTF8 Eñcoding project', '', 1, NULL, '2016-08-10 07:30:45', '2017-03-01 08:10:20', 'test-ld-ütf8', 1, 13, 14, 0, NULL, NULL),
 (8, 'Missing project', NULL, NULL, 0, NULL, NULL, NULL, NULL, 1, NULL, NULL, 0, NULL, NULL),
-(9,'Thai Food Dictionary','A picture dictionary of Thai food.','',0,NULL,'2009-10-12 03:41:53','2019-10-04 13:22:14','tha-food',1,17,18,0,NULL,NULL),
-(1289,'Sherwood TestSena3 03','','',0,NULL,'2016-08-25 07:58:11','2019-10-04 13:22:22','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),
-(1894,'test-ws-1-flex','','',0,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),
-(2145,'Robin Test Projects','Test projects for Robin Hood\'s testing of Send/Receive scenarios','',0,NULL,'2019-10-08 04:06:32','2019-10-08 04:06:32','robin-test-projects',1,3999,4022,0,NULL,NULL),
-(2146,'Robin Test FLEx new public','','',0,2145,'2019-10-08 04:09:24','2019-10-08 04:09:24','test-robin-flex-new-public',1,4008,4009,1,NULL,NULL),
-(2147,'Robin new public 2','','',0,2145,'2019-10-09 05:21:30','2019-10-09 05:21:30','test-robin-new-public-2',1,4000,4001,1,NULL,NULL),
+(9,'Thai Food Dictionary','A picture dictionary of Thai food.','',1,NULL,'2009-10-12 03:41:53','2019-10-04 13:22:14','tha-food',1,17,18,0,NULL,NULL),
+(1289,'Sherwood TestSena3 03','','',1,NULL,'2016-08-25 07:58:11','2019-10-04 13:22:22','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),
+(1894,'test-ws-1-flex','','',1,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),
+(2145,'Robin Test Projects','Test projects for Robin Hood\'s testing of Send/Receive scenarios','',1,NULL,'2019-10-08 04:06:32','2019-10-08 04:06:32','robin-test-projects',1,3999,4022,0,NULL,NULL),
+(2146,'Robin Test FLEx new public','','',1,2145,'2019-10-08 04:09:24','2019-10-08 04:09:24','test-robin-flex-new-public',1,4008,4009,1,NULL,NULL),
+(2147,'Robin new public 2','','',1,2145,'2019-10-09 05:21:30','2019-10-09 05:21:30','test-robin-new-public-2',1,4000,4001,1,NULL,NULL),
 (2150,'Alan_test','To test hg pull/push','',1,NULL,'2019-10-18 13:59:45','2019-10-22 20:13:53','alan_test',5,3997,3998,0,NULL,NULL),
 (2152,'aland_test','hg pull/push tests','',1,NULL,'2019-10-22 20:34:59','2019-10-22 20:34:59','aland_test',1,3995,3996,0,NULL,NULL),
-(2153,'tha-food2','','',0,NULL,'2019-10-24 07:06:20','2019-10-24 07:06:20','tha-food2',1,4023,4024,0,NULL,NULL);
+(2153,'tha-food2','','',1,NULL,'2019-10-24 07:06:20','2019-10-24 07:06:20','tha-food2',1,4023,4024,0,NULL,NULL);
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
