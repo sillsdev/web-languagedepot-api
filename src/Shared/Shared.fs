@@ -90,12 +90,7 @@ module Dto =
 
     type UserList = UserDetails list
 
-    type MemberList = {
-        managers : string list  // Usernames
-        contributors : string list  // Usernames
-        observers : string list  // Usernames
-        programmers : string list  // Usernames
-    }
+    type MemberList = (string * RoleType) list
 
     type ProjectDetails = {
         code : string

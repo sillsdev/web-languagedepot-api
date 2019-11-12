@@ -27,7 +27,7 @@ type Msg =
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
 
-type Model = { CurrentlyViewedProject : string; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -69,15 +69,14 @@ let (formState, formConfig) =
 
 let init() =
     let formState, formCmds = Form.init formConfig formState
-    { CurrentlyViewedProject = ""; ProjectList = []; FormState = formState }, Cmd.map OnFormMsg formCmds
+    { CurrentlyViewedProject = None; ProjectList = []; FormState = formState }, Cmd.map OnFormMsg formCmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     | HandleFetchError e ->
         currentModel, Notifications.notifyError e.Message
     | NewProjectPageNav projectCode ->
-        let nextModel = { currentModel with CurrentlyViewedProject = projectCode }
-        nextModel, Cmd.none
+        currentModel, Cmd.ofMsg (ListSingleProject projectCode)
     | OnFormMsg msg ->
         let (formState, formCmd) = Form.update formConfig msg currentModel.FormState
         let nextModel = { currentModel with FormState = formState }
@@ -92,7 +91,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         match toResult projectResult with
         | Ok project ->
             printfn "%A" project
-            { currentModel with ProjectList = [project] }, Cmd.none
+            { currentModel with CurrentlyViewedProject = Some project }, Cmd.none
         | Error msg ->
             currentModel, Notifications.notifyError msg
     | ProjectListRetrieved projectsResult ->
@@ -145,23 +144,30 @@ let membershipView (membership : Dto.MemberList option) =
     match membership with
     | None -> str " (member list not provided)"
     | Some members ->
-        // if List.length members.managers +
-        //    List.length members.contributors +
-        //    List.length members.programmers +
-        //    List.length members.observers = 0 then
-        //     str (sprintf " (no members in %A)" [members.managers; members.contributors; members.programmers; members.observers])
-        //     // str (if List.isEmpty members.managers then sprintf "Manager list is empty: %A" members.managers else sprintf "Manager list is NOT empty: %A" members.managers)
-        // else
-            let toStr title (lst : string list) = (*if List.length lst = 0 then "empty;" else *)title + ": " + String.concat "," lst + ";"
+        if Seq.isEmpty members then
+            str (sprintf " (no members in %A)" members)
+        else
+            let toStr title role (lst : Dto.MemberList) = title + ": " + if Seq.isEmpty lst then "(none)" else String.concat "," (lst |> Seq.filter (snd >> ((=) role)) |> Seq.map fst) + ";"
             // TODO: Investigate why List.isEmpty and List.length lst = 0 both seem to be returning *incorrect* results!
-            str ((toStr "Managers" members.managers +
-                  toStr "Contributors" members.contributors +
-                  toStr "Observers" members.observers +
-                  toStr "Programmers" members.programmers).TrimEnd(';'))
+            console.log("Memberlist attempted: ", members)
+            // str ((toStr "Managers" Manager members +
+            //       toStr "Contributors" Contributor members +
+            //       toStr "Observers" Observer members +
+            //       toStr "Programmers" Programmer members).TrimEnd(';'))
+            str (sprintf "%A" members)  // TODO: Figure out why the filtering above wasn't working right
+
+let projectDetailsView (project : Dto.ProjectDetails option) =
+    div [ ] [
+        match project with
+        | None -> str "(no project loaded)"
+        | Some project ->
+            h2 [ ] [ str project.name; str (sprintf " (%s)" project.code); membershipView project.membership ]
+            p [ ] [ str project.description ]
+    ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [
-        str "Sorry, haven't made this form fancy yet"
+        projectDetailsView model.CurrentlyViewedProject
         br [ ]
         Form.render {
             Config = formConfig

@@ -25,20 +25,13 @@ type Dto.ProjectDetails with
         Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
         Dto.ProjectDetails.membership = None
     }
-    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * int * string) list) =
+    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * (string * int)) list) =
         match sqlProjectAndRoles |> List.tryHead with
         | None -> None
-        | Some (sqlProject, _, _) ->
+        | Some (sqlProject, _) ->
             try
-                let memberships = sqlProjectAndRoles |> List.map (fun (_, roleId, username) -> RoleType.OfNumericId roleId, username)
-                let byRole roleType = memberships |> List.filter (fst >> ((=) roleType)) |> List.map snd
-                { Dto.ProjectDetails.FromSql sqlProject with
-                    membership = Some {
-                        managers = byRole Manager
-                        contributors = byRole Contributor
-                        observers = byRole Observer
-                        programmers = byRole Programmer
-                } } |> Some
+                let memberships = sqlProjectAndRoles |> List.map (fun (_, (username, roleId)) -> username, RoleType.OfNumericId roleId)
+                { Dto.ProjectDetails.FromSql sqlProject with membership = Some memberships } |> Some
             with _ -> None  // Note: This "swallows" the exception. TODO: Convert to a Result<'a, string> or something similar so we can propagate the exception
 
 type Dto.UserDetails with
@@ -218,7 +211,7 @@ let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
             join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
-            select (project, role.RoleId, user.Login)
+            select (project, (user.Login, role.RoleId))
         }
         let! projectAndRoles = projectQuery |> List.executeQueryAsync
         return  Dto.ProjectDetails.FromSqlWithRoles projectAndRoles

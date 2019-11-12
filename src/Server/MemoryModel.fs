@@ -59,22 +59,14 @@ let isMemberOf (proj : Dto.ProjectDetails) username =
     match proj.membership with
     | None -> false
     | Some members ->
-        members.managers |> List.contains username ||
-        members.contributors |> List.contains username ||
-        members.observers |> List.contains username ||
-        members.programmers |> List.contains username
+        members |> Seq.map fst |> Seq.contains username
 
 let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun username -> async {
     let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
         match proj.membership with
         | None -> None
         | Some members ->
-            let roles = [
-                if members.managers |> List.contains username then yield Manager
-                if members.contributors |> List.contains username then yield Contributor
-                if members.observers |> List.contains username then yield Observer
-                if members.programmers |> List.contains username then yield Programmer
-            ]
+            let roles = members |> List.filter (fst >> ((=) username)) |> List.map snd
             if List.isEmpty roles then None else Some (proj, roles)
         )
     return List.ofSeq projectsAndRoles
@@ -185,18 +177,8 @@ let addOrRemoveMembership isAdd username projectCode (roleType : RoleType) = asy
         | false, _ -> return false
         | true, projectDetails ->
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultWith (fun _ -> {
-                    managers = []
-                    contributors = []
-                    observers = []
-                    programmers = []
-                })
-                let newMemberList =
-                    match roleType with
-                    | Manager -> { memberList with managers = addOrRemoveInList isAdd username memberList.managers }
-                    | Contributor -> { memberList with contributors = addOrRemoveInList isAdd username memberList.contributors }
-                    | Observer -> { memberList with observers = addOrRemoveInList isAdd username memberList.observers }
-                    | Programmer -> { memberList with programmers = addOrRemoveInList isAdd username memberList.programmers }
+                let memberList = details.membership |> Option.defaultValue []
+                let newMemberList = memberList |> addOrRemoveInList isAdd (username, roleType)
                 { details with membership = Some newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
@@ -215,18 +197,8 @@ let removeUserFromAllRolesInProject = Model.RemoveUserFromAllRolesInProject (fun
         | false, _ -> return false
         | true, projectDetails ->
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultWith (fun _ -> {
-                    managers = []
-                    contributors = []
-                    observers = []
-                    programmers = []
-                })
-                let newMemberList =
-                    { memberList with
-                        managers = addOrRemoveInList false username memberList.managers
-                        contributors = addOrRemoveInList false username memberList.contributors
-                        observers = addOrRemoveInList false username memberList.observers
-                        programmers = addOrRemoveInList false username memberList.programmers }
+                let memberList = details.membership |> Option.defaultValue []
+                let newMemberList = memberList |> List.filter (fst >> ((<>) username))
                 { details with membership = Some newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),

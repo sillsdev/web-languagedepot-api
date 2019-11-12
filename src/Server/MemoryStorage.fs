@@ -81,13 +81,9 @@ let projectCodeReplacementLock = obj()
 
 let replaceUsername oldUsername newUsername =
     let mutable replacements = []
-    let listReplace old ``new`` lst = lst |> List.map (fun x -> if x = old then ``new`` else x)
-    let mkNewMembers (oldMembers : Dto.MemberList) : Dto.MemberList = {
-        managers = oldMembers.managers |> listReplace oldUsername newUsername
-        contributors = oldMembers.contributors |> listReplace oldUsername newUsername
-        observers = oldMembers.observers |> listReplace oldUsername newUsername
-        programmers = oldMembers.programmers |> listReplace oldUsername newUsername
-    }
+    let replaceUsernameInList lst = lst |> List.map (fun ((name, role) as pair) -> if name = oldUsername then (newUsername, role) else pair)
+    let mkNewMembers (oldMembers : Dto.MemberList) : Dto.MemberList =
+        oldMembers |> replaceUsernameInList
     let mkNewProject _projectCode (oldProject : Dto.ProjectDetails) =
         match oldProject.membership with
         | None -> oldProject
@@ -98,10 +94,7 @@ let replaceUsername oldUsername newUsername =
         match project.membership with
         | None -> ()
         | Some members ->
-            if members.managers |> List.contains oldUsername ||
-               members.contributors |> List.contains oldUsername ||
-               members.observers |> List.contains oldUsername ||
-               members.programmers |> List.contains oldUsername then
+            if members |> List.exists (fst >> ((=) oldUsername)) then
                 replacements <- (projectCode, project) :: replacements
     // Check for overlapping username as late as possible; this won't eliminate race conditions, but it will minimize them as much as we can
     if not <| isValidUsername newUsername then

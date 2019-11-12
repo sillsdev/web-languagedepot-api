@@ -154,7 +154,7 @@ Target.create "RestoreSql" (fun _ ->
 
 Target.create "CopyNeededMySqlDlls" (fun _ ->
     let dllsNeeded = [
-        "packages/sql/MySqlConnector/lib/netstandard2.1/MySqlConnector.dll"
+        "packages/sql/MySqlConnector/lib/netstandard2.0/MySqlConnector.dll"
         "packages/sql/System.Buffers/lib/netstandard2.0/System.Buffers.dll"
         "packages/sql/System.Runtime.InteropServices.RuntimeInformation/lib/netstandard1.1/System.Runtime.InteropServices.RuntimeInformation.dll"
         "packages/sql/System.Threading.Tasks.Extensions/lib/netstandard2.0/System.Threading.Tasks.Extensions.dll"
