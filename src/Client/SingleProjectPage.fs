@@ -23,6 +23,8 @@ type Msg =
     | ProjectListRetrieved of JsonResult<Dto.ProjectList>
     | SingleProjectRetrieved of JsonResult<Dto.ProjectDetails>
     | ClearProjects
+    | ShowConfirmationModal of Cmd<Msg>
+    | SubmitConfirmationModal of bool
     | FormSubmitted
     | GotFormResult of JsonResult<int>
     | HandleFetchError of exn
@@ -31,7 +33,7 @@ type Msg =
     | ShowAddUserDialog of Dto.ProjectDetails * RoleType
     | LogResultAndReload of string * JsonResult<string>
 
-type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
+type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State; ConfirmationModalVisible : bool; ConfirmationModalCmd : Cmd<Msg> }
 
 let (formState, formConfig) =
     Form<Msg>
@@ -73,7 +75,7 @@ let (formState, formConfig) =
 
 let init() =
     let formState, formCmds = Form.init formConfig formState
-    { CurrentlyViewedProject = None; ProjectList = []; FormState = formState }, Cmd.map OnFormMsg formCmds
+    { CurrentlyViewedProject = None; ProjectList = []; FormState = formState; ConfirmationModalVisible = false; ConfirmationModalCmd = Cmd.none }, Cmd.map OnFormMsg formCmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -107,6 +109,13 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | ClearProjects ->
         let nextModel = { currentModel with ProjectList = [] }
         nextModel, Cmd.none
+    | ShowConfirmationModal cmd ->
+        let nextModel = { currentModel with ConfirmationModalVisible = true; ConfirmationModalCmd = cmd }
+        nextModel, Cmd.none
+    | SubmitConfirmationModal shouldRunCmd ->
+        let cmd = if shouldRunCmd then currentModel.ConfirmationModalCmd else Cmd.none
+        let nextModel = { currentModel with ConfirmationModalVisible = false; ConfirmationModalCmd = Cmd.none }
+        nextModel, cmd
     | FormSubmitted ->
         let newFormState, isValid = Form.validate formConfig currentModel.FormState
         let nextModel = { currentModel with FormState = newFormState }
@@ -144,12 +153,12 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         // Once we implement, this should pop up a modal with four checkboxes, so you can change what role(s) someone has.
         currentModel, Cmd.none
     | RemoveMembership (name,project,role) ->
-        if role.ToString() = Manager.ToString() &&
-           project.membership |> Option.defaultValue [] |> Seq.filter (fun m -> (snd m).ToString() = Manager.ToString()) |> Seq.length = 1 then
-            console.log("Should pop up confirmation dialog saying \"Do you really want to delete the project's last manager?\"")
-        // TODO: Implement that pop-up confirmation dialog
+        let isLastManager =
+            role.ToString() = Manager.ToString() &&
+            project.membership |> Option.defaultValue [] |> Seq.filter (fun m -> (snd m).ToString() = Manager.ToString()) |> Seq.length = 1
         let url = sprintf "/api/project/%s/user/%s/withRole/%s" project.code name (role.ToString())
-        currentModel, Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () (fun result -> LogResultAndReload(project.code,result)) HandleFetchError
+        let cmd = Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () (fun result -> LogResultAndReload(project.code,result)) HandleFetchError
+        currentModel, if isLastManager then Cmd.ofMsg (ShowConfirmationModal cmd) else cmd
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
     div [ ]
@@ -158,6 +167,18 @@ let formActions (formState : FormBuilder.Types.State) dispatch =
               Button.Color IsPrimary
             ]
             [ str "Submit" ] ]
+
+let confirmationModal visible submit =
+    Modal.modal [ Modal.IsActive visible ]
+        [ Modal.background [ Props [ OnClick (submit false) ] ] [ ]
+          Modal.Card.card [ ]
+            [ Modal.Card.body [ ]
+                [ str "Are you sure you want to remove the last manager of this project?" ]
+              Modal.Card.foot [ ]
+                [ Button.button [ Button.OnClick (submit true) ]
+                    [ str "Remove last manager" ]
+                  Button.button [ Button.OnClick (submit false); Button.Color IsSuccess ]
+                    [ str "Make no change" ] ] ] ]
 
 let membershipViewInline (membership : Dto.MemberList option) =
     match membership with
@@ -215,6 +236,7 @@ let projectDetailsView (dispatch : Msg -> unit) (project : Dto.ProjectDetails op
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [
+        confirmationModal model.ConfirmationModalVisible (fun b _ -> dispatch (SubmitConfirmationModal b))
         projectDetailsView dispatch model.CurrentlyViewedProject
         br [ ]
         Form.render {
