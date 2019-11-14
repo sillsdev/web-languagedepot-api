@@ -422,6 +422,8 @@ let addMembershipById (connString : string) (userId : int) (projectId : int) (ro
 let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql.dataContext.``testldapi.membersEntity``>) =
     async {
         let ctx = sql.GetDataContext connString
+        // If the Redmine table had proper foreign key relationships, we could use ON DELETE CASCADE and this would be a lot simpler.
+        // As it is, we have to go through a slightly convoluted process to delete the correct member_roles and members entries.
         let! memberRolesToDelete =
             query {
                 for membership in membershipQuery do
@@ -431,9 +433,23 @@ let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql
                     select (memberRole)
             } |> List.executeQueryAsync
         let! membershipsToDelete = membershipQuery |> List.executeQueryAsync
-        memberRolesToDelete |> List.iter (fun sqlMemberRole -> sqlMemberRole.Delete())
-        membershipsToDelete |> List.iter (fun sqlMembership -> sqlMembership.Delete())
-        do! ctx.SubmitUpdatesAsync()
+        let memberRoleIdsToDelete = memberRolesToDelete |> List.map (fun mr -> mr.Id)
+        let membershipIdsToDelete = membershipsToDelete |> List.map (fun mr -> mr.Id)
+        let! _deleteCountMemberRoles =
+            query {
+                for memberRole in ctx.Testldapi.MemberRoles do
+                    where (memberRole.Id |=| memberRoleIdsToDelete)  // The custom |=| operator translates to "item IN (list-of-items)" in SQL
+                    select (memberRole)
+            } |> Seq.``delete all items from single table``
+        let! _deleteCountMemberships =
+            query {
+                for membership in ctx.Testldapi.Members do
+                    where (membership.Id |=| membershipIdsToDelete)
+                    select (membership)
+            } |> Seq.``delete all items from single table``
+        // Currently the delete counts are always 0 due to https://github.com/fsprojects/SQLProvider/issues/633 so there's no point in using them to confirm success or failure
+        // printfn "%d role entries and %d membership entries deleted" deleteCountMemberRoles deleteCountMemberships
+        return ()
     }
 
 let removeMembershipById (connString : string) (userId : int) (projectId : int) (roleId : int) =

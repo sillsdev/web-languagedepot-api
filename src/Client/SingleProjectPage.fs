@@ -26,6 +26,9 @@ type Msg =
     | HandleFetchError of exn
     | GetConfig
     | GotConfig of Shared.Settings.MySqlSettings
+    | EditMembership of string * Dto.ProjectDetails
+    | RemoveMembership of string * Dto.ProjectDetails * RoleType
+    | GotStringResult of JsonResult<string>
 
 type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
 
@@ -124,6 +127,13 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Error e ->
             printfn "Server responded with error message: %s" e
         currentModel, [fun _ -> history.go -1]
+    | GotStringResult jsonResult ->
+        match toResult jsonResult with
+        | Ok s ->
+            printfn "Got success message %s from server" s
+        | Error e ->
+            printfn "Server responded with error message: %s" e
+        currentModel, Cmd.none
     | GetConfig ->
         let url = "/api/config"
         currentModel, Cmd.OfPromise.either Fetch.get url GotConfig HandleFetchError
@@ -131,6 +141,13 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         printfn "Got config: %A" mySqlSettings
         printfn "Port: %d" mySqlSettings.Port
         currentModel, Cmd.none
+    | EditMembership (name,project) ->
+        console.log("Not yet implemented. Would edit membership of",name,"in project",project)
+        // Once we implement, this should pop up a modal with four checkboxes, so you can change what role(s) someone has.
+        currentModel, Cmd.none
+    | RemoveMembership (name,project,role) ->
+        let url = sprintf "/api/project/%s/user/%s/withRole/%s" project.code name (role.ToString())
+        currentModel, Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () GotStringResult HandleFetchError
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
     div [ ]
@@ -140,34 +157,63 @@ let formActions (formState : FormBuilder.Types.State) dispatch =
             ]
             [ str "Submit" ] ]
 
-let membershipView (membership : Dto.MemberList option) =
+let membershipViewInline (membership : Dto.MemberList option) =
     match membership with
     | None -> str " (member list not provided)"
     | Some members ->
         if Seq.isEmpty members then
             str (sprintf " (no members in %A)" members)
         else
-            let toStr title role (lst : Dto.MemberList) = title + ": " + if Seq.isEmpty lst then "(none)" else String.concat "," (lst |> Seq.filter (snd >> ((=) role)) |> Seq.map fst) + ";"
-            // TODO: Investigate why List.isEmpty and List.length lst = 0 both seem to be returning *incorrect* results!
-            console.log("Memberlist attempted: ", members)
-            // str ((toStr "Managers" Manager members +
-            //       toStr "Contributors" Contributor members +
-            //       toStr "Observers" Observer members +
-            //       toStr "Programmers" Programmer members).TrimEnd(';'))
-            str (sprintf "%A" members)  // TODO: Figure out why the filtering above wasn't working right
+            let toStr title (role : RoleType) (lst : Dto.MemberList) =
+                let filteredList = lst |> Seq.filter (snd >> (fun itemRole -> itemRole.ToString() = role.ToString()))
+                if Seq.isEmpty filteredList then "" else title + ": " + String.concat "," (filteredList |> Seq.map fst) + ";"
+            // TODO: Investigate why List.isEmpty and List.filter both seem to be returning *incorrect* results!
+            str ((toStr "Managers" Manager members +
+                  toStr "Contributors" Contributor members +
+                  toStr "Observers" Observer members +
+                  toStr "Programmers" Programmer members).TrimEnd(';'))
 
-let projectDetailsView (project : Dto.ProjectDetails option) =
+let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) =
+    match project.membership with
+    | None -> []
+    | Some members ->
+        let section title (role : RoleType) (lst : Dto.MemberList) =
+            [
+                h2 [ ] [ str title ]
+                for name, itemRole in lst do
+                    console.log("Matching", (name, itemRole), "with string repr", itemRole.ToString(), "against", role, "with string repr", role.ToString(), (sprintf "which %s" (if itemRole.ToString() = role.ToString() then "matches" else "doesn't match")))
+                    // TODO: Investigate why the itemRole.ToNumericId() in all these pairs is *always* coming out as 3 (manager) no matter what the role actually is.
+                    // For now, we'll use ToString instead of ToNumericId; it's not meaningfully slower since the strings are short, and it works.
+                    if itemRole.ToString() = role.ToString() then yield! [
+                        str name
+                        str "\u00a0"
+                        a [ OnClick (fun _ -> dispatch (EditMembership (name, project)))] [ str "edit" ]
+                        str "\u00a0"
+                        a [ Style [Color "red"]; OnClick (fun _ -> dispatch (RemoveMembership (name, project, itemRole)))] [ str "X" ]
+                        br []
+                    ]
+                    // Can't just compare itemRole to role because in Javascript they end up being different types, for reasons I don't yet understand
+            ]
+        [
+            yield! section "Managers" Manager members
+            yield! section "Contributors" Contributor members
+            yield! section "Observers" Observer members
+            yield! section "Programmers" Programmer members
+        ]
+
+let projectDetailsView (dispatch : Msg -> unit) (project : Dto.ProjectDetails option) =
     div [ ] [
         match project with
         | None -> str "(no project loaded)"
         | Some project ->
-            h2 [ ] [ str project.name; str (sprintf " (%s)" project.code); membershipView project.membership ]
+            h2 [ ] [ str project.name; str (sprintf " (%s)" project.code); membershipViewInline project.membership ]
             p [ ] [ str project.description ]
+            yield! membershipViewBlock dispatch project
     ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [
-        projectDetailsView model.CurrentlyViewedProject
+        projectDetailsView dispatch model.CurrentlyViewedProject
         br [ ]
         Form.render {
             Config = formConfig
@@ -198,5 +244,5 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ str "Clear Project list" ])
         ul [ ]
            [ for project in model.ProjectList ->
-                li [ ] [ a [ OnClick (fun _ -> dispatch (ListSingleProject project.code)) ] [ str (sprintf "%s:" project.name); membershipView project.membership ] ] ]
+                li [ ] [ a [ OnClick (fun _ -> dispatch (ListSingleProject project.code)) ] [ str (sprintf "%s:" project.name); membershipViewInline project.membership ] ] ]
         ]
