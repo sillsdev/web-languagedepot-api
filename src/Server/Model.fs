@@ -25,11 +25,11 @@ type Dto.ProjectDetails with
         Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
         Dto.ProjectDetails.membership = None
     }
-    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * (string * int * string)) list) =
+    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * string * int * string) list) =
         match sqlProjectAndRoles |> List.tryHead with
         | None -> None
-        | Some (sqlProject, _) ->
-            let memberships = sqlProjectAndRoles |> List.choose (fun (_, (username, roleId, roleName)) ->
+        | Some (sqlProject, _, _, _) ->
+            let memberships = sqlProjectAndRoles |> List.choose (fun (_, username, roleId, roleName) ->
                 if String.IsNullOrEmpty username || roleId = 0 || String.IsNullOrEmpty roleName
                 then None
                 else
@@ -129,6 +129,23 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
         return! projectsQuery |> List.executeQueryAsync
     }
 
+let projectsAndRolesQueryAsync (connString : string) (isPublic : bool) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let projectsQuery = query {
+            for project in ctx.Testldapi.Projects do
+            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
+            where (project.Status = ProjectStatus.Active)
+            join membership in !! ctx.Testldapi.Members on (project.Id = membership.ProjectId)
+            join memberRole in !! ctx.Testldapi.MemberRoles on (membership.Id = memberRole.MemberId)
+            join user in !! ctx.Testldapi.Users on (membership.UserId = user.Id)
+            join role in !! ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
+            select (project, user.Login, role.Id, role.Name)
+        }
+        let! projectsAndRoles = projectsQuery |> List.executeQueryAsync
+        return projectsAndRoles |> List.groupBy (fun (project, _, _, _) -> project.Identifier) |> List.choose (snd >> Dto.ProjectDetails.FromSqlWithRoles)
+    }
+
 let projectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
@@ -221,7 +238,7 @@ let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
             join role in !! ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
-            select (project, (user.Login, role.Id, role.Name))
+            select (project, user.Login, role.Id, role.Name)
         }
         let! projectAndRoles = projectQuery |> List.executeQueryAsync
         return  Dto.ProjectDetails.FromSqlWithRoles projectAndRoles
@@ -537,7 +554,7 @@ module ModelRegistration =
     let registerServices (builder : IServiceCollection) (connString : string) =
         builder
             .AddSingleton<ListUsers>(usersQueryAsync connString)
-            .AddSingleton<ListProjects>(projectsQueryAsync connString)
+            .AddSingleton<ListProjects>(projectsAndRolesQueryAsync connString)
             .AddSingleton<CountUsers>(CountUsers (usersCountAsync connString))
             .AddSingleton<CountProjects>(CountProjects (projectsCountAsync connString))
             .AddSingleton<CountRealProjects>(CountRealProjects (realProjectsCountAsync connString))
