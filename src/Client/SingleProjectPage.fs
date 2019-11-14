@@ -28,7 +28,8 @@ type Msg =
     | HandleFetchError of exn
     | EditMembership of string * Dto.ProjectDetails
     | RemoveMembership of string * Dto.ProjectDetails * RoleType
-    | GotStringResult of JsonResult<string>
+    | ShowAddUserDialog of Dto.ProjectDetails * RoleType
+    | LogResultAndReload of string * JsonResult<string>
 
 type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State }
 
@@ -127,20 +128,28 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Error e ->
             printfn "Server responded with error message: %s" e
         currentModel, [fun _ -> history.go -1]
-    | GotStringResult jsonResult ->
+    | LogResultAndReload (projectCode,jsonResult) ->
         match toResult jsonResult with
         | Ok s ->
             printfn "Got success message %s from server" s
         | Error e ->
             printfn "Server responded with error message: %s" e
-        currentModel, Cmd.none
+        currentModel, Cmd.ofMsg (ListSingleProject projectCode)
     | EditMembership (name,project) ->
         console.log("Not yet implemented. Would edit membership of",name,"in project",project)
         // Once we implement, this should pop up a modal with four checkboxes, so you can change what role(s) someone has.
         currentModel, Cmd.none
+    | ShowAddUserDialog (project, role) ->
+        console.log("Not yet implemented. Would add a user to project",project,"with role",role)
+        // Once we implement, this should pop up a modal with four checkboxes, so you can change what role(s) someone has.
+        currentModel, Cmd.none
     | RemoveMembership (name,project,role) ->
+        if role.ToString() = Manager.ToString() &&
+           project.membership |> Option.defaultValue [] |> Seq.filter (fun m -> (snd m).ToString() = Manager.ToString()) |> Seq.length = 1 then
+            console.log("Should pop up confirmation dialog saying \"Do you really want to delete the project's last manager?\"")
+        // TODO: Implement that pop-up confirmation dialog
         let url = sprintf "/api/project/%s/user/%s/withRole/%s" project.code name (role.ToString())
-        currentModel, Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () GotStringResult HandleFetchError
+        currentModel, Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () (fun result -> LogResultAndReload(project.code,result)) HandleFetchError
 
 let formActions (formState : FormBuilder.Types.State) dispatch =
     div [ ]
@@ -174,7 +183,6 @@ let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) 
             [
                 h2 [ ] [ str title ]
                 for name, itemRole in lst do
-                    console.log("Matching", (name, itemRole), "with string repr", itemRole.ToString(), "against", role, "with string repr", role.ToString(), (sprintf "which %s" (if itemRole.ToString() = role.ToString() then "matches" else "doesn't match")))
                     // TODO: Investigate why the itemRole.ToNumericId() in all these pairs is *always* coming out as 3 (manager) no matter what the role actually is.
                     // For now, we'll use ToString instead of ToNumericId; it's not meaningfully slower since the strings are short, and it works.
                     if itemRole.ToString() = role.ToString() then yield! [
@@ -186,6 +194,7 @@ let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) 
                         br []
                     ]
                     // Can't just compare itemRole to role because in Javascript they end up being different types, for reasons I don't yet understand
+                a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (ShowAddUserDialog (project, role))) ] [ Fa.span [ Fa.Solid.Plus; Fa.Props [ Style [Color "green"] ] ] [ ]; str (" Add " + role.ToString()) ]
             ]
         [
             yield! section "Managers" Manager members
