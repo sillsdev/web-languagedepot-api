@@ -2,6 +2,8 @@ module SingleProjectPage
 
 open Browser
 open Elmish
+open Fable.FontAwesome
+open Fable.FontAwesome.Free
 open Fable.React
 open Fable.React.Props
 open Fulma
@@ -24,8 +26,6 @@ type Msg =
     | FormSubmitted
     | GotFormResult of JsonResult<int>
     | HandleFetchError of exn
-    | GetConfig
-    | GotConfig of Shared.Settings.MySqlSettings
     | EditMembership of string * Dto.ProjectDetails
     | RemoveMembership of string * Dto.ProjectDetails * RoleType
     | GotStringResult of JsonResult<string>
@@ -134,13 +134,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Error e ->
             printfn "Server responded with error message: %s" e
         currentModel, Cmd.none
-    | GetConfig ->
-        let url = "/api/config"
-        currentModel, Cmd.OfPromise.either Fetch.get url GotConfig HandleFetchError
-    | GotConfig mySqlSettings ->
-        printfn "Got config: %A" mySqlSettings
-        printfn "Port: %d" mySqlSettings.Port
-        currentModel, Cmd.none
     | EditMembership (name,project) ->
         console.log("Not yet implemented. Would edit membership of",name,"in project",project)
         // Once we implement, this should pop up a modal with four checkboxes, so you can change what role(s) someone has.
@@ -187,9 +180,9 @@ let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) 
                     if itemRole.ToString() = role.ToString() then yield! [
                         str name
                         str "\u00a0"
-                        a [ OnClick (fun _ -> dispatch (EditMembership (name, project)))] [ str "edit" ]
+                        a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (EditMembership (name, project)))] [ Fa.span [ Fa.Solid.Edit ] [ ] ]
                         str "\u00a0"
-                        a [ Style [Color "red"]; OnClick (fun _ -> dispatch (RemoveMembership (name, project, itemRole)))] [ str "X" ]
+                        a [ Style [Color "red"]; OnClick (fun _ -> dispatch (RemoveMembership (name, project, itemRole)))] [ Fa.span [ Fa.Solid.Times ] [ ] ]
                         br []
                     ]
                     // Can't just compare itemRole to role because in Javascript they end up being different types, for reasons I don't yet understand
@@ -221,14 +214,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
             Dispatch = dispatch
             ActionsArea = (formActions model.FormState dispatch)
             Loader = Form.DefaultLoader }
-        br [ ]
-        str "Config should be valid MySqlSettings config; check it"
-        br [ ]
-        Button.button
-            [ Button.Props [ OnClick (fun _ -> dispatch GetConfig) ]
-              Button.Color IsPrimary
-            ]
-            [ str "Get Config" ]
         br [ ]
         (if model.ProjectList |> List.isEmpty then
             Button.button
