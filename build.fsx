@@ -170,7 +170,7 @@ open Fake.Core.TargetOperators
 
 "Clean"
     ==> "InstallClient"
-    ==> "CopyNeededMySqlDlls"
+    // ==> "CopyNeededMySqlDlls"
     ==> "Build"
     ==> "Bundle"
     ==> "Docker"

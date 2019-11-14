@@ -550,3 +550,4 @@ module ModelRegistration =
             .AddSingleton<RemoveUserFromAllRolesInProject>(RemoveUserFromAllRolesInProject (removeUserFromAllRolesInProject connString))
             .AddSingleton<ArchiveProject>(archiveProject connString)
         |> ignore
+        FSharp.Data.Sql.Common.QueryEvents.SqlQueryEvent |> Event.add (printfn "Executing SQL: %O")
