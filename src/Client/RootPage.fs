@@ -26,6 +26,7 @@ let init() =
                          RealProjectCount = None
                          UserCount = None }
     initialModel, Cmd.ofMsg RefreshCounts
+    // TODO: Investigate why RefreshCounts is happening too often
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with

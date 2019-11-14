@@ -17,48 +17,64 @@ open JsonHelpers
 
 type Msg =
     | FindUser of string
-    | UsersFound of JsonResult<Dto.UserList>
+    | UsersFound of JsonResult<Dto.UserList> * int
     | SingleUserFound of JsonResult<Dto.UserDetails>
     | UserNotFound
     | LogUserResult of Dto.UserList
     | LogException of System.Exception
     | ListAllUsers
+    | ListUsersLimitOffset of int*int*int
     | LogText of string
+    | UserCountLoaded of JsonResult<int>
+    | PaginationMsg of int
+    | SetCurrentPage of int
 
-type Model = { FoundUsers : Dto.UserList; }
+type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int }
 
 let init() =
-    { FoundUsers = [] }, Cmd.none
+    // TODO: Might want to get user count here
+    { FoundUsers = []; UsersPerPage = 2; UserCount = 0; CurrentPage = 1 }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+
+let unpackJsonResult currentModel jsonResult fn =
+        match toResult jsonResult with
+        | Ok newData ->
+            fn newData
+        | Result.Error msg ->
+            currentModel, Notifications.notifyError msg
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | UserCountLoaded result ->
+        unpackJsonResult currentModel result (fun n ->
+            let nextModel = { currentModel with UserCount = n }
+            nextModel, Cmd.none)
+    | PaginationMsg newCurrentPage ->
+            let nextModel = { currentModel with CurrentPage = newCurrentPage }
+            // TODO: Cache results so we don't have to wait for the database to load the next page if we already had it in memory
+            nextModel, Cmd.ofMsg (ListUsersLimitOffset (currentModel.UsersPerPage, (newCurrentPage - 1) * currentModel.UsersPerPage, newCurrentPage))
+    | SetCurrentPage newCurrentPage ->
+            let nextModel = { currentModel with CurrentPage = newCurrentPage }
+            nextModel, Cmd.none
     | FindUser username ->
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url SingleUserFound LogException
     | ListAllUsers ->
-        let url = sprintf "/api/users"
+        let url = sprintf "/api/users/limit/%d" currentModel.UsersPerPage
         currentModel, Cmd.OfPromise.either Fetch.get url UsersFound LogException
-        // let url = sprintf "/api/healthCheck"
-        // currentModel, Cmd.OfPromise.either Fetch.get<string> url LogText LogException
+    | ListUsersLimitOffset (limit,offset,newCurrentPage) ->
+        let url = sprintf "/api/users/limit/%d/offset/%d" limit offset
+        currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
     | LogText text ->
         printfn "%A" text
         currentModel, Cmd.none
-    | UsersFound result ->
-        match toResult result with
-        | Ok users ->
+    | UsersFound (result,newCurrentPage) ->
+        unpackJsonResult currentModel result (fun users ->
             let nextModel = { currentModel with FoundUsers = users }
-            nextModel, Cmd.ofMsg (LogUserResult users)
-        | Result.Error msg ->
-            printfn "Error getting user list: %s" msg
-            currentModel, Cmd.none
+            nextModel, Cmd.ofMsg (LogUserResult users))
     | SingleUserFound result ->
-        match toResult result with
-        | Ok user ->
+        unpackJsonResult currentModel result (fun user ->
             let nextModel = { currentModel with FoundUsers = [user] }
-            nextModel, Cmd.ofMsg (LogUserResult [user])
-        | Result.Error msg ->
-            printfn "Error finding single user: %s" msg
-            currentModel, Cmd.none
+            nextModel, Cmd.ofMsg (LogUserResult [user]))
     | UserNotFound ->
         currentModel, Cmd.none
     | LogUserResult users ->
@@ -69,12 +85,49 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let cmd = Notifications.notifyError exn.Message
         currentModel, cmd
 
+let pagination (dispatch : Msg -> unit) itemCount itemsPerPage currentPage =
+    let pageCount = itemCount / itemsPerPage + (if itemCount % itemsPerPage = 0 then 0 else 1)
+    printfn "Paginating: %d pages" pageCount
+    if pageCount <= 1
+    then nav [] []
+    else
+        let pageLink n =
+            let props = if n = currentPage
+                        then Pagination.Link.Current (n = currentPage)
+                        else Pagination.Link.Props [ OnClick (fun _ -> dispatch (PaginationMsg n))]
+            Pagination.link [ props ] [ str (n.ToString()) ]
+        let nextProps = if currentPage >= pageCount then [] else [ Props [ OnClick (fun _ -> dispatch (PaginationMsg (currentPage + 1))) ] ]
+        let prevProps = if currentPage <= 1 then [] else [ Props [ OnClick (fun _ -> dispatch (PaginationMsg (currentPage - 1))) ] ]
+        Pagination.pagination [ Pagination.IsCentered ] [
+            Pagination.previous prevProps [ str "«" ]
+            Pagination.next nextProps [ str "»" ]
+            Pagination.list [ ] (
+                if pageCount <= 5 then
+                    [ for i = 1 to pageCount do yield pageLink i ]
+                elif currentPage <= 3 then
+                    [ for i = 1 to currentPage do yield pageLink i
+                      yield Pagination.ellipsis [ ]
+                      yield pageLink pageCount ]
+                elif pageCount - currentPage <= 3 then
+                    [ yield pageLink 1
+                      yield Pagination.ellipsis [ ]
+                      for i = pageCount - currentPage - 1 to pageCount do yield pageLink i ]
+                else
+                    [ yield pageLink 1
+                      yield Pagination.ellipsis [ ]
+                      for i in [ currentPage - 2 .. currentPage + 2 ] do yield pageLink i
+                      yield Pagination.ellipsis [ ]
+                      yield pageLink pageCount ]
+            )
+        ]
+
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [ str "This is the users page"
               br [ ]
               textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (dispatch << FindUser)
               br [ ]
               Button.button [ Button.Color IsPrimary; Button.OnClick (fun _ -> dispatch ListAllUsers) ] [ str "List all" ]
+              pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
               ul [ ] [
                   for user in model.FoundUsers ->
                     li [ ] [ a [ Href (sprintf "#user/%s" user.username) ] [ str (user.firstName + " " + user.lastName) ] ]

@@ -69,7 +69,7 @@ type Dto.RoleDetails with
     }
     static member TypeFromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = RoleType.OfString sqlRole.Name
 
-type ListUsers = unit -> Async<Dto.UserDetails list>
+type ListUsers = int option -> int option -> Async<Dto.UserDetails list>
 type ListProjects = bool -> Async<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
 type CountUsers = CountUsers of (unit -> Async<int>)
@@ -95,7 +95,7 @@ type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Asy
 type RemoveUserFromAllRolesInProject = RemoveUserFromAllRolesInProject of (string -> string -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
 
-let usersQueryAsync (connString : string) () =
+let usersQueryAsync (connString : string) (limit : int option) (offset : int option) =
     async {
         let ctx = sql.GetDataContext connString
         let usersQuery = query {
@@ -103,7 +103,12 @@ let usersQueryAsync (connString : string) () =
             join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
             select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
         }
-        let! users = usersQuery |> List.executeQueryAsync
+        let! users =
+            match limit, offset with
+            | None, None -> usersQuery |> List.executeQueryAsync
+            | None, Some offset -> query { for user in usersQuery do skip offset } |> List.executeQueryAsync
+            | Some limit, None -> query { for user in usersQuery do take limit } |> List.executeQueryAsync
+            | Some limit, Some offset -> query { for user in usersQuery do skip offset; take limit } |> List.executeQueryAsync
         let usersAndEmails = users |> List.groupBy fst |> List.map (snd >> Dto.UserDetails.FromSql)
         return usersAndEmails
     }

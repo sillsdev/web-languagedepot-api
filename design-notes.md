@@ -62,12 +62,19 @@ This will help inform what we do in the Shared.fs model.
 - If removing the last project manager, a popup says "Please confirm you want to remove the last project manager from project X, leaving project X with no project managers" and there are two choices, "Remove last manager" (not default, color gray) and "Do nothing" (default, color blue/green/whatever scheme)
 - No confirmation dialog needed for other roles, of course
 
+##### Not yet done from this page
+
+- Green + icon doesn't yet do anything; should pop up a user-search dialog (which I have yet to implement)
+    - Also note that how the user-search dialog behaves will depend on whether you have admin rights
+    - In first-pass implementation, just provide a checkbox to say "I am an admin" so we can stick to front-end work
+
 #### All-users page
 
 - Only accessible to admins
 - Show all users (grouped in sets of N - 20, 50, 100)
 - Search by name / email
   - Query "first_name LIKE %foo%", same for last_name and email(s)
+  - NOTE: This search will also be used in the single-project page, so make it reusable
 - Some actions available right from this page:
     - Checkbox for mass ... what? deletion, but anything else?
     - Wait, is mass deletion even a good idea?

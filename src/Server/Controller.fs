@@ -84,7 +84,19 @@ let getUser login : HttpHandler =
 // TODO: Remove before going to production
 let listUsers : HttpHandler =
     withServiceFunc
-        (fun (listUsers : Model.ListUsers) -> listUsers())
+        (fun (listUsers : Model.ListUsers) -> listUsers None None)
+
+let listUsersLimit limit : HttpHandler =
+    withServiceFunc
+        (fun (listUsers : Model.ListUsers) -> listUsers (Some limit) None)
+
+let listUsersOffset offset : HttpHandler =
+    withServiceFunc
+        (fun (listUsers : Model.ListUsers) -> listUsers None (Some offset))
+
+let listUsersLimitOffset (limit,offset) : HttpHandler =
+    withServiceFunc
+        (fun (listUsers : Model.ListUsers) -> listUsers (Some limit) (Some offset))
 
 let projectExists projectCode : HttpHandler =
     withServiceFunc

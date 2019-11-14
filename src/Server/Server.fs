@@ -38,8 +38,12 @@ let webApp = router {
     get "/api/project" Controller.getAllPublicProjects
     getf "/api/project/%s" Controller.getPublicProject
     // TODO: Not in real API spec. Why not? Probably need to add it
-    getf "/api/users/%s" Controller.getUser
     get "/api/users" Controller.listUsers
+    getf "/api/users/limit/%i" Controller.listUsersLimit
+    getf "/api/users/offset/%i" Controller.listUsersOffset
+    getf "/api/users/limit/%i/offset/%i" Controller.listUsersLimitOffset
+    getf "/api/users/%s" Controller.getUser  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
+    // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))

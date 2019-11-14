@@ -27,8 +27,14 @@ type AddMembership = AddMembership of (string -> string -> RoleType -> Async<boo
 type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
 type ArchiveProject = bool -> string -> Async<bool>
 
-let listUsers : Model.ListUsers = fun() -> async {
-    return MemoryStorage.userStorage.Values |> List.ofSeq
+let listUsers : Model.ListUsers = fun limit offset -> async {
+    let limitFn = match limit with
+                  | Some limit -> Seq.take limit
+                  | None -> id
+    let offsetFn = match offset with
+                   | Some offset -> Seq.skip offset
+                   | None -> id
+    return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> List.ofSeq
 }
 
 let listProjects : Model.ListProjects = fun b -> async {
