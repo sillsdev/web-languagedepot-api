@@ -102,21 +102,22 @@ let pagination (dispatch : Msg -> unit) itemCount itemsPerPage currentPage =
             Pagination.previous prevProps [ str "«" ]
             Pagination.next nextProps [ str "»" ]
             Pagination.list [ ] (
+                // TODO: Tweak this so it looks good in all scenarios
                 if pageCount <= 5 then
                     [ for i = 1 to pageCount do yield pageLink i ]
                 elif currentPage <= 3 then
-                    [ for i = 1 to currentPage do yield pageLink i
+                    [ for i = 1 to 3 do yield pageLink i
                       yield Pagination.ellipsis [ ]
                       yield pageLink pageCount ]
-                elif pageCount - currentPage <= 3 then
+                elif pageCount - currentPage <= 2 then
                     [ yield pageLink 1
                       yield Pagination.ellipsis [ ]
-                      for i = pageCount - currentPage - 1 to pageCount do yield pageLink i ]
+                      for i = currentPage - 2 to pageCount do yield pageLink i ]
                 else
                     [ yield pageLink 1
-                      yield Pagination.ellipsis [ ]
-                      for i in [ currentPage - 2 .. currentPage + 2 ] do yield pageLink i
-                      yield Pagination.ellipsis [ ]
+                      if (currentPage > 4) then yield Pagination.ellipsis [ ]
+                      for i in [ currentPage - 2 .. (currentPage + 2 |> min pageCount) ] do yield pageLink i
+                      if (pageCount - currentPage > 3) then yield Pagination.ellipsis [ ]
                       yield pageLink pageCount ]
             )
         ]
