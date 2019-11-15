@@ -171,9 +171,9 @@ open Elmish.HMR
 #endif
 
 Program.mkProgram init update routingView
-#if DEBUG
-|> Program.withConsoleTrace
-#endif
+// #if DEBUG
+// |> Program.withConsoleTrace
+// #endif
 |> Toast.Program.withToast Notifications.renderToastWithFulma
 |> Program.withReactBatched "elmish-app"
 // #if DEBUG
