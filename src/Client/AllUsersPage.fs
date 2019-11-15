@@ -32,10 +32,11 @@ type Msg =
     | SetCurrentPage of int
     | ChangeUsersPerPage of int
 
-type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool }
+type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool; CurrentQueryMsg : Msg option }
 
 let init() =
-    { FoundUsers = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+    { FoundUsers = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false; CurrentQueryMsg = None },
+    Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
 let unpackJsonResult currentModel jsonResult fn =
         match toResult jsonResult with
@@ -46,14 +47,21 @@ let unpackJsonResult currentModel jsonResult fn =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    // TODO: Pull pagination stuff out into a component; we'll want to reuse it between AllUsers and AllProjects
     | ChangeUsersPerPage newUsersPerPage ->
         let oldOffset = currentModel.CurrentPage * currentModel.UsersPerPage
-        let newOffset = (oldOffset / newUsersPerPage) * newUsersPerPage
-        let newCurrentPage = newOffset / newUsersPerPage
-        let nextModel = { currentModel with UsersPerPage = newUsersPerPage }
+        let newCurrentPage = oldOffset / newUsersPerPage
+        let newOffset = newCurrentPage * newUsersPerPage
         printfn "Going from offset %d to %d with new current page %d" oldOffset newOffset newCurrentPage  // TODO: Get this calculation right; it's not right yet
-        // TODO: Store the current operation (FindUser, SearchUsers, etc) somewhere in the model so we can reissue the right message when ChangeUsersPerPage changes
-        nextModel, Cmd.ofMsg (ListUsersLimitOffset (newUsersPerPage, newOffset, newCurrentPage))
+        let nextMsg =
+            match currentModel.CurrentQueryMsg with
+            | Some (ListUsersLimitOffset _) -> Some (ListUsersLimitOffset (newUsersPerPage, newOffset, newCurrentPage))
+            | Some (SearchUsers (searchText, asAdmin)) -> None  // Don't reissue a search when we change users-per-page
+            | Some _ -> currentModel.CurrentQueryMsg
+            | None -> currentModel.CurrentQueryMsg
+        let nextModel = { currentModel with UsersPerPage = newUsersPerPage; CurrentQueryMsg = nextMsg }
+        let cmd = nextMsg |> Option.map Cmd.ofMsg |> Option.defaultValue Cmd.none
+        nextModel, cmd
     | ToggleAdmin ->
         let nextModel = { currentModel with IsAdmin = not currentModel.IsAdmin }
         nextModel, Cmd.none
@@ -62,8 +70,16 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let nextModel = { currentModel with UserCount = n }
             nextModel, Cmd.none)
     | PaginationMsg newCurrentPage ->
-            let nextModel = { currentModel with CurrentPage = newCurrentPage }
             // TODO: Cache results so we don't have to wait for the database to load the next page if we already had it in memory
+            let nextMsg, nextCmd =
+                match currentModel.CurrentQueryMsg with
+                | Some (ListUsersLimitOffset (limit,offset,oldCurrentPage)) ->
+                    let msg = ListUsersLimitOffset (currentModel.UsersPerPage, (newCurrentPage - 1) * currentModel.UsersPerPage, newCurrentPage)
+                    Some msg, Cmd.ofMsg msg
+                | Some (SearchUsers (searchText, asAdmin)) -> currentModel.CurrentQueryMsg, Cmd.none
+                | Some _ -> currentModel.CurrentQueryMsg, Cmd.none
+                | None -> currentModel.CurrentQueryMsg, Cmd.none
+            let nextModel = { currentModel with CurrentPage = newCurrentPage }
             nextModel, Cmd.ofMsg (ListUsersLimitOffset (currentModel.UsersPerPage, (newCurrentPage - 1) * currentModel.UsersPerPage, newCurrentPage))
     | SetCurrentPage newCurrentPage ->
             let nextModel = { currentModel with CurrentPage = newCurrentPage }
@@ -76,13 +92,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let loggedInUser = "test"  // TODO: Once we implement the login page properly, get the currently logged in user here instead (and get rid of the IsAdmin checkbox)
         let username = if asAdmin then "admin" else loggedInUser
         let login : Api.LoginCredentials = { username = username; password = "x" }
-        currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login (fun result -> UsersFound(result, 1)) LogException
+        let nextModel = { currentModel with CurrentQueryMsg = Some (SearchUsers (searchText, asAdmin)) }
+        nextModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login (fun result -> UsersFound(result, 1)) LogException
     | ListAllUsers ->
-        let url = sprintf "/api/users/limit/%d" currentModel.UsersPerPage
-        currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result, 1)) LogException
+        currentModel, Cmd.ofMsg (ListUsersLimitOffset (currentModel.UsersPerPage, 0, 1))
     | ListUsersLimitOffset (limit,offset,newCurrentPage) ->
         let url = sprintf "/api/users/limit/%d/offset/%d" limit offset
-        currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
+        let nextModel = { currentModel with CurrentQueryMsg = Some (ListUsersLimitOffset (limit,offset,newCurrentPage)) }
+        nextModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
     | LogText text ->
         printfn "%A" text
         currentModel, Cmd.none
