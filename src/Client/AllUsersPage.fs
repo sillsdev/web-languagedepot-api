@@ -30,11 +30,12 @@ type Msg =
     | UserCountLoaded of JsonResult<int>
     | PaginationMsg of int
     | SetCurrentPage of int
+    | ChangeUsersPerPage of int
 
 type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool }
 
 let init() =
-    { FoundUsers = []; UsersPerPage = 2; UserCount = 0; CurrentPage = 1; IsAdmin = false }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+    { FoundUsers = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
 let unpackJsonResult currentModel jsonResult fn =
         match toResult jsonResult with
@@ -45,6 +46,14 @@ let unpackJsonResult currentModel jsonResult fn =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | ChangeUsersPerPage newUsersPerPage ->
+        let oldOffset = currentModel.CurrentPage * currentModel.UsersPerPage
+        let newOffset = (oldOffset / newUsersPerPage) * newUsersPerPage
+        let newCurrentPage = newOffset / newUsersPerPage
+        let nextModel = { currentModel with UsersPerPage = newUsersPerPage }
+        printfn "Going from offset %d to %d with new current page %d" oldOffset newOffset newCurrentPage  // TODO: Get this calculation right; it's not right yet
+        // TODO: Store the current operation (FindUser, SearchUsers, etc) somewhere in the model so we can reissue the right message when ChangeUsersPerPage changes
+        nextModel, Cmd.ofMsg (ListUsersLimitOffset (newUsersPerPage, newOffset, newCurrentPage))
     | ToggleAdmin ->
         let nextModel = { currentModel with IsAdmin = not currentModel.IsAdmin }
         nextModel, Cmd.none
@@ -70,7 +79,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login (fun result -> UsersFound(result, 1)) LogException
     | ListAllUsers ->
         let url = sprintf "/api/users/limit/%d" currentModel.UsersPerPage
-        currentModel, Cmd.OfPromise.either Fetch.get url UsersFound LogException
+        currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result, 1)) LogException
     | ListUsersLimitOffset (limit,offset,newCurrentPage) ->
         let url = sprintf "/api/users/limit/%d/offset/%d" limit offset
         currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
@@ -79,11 +88,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | UsersFound (result,newCurrentPage) ->
         unpackJsonResult currentModel result (fun users ->
-            let nextModel = { currentModel with FoundUsers = users }
+            let nextModel = { currentModel with FoundUsers = users; CurrentPage = newCurrentPage }
             nextModel, Cmd.ofMsg (LogUserResult users))
     | SingleUserFound result ->
         unpackJsonResult currentModel result (fun user ->
-            let nextModel = { currentModel with FoundUsers = [user] }
+            let nextModel = { currentModel with FoundUsers = [user]; CurrentPage = 1; UserCount = 1 }
             nextModel, Cmd.ofMsg (LogUserResult [user]))
     | UserNotFound ->
         currentModel, Cmd.none
@@ -143,9 +152,28 @@ let view (model : Model) (dispatch : Msg -> unit) =
               userSearch model dispatch
               br [ ]
               Button.button [ Button.Color IsPrimary; Button.OnClick (fun _ -> dispatch ListAllUsers) ] [ str "List all" ]
-              pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
               ul [ ] [
                   for user in model.FoundUsers ->
                     li [ ] [ a [ Href (sprintf "#user/%s" user.username) ] [ str (user.firstName + " " + user.lastName) ] ]
+              ]
+              pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
+              br [ ]
+              str "Items per page: "
+              Select.select [ ] [
+                  select
+                    [ Value model.UsersPerPage
+                      OnChange (fun evt ->
+                          match System.Int32.TryParse evt.Value with
+                          | false, _ -> ()
+                          | true, value -> dispatch (ChangeUsersPerPage value) ) ]
+                    [ option [ Value "1"; Selected (model.UsersPerPage = 1) ] [ str "1" ]
+                      option [ Value "2"; Selected (model.UsersPerPage = 2) ] [ str "2" ]
+                      option [ Value "3"; Selected (model.UsersPerPage = 3) ] [ str "3" ]
+                      option [ Value "5"; Selected (model.UsersPerPage = 5) ] [ str "5" ]
+                      option [ Value "10"; Selected (model.UsersPerPage = 10) ] [ str "10" ]
+                      option [ Value "25"; Selected (model.UsersPerPage = 25) ] [ str "25" ]
+                      option [ Value "50"; Selected (model.UsersPerPage = 50) ] [ str "50" ]
+                      option [ Value "100"; Selected (model.UsersPerPage = 100) ] [ str "100" ]
+                  ]
               ]
             ]
