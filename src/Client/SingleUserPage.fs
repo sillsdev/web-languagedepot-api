@@ -33,13 +33,6 @@ type Msg =
 
 type Model = { RoleList : Dto.RoleDetails list; ProjectList : (Dto.ProjectDetails * RoleType) list; CurrentlyViewedUser : SharedUser option; }
 
-let unpackJsonResult currentModel jsonResult fn =
-        match toResult jsonResult with
-        | Ok newData ->
-            fn newData
-        | Error msg ->
-            currentModel, Notifications.notifyError msg
-
 let init() =
     { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
     Cmd.OfPromise.either Fetch.get "/api/roles" RoleListUpdated RoleListFetchFailed

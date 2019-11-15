@@ -37,13 +37,6 @@ let init() =
     { FoundUsers = []; SearchResults = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false },
     Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
-let unpackJsonResult currentModel jsonResult fn =
-        match toResult jsonResult with
-        | Ok newData ->
-            fn newData
-        | Result.Error msg ->
-            currentModel, Notifications.notifyError msg
-
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     // TODO: Pull pagination stuff out into a component; we'll want to reuse it between AllUsers and AllProjects

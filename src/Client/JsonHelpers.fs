@@ -18,7 +18,14 @@ let toResult (jsonResult : JsonResult<'a>) =
     | Failure { ok = false; message = msg } -> Error msg
     | Failure _ -> Error (sprintf "Invalid JsonResult: Success case should have ok = true. JsonResult was %A" jsonResult)
 
-// Not sure these two are worth it. Complexity in calling code is too high
+let unpackJsonResult currentModel jsonResult fn =
+        match toResult jsonResult with
+        | Ok newData ->
+            fn newData
+        | Error msg ->
+            currentModel, Notifications.notifyError msg
+
+// TODO: Consider whether the version below with separate ofSuccess and ofError is worth restoring, or whether we should just delete it
 (*
 let handleResult ofSuccess ofError (model,jsonResult) =
     match (toResult jsonResult) with

@@ -30,13 +30,6 @@ type Msg =
 
 type Model = { FoundProjects : Dto.ProjectList; IsAdmin : bool }  // TODO: Handle case where we also have roles
 
-let unpackJsonResult currentModel jsonResult fn =
-        match toResult jsonResult with
-        | Ok newData ->
-            fn newData
-        | Result.Error msg ->
-            currentModel, Notifications.notifyError msg
-
 let init() =
     { FoundProjects = []; IsAdmin = false }, Cmd.none
 
