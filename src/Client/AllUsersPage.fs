@@ -16,15 +16,14 @@ open Shared.Api
 open JsonHelpers
 
 type Msg =
-    | FindUser of string
     | SearchUsers of string * bool
     | UsersFound of JsonResult<Dto.UserList> * int
-    | SingleUserFound of JsonResult<Dto.UserDetails>
+    | UserSearchResults of JsonResult<Dto.UserList>
     | UserNotFound
     | LogUserResult of Dto.UserList
     | LogException of System.Exception
     | ListAllUsers
-    | ListUsersLimitOffset of int*int*int
+    | ListUsersSinglePage of int
     | LogText of string
     | ToggleAdmin
     | UserCountLoaded of JsonResult<int>
@@ -32,10 +31,10 @@ type Msg =
     | SetCurrentPage of int
     | ChangeUsersPerPage of int
 
-type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool; CurrentQueryMsg : Msg option }
+type Model = { FoundUsers : Dto.UserList; SearchResults : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool }
 
 let init() =
-    { FoundUsers = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false; CurrentQueryMsg = None },
+    { FoundUsers = []; SearchResults = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false },
     Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
 let unpackJsonResult currentModel jsonResult fn =
@@ -49,19 +48,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     // TODO: Pull pagination stuff out into a component; we'll want to reuse it between AllUsers and AllProjects
     | ChangeUsersPerPage newUsersPerPage ->
-        let oldOffset = currentModel.CurrentPage * currentModel.UsersPerPage
-        let newCurrentPage = oldOffset / newUsersPerPage
-        let newOffset = newCurrentPage * newUsersPerPage
-        printfn "Going from offset %d to %d with new current page %d" oldOffset newOffset newCurrentPage  // TODO: Get this calculation right; it's not right yet
-        let nextMsg =
-            match currentModel.CurrentQueryMsg with
-            | Some (ListUsersLimitOffset _) -> Some (ListUsersLimitOffset (newUsersPerPage, newOffset, newCurrentPage))
-            | Some (SearchUsers (searchText, asAdmin)) -> None  // Don't reissue a search when we change users-per-page
-            | Some _ -> currentModel.CurrentQueryMsg
-            | None -> currentModel.CurrentQueryMsg
-        let nextModel = { currentModel with UsersPerPage = newUsersPerPage; CurrentQueryMsg = nextMsg }
-        let cmd = nextMsg |> Option.map Cmd.ofMsg |> Option.defaultValue Cmd.none
-        nextModel, cmd
+        let oldOffset = (currentModel.CurrentPage - 1) * currentModel.UsersPerPage
+        let newCurrentPage = (oldOffset / newUsersPerPage) + 1
+        let nextModel = { currentModel with UsersPerPage = newUsersPerPage }
+        printfn "Old offset %d, new current page %d (old users per page %d and new %d)" oldOffset newCurrentPage currentModel.UsersPerPage newUsersPerPage
+        nextModel, Cmd.ofMsg (ListUsersSinglePage newCurrentPage)
     | ToggleAdmin ->
         let nextModel = { currentModel with IsAdmin = not currentModel.IsAdmin }
         nextModel, Cmd.none
@@ -70,47 +61,36 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let nextModel = { currentModel with UserCount = n }
             nextModel, Cmd.none)
     | PaginationMsg newCurrentPage ->
-            // TODO: Cache results so we don't have to wait for the database to load the next page if we already had it in memory
-            let nextMsg, nextCmd =
-                match currentModel.CurrentQueryMsg with
-                | Some (ListUsersLimitOffset (limit,offset,oldCurrentPage)) ->
-                    let msg = ListUsersLimitOffset (currentModel.UsersPerPage, (newCurrentPage - 1) * currentModel.UsersPerPage, newCurrentPage)
-                    Some msg, Cmd.ofMsg msg
-                | Some (SearchUsers (searchText, asAdmin)) -> currentModel.CurrentQueryMsg, Cmd.none
-                | Some _ -> currentModel.CurrentQueryMsg, Cmd.none
-                | None -> currentModel.CurrentQueryMsg, Cmd.none
-            let nextModel = { currentModel with CurrentPage = newCurrentPage }
-            nextModel, Cmd.ofMsg (ListUsersLimitOffset (currentModel.UsersPerPage, (newCurrentPage - 1) * currentModel.UsersPerPage, newCurrentPage))
+        // We won't update the current page number in the model until the results come back
+        currentModel, Cmd.ofMsg (ListUsersSinglePage newCurrentPage)
     | SetCurrentPage newCurrentPage ->
-            let nextModel = { currentModel with CurrentPage = newCurrentPage }
-            nextModel, Cmd.none
-    | FindUser username ->
-        let url = sprintf "/api/users/%s" username
-        currentModel, Cmd.OfPromise.either Fetch.get url SingleUserFound LogException
+        let nextModel = { currentModel with CurrentPage = newCurrentPage }
+        nextModel, Cmd.none
     | SearchUsers (searchText, asAdmin) ->
         let url = sprintf "/api/searchUsers/%s" searchText
         let loggedInUser = "test"  // TODO: Once we implement the login page properly, get the currently logged in user here instead (and get rid of the IsAdmin checkbox)
         let username = if asAdmin then "admin" else loggedInUser
         let login : Api.LoginCredentials = { username = username; password = "x" }
-        let nextModel = { currentModel with CurrentQueryMsg = Some (SearchUsers (searchText, asAdmin)) }
-        nextModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login (fun result -> UsersFound(result, 1)) LogException
+        currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login UserSearchResults LogException
+    | UserSearchResults result ->
+        unpackJsonResult currentModel result (fun users ->
+            let nextModel = { currentModel with SearchResults = users }
+            nextModel, Cmd.ofMsg (LogUserResult users))
     | ListAllUsers ->
-        currentModel, Cmd.ofMsg (ListUsersLimitOffset (currentModel.UsersPerPage, 0, 1))
-    | ListUsersLimitOffset (limit,offset,newCurrentPage) ->
+        currentModel, Cmd.ofMsg (ListUsersSinglePage 1)
+    | ListUsersSinglePage (newCurrentPage) ->
+        let limit = currentModel.UsersPerPage
+        let offset = (newCurrentPage - 1) * limit
         let url = sprintf "/api/users/limit/%d/offset/%d" limit offset
-        let nextModel = { currentModel with CurrentQueryMsg = Some (ListUsersLimitOffset (limit,offset,newCurrentPage)) }
-        nextModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
+        // We won't update the current page number in the model until the results come back
+        currentModel, Cmd.OfPromise.either Fetch.get url (fun result -> UsersFound (result,newCurrentPage)) LogException
     | LogText text ->
         printfn "%A" text
         currentModel, Cmd.none
     | UsersFound (result,newCurrentPage) ->
         unpackJsonResult currentModel result (fun users ->
             let nextModel = { currentModel with FoundUsers = users; CurrentPage = newCurrentPage }
-            nextModel, Cmd.ofMsg (LogUserResult users))
-    | SingleUserFound result ->
-        unpackJsonResult currentModel result (fun user ->
-            let nextModel = { currentModel with FoundUsers = [user]; CurrentPage = 1; UserCount = 1 }
-            nextModel, Cmd.ofMsg (LogUserResult [user]))
+            nextModel, Cmd.ofMsg (LogUserResult users))  // TODO: Get rid of this logging now that the user search is working well
     | UserNotFound ->
         currentModel, Cmd.none
     | LogUserResult users ->
@@ -146,7 +126,7 @@ let pagination (dispatch : Msg -> unit) itemCount itemsPerPage currentPage =
                       yield pageLink pageCount ]
                 elif pageCount - currentPage <= 2 then
                     [ yield pageLink 1
-                      yield Pagination.ellipsis [ ]
+                      if pageCount > 6 then yield Pagination.ellipsis [ ]
                       for i = pageCount - 4 to pageCount do yield pageLink i ]
                 else
                     [ yield pageLink 1
@@ -158,7 +138,7 @@ let pagination (dispatch : Msg -> unit) itemCount itemsPerPage currentPage =
         ]
 
 let userSearch (model : Model) (dispatch : Msg -> unit) =
-    textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (fun text -> dispatch (SearchUsers(text, model.IsAdmin)))
+    textInputComponent "Find user" "" (str "Find user") (fun text -> dispatch (SearchUsers(text, model.IsAdmin)))
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [ str "This is the users page"
@@ -168,29 +148,35 @@ let view (model : Model) (dispatch : Msg -> unit) =
               br [ ]
               userSearch model dispatch
               br [ ]
-              Button.button [ Button.Color IsPrimary; Button.OnClick (fun _ -> dispatch ListAllUsers) ] [ str "List all" ]
               ul [ ] [
-                  for user in model.FoundUsers ->
+                  for user in model.SearchResults ->
                     li [ ] [ a [ Href (sprintf "#user/%s" user.username) ] [ str (user.firstName + " " + user.lastName) ] ]
               ]
-              pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
               br [ ]
-              str "Items per page: "
-              Select.select [ ] [
-                  select
-                    [ Value model.UsersPerPage
-                      OnChange (fun evt ->
-                          match System.Int32.TryParse evt.Value with
-                          | false, _ -> ()
-                          | true, value -> dispatch (ChangeUsersPerPage value) ) ]
-                    [ option [ Value "1"; Selected (model.UsersPerPage = 1) ] [ str "1" ]
-                      option [ Value "2"; Selected (model.UsersPerPage = 2) ] [ str "2" ]
-                      option [ Value "3"; Selected (model.UsersPerPage = 3) ] [ str "3" ]
-                      option [ Value "5"; Selected (model.UsersPerPage = 5) ] [ str "5" ]
-                      option [ Value "10"; Selected (model.UsersPerPage = 10) ] [ str "10" ]
-                      option [ Value "25"; Selected (model.UsersPerPage = 25) ] [ str "25" ]
-                      option [ Value "50"; Selected (model.UsersPerPage = 50) ] [ str "50" ]
-                      option [ Value "100"; Selected (model.UsersPerPage = 100) ] [ str "100" ]
+              if (model.IsAdmin) then
+                  Button.button [ Button.Color IsPrimary; Button.OnClick (fun _ -> dispatch ListAllUsers) ] [ str "List all" ]
+                  ul [ ] [
+                      for user in model.FoundUsers ->
+                        li [ ] [ a [ Href (sprintf "#user/%s" user.username) ] [ str (user.firstName + " " + user.lastName) ] ]
                   ]
-              ]
+                  pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
+                  br [ ]
+                  str "Items per page: "
+                  Select.select [ ] [
+                      select
+                        [ Value model.UsersPerPage
+                          OnChange (fun evt ->
+                              match System.Int32.TryParse evt.Value with
+                              | false, _ -> ()
+                              | true, value -> dispatch (ChangeUsersPerPage value) ) ]
+                        [ option [ Value "1"; Selected (model.UsersPerPage = 1) ] [ str "1" ]
+                          option [ Value "2"; Selected (model.UsersPerPage = 2) ] [ str "2" ]
+                          option [ Value "3"; Selected (model.UsersPerPage = 3) ] [ str "3" ]
+                          option [ Value "5"; Selected (model.UsersPerPage = 5) ] [ str "5" ]
+                          option [ Value "10"; Selected (model.UsersPerPage = 10) ] [ str "10" ]
+                          option [ Value "25"; Selected (model.UsersPerPage = 25) ] [ str "25" ]
+                          option [ Value "50"; Selected (model.UsersPerPage = 50) ] [ str "50" ]
+                          option [ Value "100"; Selected (model.UsersPerPage = 100) ] [ str "100" ]
+                      ]
+                  ]
             ]

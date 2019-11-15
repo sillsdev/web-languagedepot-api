@@ -16,7 +16,8 @@ let TextInputComponent =
                [ Input.text
                    [ Input.Placeholder props.placeholder
                      Input.Value state.current
-                     Input.OnChange (fun ev -> state.update (!!ev.target?value : string)) ]
+                     Input.OnChange (fun ev -> state.update (!!ev.target?value : string))
+                     Input.Props [ Props.OnKeyPress (fun evt -> if evt.key = "Enter" then props.dispatch state.current) ] ]
                  Button.a
                    [ Button.Color IsInfo
                      Button.OnClick (fun _ -> props.dispatch state.current) ]
