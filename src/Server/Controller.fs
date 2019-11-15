@@ -81,6 +81,23 @@ let getUser login : HttpHandler =
         (fun (getUser : Model.GetUser) -> getUser login)
         (sprintf "Username %s not found" login)
 
+let searchUsers searchText (loginCredentials : Api.LoginCredentials) : HttpHandler =
+    fun (next : HttpFunc) (ctx : HttpContext) -> task {
+        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
+        let! goodLogin = verifyLoginCredentials loginCredentials
+        if goodLogin then
+            let (Model.IsAdmin userIsAdmin) = ctx.GetService<Model.IsAdmin>()
+            let! isAdmin = userIsAdmin loginCredentials.username
+            if isAdmin then
+                return! withServiceFunc
+                    (fun (Model.SearchUsersLoose searchUsersLoose) -> searchUsersLoose searchText) next ctx
+            else
+                return! withServiceFunc
+                    (fun (Model.SearchUsersExact searchUsersExact) -> searchUsersExact searchText) next ctx
+        else
+            return! RequestErrors.forbidden (jsonError "Login failed") next ctx
+    }
+
 // TODO: Remove before going to production
 let listUsers : HttpHandler =
     withServiceFunc

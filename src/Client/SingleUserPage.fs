@@ -81,7 +81,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel, Cmd.none
         | Some user ->
             let url = sprintf "/api/users/%s/projects" user.Name
-            let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let data : Api.LoginCredentials = { username = user.Name; password = "x" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
     | GetProjectsByRole roleName ->
         match currentModel.CurrentlyViewedUser with
@@ -89,7 +89,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             currentModel, Cmd.none
         | Some user ->
             let url = sprintf "/api/users/%s/projects/withRole/%s" user.Name roleName
-            let data : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let data : Api.LoginCredentials = { username = user.Name; password = "x" }
             currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url, data)) data ProjectsListRetrieved LogException
     | ProjectsListRetrieved jsonResult ->
         unpackJsonResult currentModel jsonResult (fun projects ->
@@ -100,7 +100,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let login : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let login : Api.LoginCredentials = { username = user.Name; password = "x" }
             let data : Api.EditProjectMembershipApiCall = { login = login; add = Some [{ username = user.Name; role = "contributor" }]; remove = None; removeUser = None }
             let url = sprintf "/api/project/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult
@@ -110,7 +110,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | None ->
             currentModel, Cmd.none
         | Some user ->
-            let login : Api.LoginCredentials = { username = user.Name; password = "s3kr3t" }
+            let login : Api.LoginCredentials = { username = user.Name; password = "x" }
             let data : Api.EditProjectMembershipApiCall = { login = login; add = None; remove = Some [{ username = user.Name; role = "contributor" }]; removeUser = None }
             let url = sprintf "/api/project/%s" projCode
             let promise = Fetch.patch(url, data) |> Promise.map LogResult

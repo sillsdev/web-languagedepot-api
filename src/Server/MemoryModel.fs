@@ -4,29 +4,6 @@ open Shared
 
 // Uses MemoryStorage to provide API calls
 
-type ListUsers = unit -> Async<Dto.UserDetails list>
-type ListProjects = bool -> Async<Dto.ProjectList>
-type CountUsers = CountUsers of (unit -> Async<int>)
-type CountProjects = CountProjects of (unit -> Async<int>)
-type CountRealProjects = CountRealProjects of (unit -> Async<int>)
-type ListRoles = unit -> Async<Dto.RoleDetails list>
-type ProjectsByUser = string -> Async<Dto.ProjectDetails list>
-type ProjectsByUserRole = string -> RoleType -> Async<Dto.ProjectDetails list>
-type ProjectsAndRolesByUser = string -> Async<(Dto.ProjectDetails * RoleType list) list>
-type ProjectsAndRolesByUserRole = string -> RoleType -> Async<(Dto.ProjectDetails * RoleType list) list>
-type UserExists = UserExists of (string -> Async<bool>)
-type ProjectExists = ProjectExists of (string -> Async<bool>)
-type GetUser = string -> Async<Dto.UserDetails option>
-type GetProject = bool -> string -> Async<Dto.ProjectDetails option>
-type CreateProject = Api.CreateProject -> Async<int>
-type CreateUser = Api.CreateUser -> Async<int>
-type UpsertUser = string -> Api.CreateUser -> Async<int>
-type ChangePassword = string -> Api.ChangePassword -> Async<bool>
-type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
-type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
-type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
-type ArchiveProject = bool -> string -> Async<bool>
-
 let listUsers : Model.ListUsers = fun limit offset -> async {
     let limitFn = match limit with
                   | Some limit -> Seq.take limit
@@ -99,6 +76,32 @@ let userExists = Model.UserExists (fun username -> async {
 
 let projectExists = Model.ProjectExists (fun code -> async {
     return MemoryStorage.projectStorage.ContainsKey code
+})
+
+let isAdmin = Model.IsAdmin (fun username -> async {
+    return username = "admin"
+})
+
+let searchUsersExact = Model.SearchUsersExact (fun searchText -> async {
+    return
+        MemoryStorage.userStorage.Values
+        |> Seq.filter (fun user ->
+            user.username = searchText ||
+            user.firstName = searchText ||
+            user.lastName = searchText ||
+            user.emailAddresses |> List.contains searchText)
+        |> List.ofSeq
+})
+
+let searchUsersLoose = Model.SearchUsersLoose (fun searchText -> async {
+    return
+        MemoryStorage.userStorage.Values
+        |> Seq.filter (fun user ->
+            user.username.Contains(searchText) ||
+            user.firstName.Contains(searchText) ||
+            user.lastName.Contains(searchText) ||
+            user.emailAddresses |> List.exists (fun email -> email.Contains(searchText)))
+        |> List.ofSeq
 })
 
 let getUser : Model.GetUser = fun username -> async {
@@ -228,6 +231,9 @@ module ModelRegistration =
             .AddSingleton<Model.ListRoles>(listRoles)
             .AddSingleton<Model.UserExists>(userExists)
             .AddSingleton<Model.ProjectExists>(projectExists)
+            .AddSingleton<Model.IsAdmin>(isAdmin)
+            .AddSingleton<Model.SearchUsersExact>(searchUsersExact)
+            .AddSingleton<Model.SearchUsersLoose>(searchUsersLoose)
             .AddSingleton<Model.GetUser>(getUser)
             .AddSingleton<Model.GetProject>(getProject)
             .AddSingleton<Model.CreateProject>(createProject)

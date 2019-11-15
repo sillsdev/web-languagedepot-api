@@ -87,6 +87,9 @@ type ProjectsAndRolesByUserRole = string -> RoleType -> Async<(Dto.ProjectDetail
 // Ditto for these two FooExists types: need a DU
 type UserExists = UserExists of (string -> Async<bool>)
 type ProjectExists = ProjectExists of (string -> Async<bool>)
+type IsAdmin = IsAdmin of (string -> Async<bool>)
+type SearchUsersExact = SearchUsersExact of (string -> Async<Dto.UserList>)
+type SearchUsersLoose = SearchUsersLoose of (string -> Async<Dto.UserList>)
 type GetUser = string -> Async<Dto.UserDetails option>
 type GetProject = bool -> string -> Async<Dto.ProjectDetails option>
 type CreateProject = Api.CreateProject -> Async<int>
@@ -115,6 +118,38 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
             | Some limit, Some offset -> query { for user in usersQuery do skip offset; take limit } |> List.executeQueryAsync
         let usersAndEmails = users |> List.groupBy fst |> List.map (snd >> Dto.UserDetails.FromSql)
         return usersAndEmails
+    }
+
+let searchUsersLoose (connString : string) (searchTerm : string) =
+    async {
+        let ctx = sql.GetDataContext(connString, SelectOperations.DatabaseSide)
+        let! users =
+            query {
+                for user in ctx.Testldapi.Users do
+                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                where (user.Login.Contains searchTerm ||
+                       user.Firstname.Contains searchTerm ||
+                       user.Lastname.Contains searchTerm ||
+                       mail.Address.Contains searchTerm)
+                select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
+            } |> List.executeQueryAsync
+        return users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
+    }
+
+let searchUsersExact (connString : string) (searchTerm : string) =
+    async {
+        let ctx = sql.GetDataContext connString
+        let! users =
+            query {
+                for user in ctx.Testldapi.Users do
+                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                where (user.Login = searchTerm ||
+                       user.Firstname = searchTerm ||
+                       user.Lastname = searchTerm ||
+                       mail.Address = searchTerm)
+                select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
+            } |> List.executeQueryAsync
+        return users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
     }
 
 let projectsQueryAsync (connString : string) (isPublic : bool) =
@@ -195,6 +230,16 @@ let projectExists (connString : string) projectCode =
             where (project.Identifier.IsSome)
             select project.Identifier.Value
             contains projectCode }
+    }
+
+let isAdmin (connString : string) username =
+    async {
+        let ctx = sql.GetDataContext connString
+        return query {
+            for user in ctx.Testldapi.Users do
+            where (user.Login = username)
+            select (user.Admin <> 0y)
+            headOrDefault }
     }
 
 let getUser (connString : string) username =
@@ -561,6 +606,9 @@ module ModelRegistration =
             .AddSingleton<ListRoles>(roleNames connString)
             .AddSingleton<UserExists>(UserExists (userExists connString))
             .AddSingleton<ProjectExists>(ProjectExists (projectExists connString))
+            .AddSingleton<IsAdmin>(IsAdmin (isAdmin connString))
+            .AddSingleton<SearchUsersExact>(SearchUsersExact (searchUsersExact connString))
+            .AddSingleton<SearchUsersLoose>(SearchUsersLoose (searchUsersLoose connString))
             .AddSingleton<GetUser>(getUser connString)
             .AddSingleton<GetProject>(getProjectWithRoles connString)
             .AddSingleton<CreateProject>(createProject connString)

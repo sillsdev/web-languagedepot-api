@@ -17,6 +17,7 @@ open JsonHelpers
 
 type Msg =
     | FindUser of string
+    | SearchUsers of string * bool
     | UsersFound of JsonResult<Dto.UserList> * int
     | SingleUserFound of JsonResult<Dto.UserDetails>
     | UserNotFound
@@ -25,15 +26,15 @@ type Msg =
     | ListAllUsers
     | ListUsersLimitOffset of int*int*int
     | LogText of string
+    | ToggleAdmin
     | UserCountLoaded of JsonResult<int>
     | PaginationMsg of int
     | SetCurrentPage of int
 
-type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int }
+type Model = { FoundUsers : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool }
 
 let init() =
-    // TODO: Might want to get user count here
-    { FoundUsers = []; UsersPerPage = 2; UserCount = 0; CurrentPage = 1 }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
+    { FoundUsers = []; UsersPerPage = 2; UserCount = 0; CurrentPage = 1; IsAdmin = false }, Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
 let unpackJsonResult currentModel jsonResult fn =
         match toResult jsonResult with
@@ -44,6 +45,9 @@ let unpackJsonResult currentModel jsonResult fn =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
+    | ToggleAdmin ->
+        let nextModel = { currentModel with IsAdmin = not currentModel.IsAdmin }
+        nextModel, Cmd.none
     | UserCountLoaded result ->
         unpackJsonResult currentModel result (fun n ->
             let nextModel = { currentModel with UserCount = n }
@@ -58,6 +62,12 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | FindUser username ->
         let url = sprintf "/api/users/%s" username
         currentModel, Cmd.OfPromise.either Fetch.get url SingleUserFound LogException
+    | SearchUsers (searchText, asAdmin) ->
+        let url = sprintf "/api/searchUsers/%s" searchText
+        let loggedInUser = "test"  // TODO: Once we implement the login page properly, get the currently logged in user here instead (and get rid of the IsAdmin checkbox)
+        let username = if asAdmin then "admin" else loggedInUser
+        let login : Api.LoginCredentials = { username = username; password = "x" }
+        currentModel, Cmd.OfPromise.either (fun data -> Fetch.post(url,data)) login (fun result -> UsersFound(result, 1)) LogException
     | ListAllUsers ->
         let url = sprintf "/api/users/limit/%d" currentModel.UsersPerPage
         currentModel, Cmd.OfPromise.either Fetch.get url UsersFound LogException
@@ -122,10 +132,16 @@ let pagination (dispatch : Msg -> unit) itemCount itemsPerPage currentPage =
             )
         ]
 
+let userSearch (model : Model) (dispatch : Msg -> unit) =
+    textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (fun text -> dispatch (SearchUsers(text, model.IsAdmin)))
+
 let view (model : Model) (dispatch : Msg -> unit) =
     div [ ] [ str "This is the users page"
               br [ ]
-              textInputComponent "Find user" "" (Button.button [ Button.Color IsPrimary ] [ str "Find user" ]) (dispatch << FindUser)
+              Checkbox.input [ Props [ Checked model.IsAdmin; OnClick (fun evt -> dispatch ToggleAdmin ) ] ]
+              Checkbox.checkbox [ Props [ Checked model.IsAdmin; OnClick (fun evt -> dispatch ToggleAdmin ) ] ]  [ str "Logged in as admin (test mode) "]
+              br [ ]
+              userSearch model dispatch
               br [ ]
               Button.button [ Button.Color IsPrimary; Button.OnClick (fun _ -> dispatch ListAllUsers) ] [ str "List all" ]
               pagination dispatch model.UserCount model.UsersPerPage model.CurrentPage
