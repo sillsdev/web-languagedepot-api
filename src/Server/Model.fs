@@ -116,7 +116,7 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
             | None, Some offset -> query { for user in usersQuery do skip offset } |> List.executeQueryAsync
             | Some limit, None -> query { for user in usersQuery do take limit } |> List.executeQueryAsync
             | Some limit, Some offset -> query { for user in usersQuery do skip offset; take limit } |> List.executeQueryAsync
-        let usersAndEmails = users |> List.groupBy fst |> List.map (snd >> Dto.UserDetails.FromSql)
+        let usersAndEmails = users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
         return usersAndEmails
     }
 
