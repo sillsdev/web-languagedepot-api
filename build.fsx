@@ -20,6 +20,7 @@ let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
 let clientDeployPath = Path.combine clientPath "deploy"
 let deployDir = Path.getFullName "./deploy"
+let bundleDir = Path.combine deployDir "server"
 
 let testSqlPath = Path.getFullName "./testlanguagedepot.sql"
 
@@ -65,7 +66,7 @@ let openBrowser url =
 
 
 Target.create "Clean" (fun _ ->
-    [ deployDir
+    [ bundleDir
       clientDeployPath ]
     |> Shell.cleanDirs
 )
@@ -118,9 +119,17 @@ let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runTool "docker" args __SOURCE_DIRECTORY__
 
+let ansible _param =
+    // TODO: Figure out appropriate parameters to pass in via TeamCity
+    let args = sprintf "ansible-playbook -i %s %s" "hosts" "main.yaml"
+    runTool "ansible" args deployDir
+
+let vagrant() =
+    runTool "vagrant" "up" deployDir
+
 Target.create "Bundle" (fun _ ->
-    let serverDir = Path.combine deployDir "Server"
-    let clientDir = Path.combine deployDir "Client"
+    let serverDir = Path.combine bundleDir "Server"
+    let clientDir = Path.combine bundleDir "Client"
     let publicDir = Path.combine clientDir "public"
 
     let publishArgs = sprintf "publish -c Release -o \"%s\"" serverDir
@@ -133,8 +142,12 @@ let dockerUser = "rmunn"
 let dockerImageName = "ldapi"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
-Target.create "Docker" (fun _ ->
-    buildDocker dockerFullName
+Target.create "Deploy" (fun _ ->
+    ansible ()
+)
+
+Target.create "DeployTest" (fun _ ->
+    vagrant ()
 )
 
 // NOTE: Before this will work, you must run "sudo mysql" and do something like:
@@ -173,7 +186,8 @@ open Fake.Core.TargetOperators
     // ==> "CopyNeededMySqlDlls"
     ==> "Build"
     ==> "Bundle"
-    ==> "Docker"
+    ==> "Deploy"
+    <=> "DeployTest"
 
 
 "Clean"

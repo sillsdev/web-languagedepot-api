@@ -1,0 +1,144 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - include_tasks: tasks/mysql.yaml
+    tags: db
+  - name: Port 80 proxy conf
+    blockinfile:
+      path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
+      block: |
+        ProxyPreserveHost On
+        ProxyPass /api/ http://127.0.0.1:8085/api/
+        ProxyPassReverse /api/ http://127.0.0.1:8085/api/
+        RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+      insertafter: '^<VirtualHost \*:80>'
+      marker: "# {mark} port 80 ANSIBLE MANAGED BLOCK"
+    notify: Restart apache
+    tags: webserver
+  - name: Port 443 proxy conf
+    blockinfile:
+      path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
+      block: |
+        ProxyPreserveHost On
+        ProxyPass /api/ http://127.0.0.1:8085/api/
+        ProxyPassReverse /api/ http://127.0.0.1:8085/api/
+        RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+      insertafter: '^<VirtualHost \*:443>'
+      marker: "# {mark} port 443 ANSIBLE MANAGED BLOCK"
+    notify: Restart apache
+    tags: webserver
+  - name: Point admin.qa.languagedepot.org to localhost
+    lineinfile:
+      path: /etc/hosts
+      line: "127.0.0.1 admin.qa.languagedepot.org"
+    when: "edit_etc_hosts|default(False)"
+  - name: Install Microsoft GPG key and APT feed, step 1
+    get_url:
+      url: https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb
+      dest: /home/vagrant/packages-microsoft-prod.deb
+      checksum: "sha256:bf47049a5838ac6b7f79063b8908727f2ec2a83d95d3da23333bc3c006016583"
+  - name: Install Microsoft GPG key and APT feed, step 2
+    shell: dpkg -i packages-microsoft-prod.deb
+    args:
+      chdir: /home/vagrant/
+      creates: /etc/apt/sources.list.d/microsoft-prod.list
+    register: mspackages
+  - name: Update APT cache
+    apt:
+      update_cache: yes
+    when: mspackages.changed
+  - name: Install prerequisites
+    apt:
+      name:
+        - aspnetcore-runtime-3.0
+  - name: Ensure Apache2 SSL directory exists
+    file:
+      path: /etc/apache2/ssl
+      state: directory
+      owner: root
+      group: root
+      mode: 755
+    when: 'ssl_certificate|default("") == "selfsigned"'
+  - name: Create private key for certificate signing request
+    openssl_privatekey:
+      path: /etc/apache2/ssl/qa.languagedepot_org_admin.key
+    when: 'ssl_certificate|default("") == "selfsigned"'
+  - name: Create certificate signing request for self-signed cert
+    openssl_csr:
+      path: /etc/apache2/ssl/qa.languagedepot_org_admin.csr
+      privatekey_path: /etc/apache2/ssl/qa.languagedepot_org_admin.key
+      country_name: US
+      organization_name: SIL
+      common_name: admin.qa.languagedepot.org
+    when: 'ssl_certificate|default("") == "selfsigned"'
+  - name: Create self-signed certificate
+    openssl_certificate:
+      path: /etc/apache2/ssl/qa.languagedepot_org_admin.pem
+      csr_path: /etc/apache2/ssl/qa.languagedepot_org_admin.csr
+      privatekey_path: /etc/apache2/ssl/qa.languagedepot_org_admin.key
+      provider: selfsigned
+    register: certificate
+    when: 'ssl_certificate|default("") == "selfsigned"'
+  - name: Copy self-signed certificate to chain file
+    copy:
+      remote_src: yes
+      src: /etc/apache2/ssl/qa.languagedepot_org_admin.pem
+      dest: /etc/apache2/ssl/qa.languagedepot_org_admin_chain.pem
+    when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
+  - name: Deploy server code
+    synchronize:
+      src: ../deploy/server/
+      dest: "{{ server_dest }}"
+      use_ssh_args: yes
+  - name: Copy over service file
+    template:
+      src: ldapi-server.service
+      dest: /etc/systemd/system
+    register: servicefile
+    notify: Start LD API server
+  - name: Reload systemd service files
+    systemd:
+      daemon_reload: yes
+    when: servicefile.changed
+  - name: Copy appsettings for appropriate ASP.NET environment
+    copy:
+      remote_src: yes
+      src: "{{ server_dest }}/Server/appsettings.Development.json"
+      dest: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+    when: 'aspnet_environment|default("") != "Development"'
+  - name: Edit appsettings to have correct username
+    replace:
+      path: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+      regexp: '^(\s+)"User": "([^"])*"(,?)'
+      replace: '\1"User": "{{ dbuser }}"\3'
+    notify: Restart LD API server
+  - name: Edit appsettings to have correct database name
+    replace:
+      path: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+      regexp: '^(\s+)"Database": "([^"])*"(,?)'
+      replace: '\1"Database": "{{ dbname }}"\3'
+    notify: Restart LD API server
+  # TODO: Just make a template for appsettings.Environment.json, it'll be simpler
+  - name: Install local web browser for testing
+    apt:
+      name:
+        - links
+    tags: testing
+  # Test by doing "vagrant ssh", then "links https://admin.qa.languagedepot.org/api/users", accept the self-signed certificate, and [D]isplay the response
+  # You should get a JSON response that looks like "{ok: true, data: [{user_data}, {user_data}, ..., {user_data}]}"
+  handlers:
+  - name: Restart apache
+    systemd:
+      service: apache2
+      state: restarted
+  - name: Start LD API server
+    systemd:
+      service: ldapi-server
+      enabled: yes
+      state: started
+  - name: Restart LD API server
+    systemd:
+      service: ldapi-server
+      enabled: yes
+      state: restarted
