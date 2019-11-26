@@ -91,6 +91,7 @@ Vagrant.configure("2") do |config|
         "db_database" => "testldapi",
         "db_username" => "vagrant",
         "edit_etc_hosts" => "yes",
+        "populate_test_database" => "yes",
         "ssl_certificate" => "selfsigned",
         "aspnet_environment" => "Staging",
         "server_dest" => "/home/vagrant/server",

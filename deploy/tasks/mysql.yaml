@@ -13,6 +13,7 @@
       state: import
       name: "{{ db_database }}"
       target: /home/vagrant/testlanguagedepot.sql
+      # NOTE: This task only runs when populate_test_database is true, so the hardcoded /home/vagrant is okay here
     when: createdb.changed
   - name: Create user
     mysql_user:

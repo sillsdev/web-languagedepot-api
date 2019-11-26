@@ -4,6 +4,7 @@
   tasks:
   - include_tasks: tasks/mysql.yaml
     tags: db
+    when: populate_test_database|default(False)
   - name: Port 80 proxy conf
     blockinfile:
       path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
