@@ -15,8 +15,11 @@ module Settings =
           printfn "Setting default values for %A" this
           { Hostname = this.Hostname |> defaultValue "default hostname"
             Database = this.Database |> defaultValue "default database"
-            Password = this.Password |> defaultValue "no password given"
+            Password = this.Password |> defaultValue ""
             Port = this.Port |> defaultEnvParsed System.Int32.Parse "PORT" 3306
             User = this.User |> defaultEnv "USER" "mysql" }
         member this.ConnString =
-            sprintf "Server=%s;Database=%s;Uid=%s" this.Hostname this.Database this.User
+            if System.String.IsNullOrEmpty this.Password then
+                sprintf "Server=%s;Database=%s;Uid=%s" this.Hostname this.Database this.User
+            else
+                sprintf "Server=%s;Database=%s;Uid=%s;Pwd=%s" this.Hostname this.Database this.User this.Password
