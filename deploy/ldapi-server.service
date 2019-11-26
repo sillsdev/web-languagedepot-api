@@ -8,8 +8,8 @@ Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
 KillSignal=SIGINT
-SyslogIdentifier=dotnet-example
-User=vagrant
+SyslogIdentifier=ldapi-server
+User={{ server_user }}
 Environment=ASPNETCORE_ENVIRONMENT={{ aspnet_environment | default("Production") }}
 
 [Install]
