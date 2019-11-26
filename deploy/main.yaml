@@ -88,7 +88,7 @@
     when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
   - name: Deploy server code
     synchronize:
-      src: ../deploy/server/
+      src: ../deploy/server/Server/
       dest: "{{ server_dest }}"
       use_ssh_args: yes
   - name: Copy over service file
@@ -104,18 +104,18 @@
   - name: Copy appsettings for appropriate ASP.NET environment
     copy:
       remote_src: yes
-      src: "{{ server_dest }}/Server/appsettings.Development.json"
-      dest: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+      src: "{{ server_dest }}/appsettings.Development.json"
+      dest: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
     when: 'aspnet_environment|default("") != "Development"'
   - name: Edit appsettings to have correct username
     replace:
-      path: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+      path: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
       regexp: '^(\s+)"User": "([^"])*"(,?)'
       replace: '\1"User": "{{ dbuser }}"\3'
     notify: Restart LD API server
   - name: Edit appsettings to have correct database name
     replace:
-      path: "{{ server_dest }}/Server/appsettings.{{ aspnet_environment }}.json"
+      path: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
       regexp: '^(\s+)"Database": "([^"])*"(,?)'
       replace: '\1"Database": "{{ dbname }}"\3'
     notify: Restart LD API server

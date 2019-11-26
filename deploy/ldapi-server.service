@@ -2,8 +2,8 @@
 Description=LanguageDepot API server
 
 [Service]
-WorkingDirectory={{ server_dest }}/Server
-ExecStart={{ server_dest }}/Server/Server
+WorkingDirectory={{ server_dest }}
+ExecStart={{ server_dest }}/Server
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
