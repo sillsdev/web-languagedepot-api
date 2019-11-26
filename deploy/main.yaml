@@ -101,25 +101,11 @@
     systemd:
       daemon_reload: yes
     when: servicefile.changed
-  - name: Copy appsettings for appropriate ASP.NET environment
-    copy:
-      remote_src: yes
-      src: "{{ server_dest }}/appsettings.Development.json"
+  - name: Create appsettings for appropriate ASP.NET environment
+    template:
+      src: templates/appsettings.j2
       dest: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
-    when: 'aspnet_environment|default("") != "Development"'
-  - name: Edit appsettings to have correct username
-    replace:
-      path: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
-      regexp: '^(\s+)"User": "([^"])*"(,?)'
-      replace: '\1"User": "{{ dbuser }}"\3'
     notify: Restart LD API server
-  - name: Edit appsettings to have correct database name
-    replace:
-      path: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
-      regexp: '^(\s+)"Database": "([^"])*"(,?)'
-      replace: '\1"Database": "{{ dbname }}"\3'
-    notify: Restart LD API server
-  # TODO: Just make a template for appsettings.Environment.json, it'll be simpler
   - name: Install local web browser for testing
     apt:
       name:

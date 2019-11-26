@@ -87,8 +87,9 @@ Vagrant.configure("2") do |config|
     ansible.playbook = "main.yaml"
     ansible.host_vars = {
       "default" => {
-        "dbname" => "testldapi",
-        "dbuser" => "vagrant",
+        "db_hostname" => "localhost",
+        "db_database" => "testldapi",
+        "db_username" => "vagrant",
         "edit_etc_hosts" => "yes",
         "ssl_certificate" => "selfsigned",
         "aspnet_environment" => "Staging",

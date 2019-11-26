@@ -4,19 +4,19 @@
     become: yes
     mysql_db:
       login_unix_socket: /var/run/mysqld/mysqld.sock
-      name: "{{ dbname }}"
+      name: "{{ db_database }}"
       state: present
     register: createdb
   - name: Populate database
     mysql_db:
       login_unix_socket: /var/run/mysqld/mysqld.sock
       state: import
-      name: "{{ dbname }}"
+      name: "{{ db_database }}"
       target: /home/vagrant/testlanguagedepot.sql
     when: createdb.changed
   - name: Create user
     mysql_user:
       login_unix_socket: /var/run/mysqld/mysqld.sock
-      name: "{{ dbuser }}"
+      name: "{{ db_username }}"
       state: present
-      priv: "{{ dbname }}.*:ALL"
+      priv: "{{ db_database }}.*:ALL"
