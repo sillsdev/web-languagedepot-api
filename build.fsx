@@ -119,10 +119,12 @@ let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runTool "docker" args __SOURCE_DIRECTORY__
 
-let ansible _param =
-    // TODO: Figure out appropriate parameters to pass in via TeamCity
-    let args = sprintf "ansible-playbook -i %s %s" "hosts" "main.yaml"
-    runTool "ansible" args deployDir
+let ansible limit skipTags =
+    let args =
+        if String.IsNullOrEmpty limit
+            then "-i hosts main.yaml"
+            else sprintf "-i hosts main.yaml --limit '%s' --skip-tags '%s'" limit skipTags
+    runTool "ansible-playbook" args deployDir
 
 let vagrant() =
     runTool "vagrant" "up" deployDir
@@ -142,8 +144,12 @@ let dockerUser = "rmunn"
 let dockerImageName = "ldapi"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
-Target.create "Deploy" (fun _ ->
-    ansible ()
+Target.create "DeployLive" (fun _ ->
+    ansible "live" "db,testing"
+)
+
+Target.create "DeployStaging" (fun _ ->
+    ansible "staging" "db,testing"
 )
 
 Target.create "DeployTest" (fun _ ->
@@ -186,8 +192,9 @@ open Fake.Core.TargetOperators
     // ==> "CopyNeededMySqlDlls"
     ==> "Build"
     ==> "Bundle"
-    ==> "Deploy"
-    <=> "DeployTest"
+    ==> "DeployTest"
+    <=> "DeployStaging"
+    <=> "DeployLive"
 
 
 "Clean"

@@ -37,12 +37,12 @@
   - name: Install Microsoft GPG key and APT feed, step 1
     get_url:
       url: https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb
-      dest: /home/vagrant/packages-microsoft-prod.deb
+      dest: /tmp/packages-microsoft-prod.deb
       checksum: "sha256:bf47049a5838ac6b7f79063b8908727f2ec2a83d95d3da23333bc3c006016583"
   - name: Install Microsoft GPG key and APT feed, step 2
     shell: dpkg -i packages-microsoft-prod.deb
     args:
-      chdir: /home/vagrant/
+      chdir: /tmp/
       creates: /etc/apt/sources.list.d/microsoft-prod.list
     register: mspackages
   - name: Update APT cache
@@ -87,6 +87,13 @@
       src: /etc/apache2/ssl/qa.languagedepot_org_admin.pem
       dest: /etc/apache2/ssl/qa.languagedepot_org_admin_chain.pem
     when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
+  - name: Ensure server destination exists
+    file:
+      path: "{{ server_dest }}"
+      state: directory
+      owner: root
+      group: root
+      mode: 755
   - name: Deploy server code
     synchronize:
       src: ../deploy/server/Server/
