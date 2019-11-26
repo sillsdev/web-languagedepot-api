@@ -7,11 +7,11 @@
   - name: Port 80 proxy conf
     blockinfile:
       path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
-      block: |
-        ProxyPreserveHost On
-        ProxyPass /api/ http://127.0.0.1:8085/api/
-        ProxyPassReverse /api/ http://127.0.0.1:8085/api/
-        RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+      block: |2
+            ProxyPreserveHost On
+            ProxyPass /api/ http://127.0.0.1:8085/api/
+            ProxyPassReverse /api/ http://127.0.0.1:8085/api/
+            RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
       insertafter: '^<VirtualHost \*:80>'
       marker: "# {mark} port 80 ANSIBLE MANAGED BLOCK"
     notify: Restart apache
@@ -19,11 +19,11 @@
   - name: Port 443 proxy conf
     blockinfile:
       path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
-      block: |
-        ProxyPreserveHost On
-        ProxyPass /api/ http://127.0.0.1:8085/api/
-        ProxyPassReverse /api/ http://127.0.0.1:8085/api/
-        RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+      block: |2
+            ProxyPreserveHost On
+            ProxyPass /api/ http://127.0.0.1:8085/api/
+            ProxyPassReverse /api/ http://127.0.0.1:8085/api/
+            RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
       insertafter: '^<VirtualHost \*:443>'
       marker: "# {mark} port 443 ANSIBLE MANAGED BLOCK"
     notify: Restart apache
