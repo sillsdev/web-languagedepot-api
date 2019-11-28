@@ -13,8 +13,9 @@ open Fake.DotNet
 open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fake.Runtime
+open Fake.BuildServer
 
-Target.initEnvironment ()
+let scriptArgs = Target.getArguments()
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
@@ -40,14 +41,17 @@ let platformTool tool winTool =
 let nodeTool = platformTool "node" "node.exe"
 let yarnTool = platformTool "yarn" "yarn.cmd"
 
-let runTool cmd args workingDir =
-    let arguments = args |> String.split ' ' |> Arguments.OfArgs
+let runTool cmd arguments workingDir =
     Command.RawCommand (cmd, arguments)
     |> CreateProcess.fromCommand
     |> CreateProcess.withWorkingDirectory workingDir
     |> CreateProcess.ensureExitCode
     |> Proc.run
     |> ignore
+
+let runToolSimple cmd args workingDir =
+    let arguments = args |> String.split ' ' |> Arguments.OfArgs
+    runTool cmd arguments workingDir
 
 let runDotNet cmd workingDir =
     // Process.setEnvironmentVariable "ASPNETCORE_ENVIRONMENT" "Development"
@@ -73,10 +77,10 @@ Target.create "Clean" (fun _ ->
 
 Target.create "InstallClient" (fun _ ->
     printfn "Node version:"
-    runTool nodeTool "--version" __SOURCE_DIRECTORY__
+    runToolSimple nodeTool "--version" __SOURCE_DIRECTORY__
     printfn "Yarn version:"
-    runTool yarnTool "--version" __SOURCE_DIRECTORY__
-    runTool yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
+    runToolSimple yarnTool "--version" __SOURCE_DIRECTORY__
+    runToolSimple yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
 )
 
 Target.create "Build" (fun _ ->
@@ -86,7 +90,7 @@ Target.create "Build" (fun _ ->
        ("let app = \"" + release.NugetVersion + "\"")
         System.Text.Encoding.UTF8
         (Path.combine clientPath "Version.fs")
-    runTool yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
+    runToolSimple yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
 )
 
 Target.create "Run" (fun _ ->
@@ -94,7 +98,7 @@ Target.create "Run" (fun _ ->
         runDotNet "watch run" serverPath
     }
     let client = async {
-        runTool yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
+        runToolSimple yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
     }
     let browser = async {
         do! Async.Sleep 5000
@@ -117,17 +121,14 @@ Target.create "Run" (fun _ ->
 
 let buildDocker tag =
     let args = sprintf "build -t %s ." tag
-    runTool "docker" args __SOURCE_DIRECTORY__
+    runToolSimple "docker" args __SOURCE_DIRECTORY__
 
-let ansible limit skipTags =
-    let args =
-        if String.IsNullOrEmpty limit
-            then "-i hosts main.yaml"
-            else sprintf "-i hosts main.yaml --limit '%s' --skip-tags '%s'" limit skipTags
-    runTool "ansible-playbook" args deployDir
+let deploy dest =
+    let args = sprintf "-vzr --exclude secrets.json server/Server/ %s" dest
+    runToolSimple "rsync" args deployDir
 
 let vagrant() =
-    runTool "vagrant" "up" deployDir
+    runToolSimple "vagrant" "up" deployDir
 
 Target.create "Bundle" (fun _ ->
     let serverDir = Path.combine bundleDir "Server"
@@ -145,15 +146,82 @@ let dockerImageName = "ldapi"
 let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
 Target.create "DeployLive" (fun _ ->
-    ansible "live" "db,testing"
+    if false then  // Don't run until deployment user on live server is ready
+        deploy "deploy@admin.languagedepot.org"
+    ()
 )
 
 Target.create "DeployStaging" (fun _ ->
-    ansible "staging" "db,testing"
+    runToolSimple "rsync" "server/Server/ " deployDir
 )
 
 Target.create "DeployTest" (fun _ ->
     vagrant ()
+)
+
+Target.create "Deploy" (fun _ ->
+
+    match scriptArgs with
+    | Some argv -> Trace.tracefn "Arguments: %A" argv
+    | None -> Trace.tracefn "No arguments passed to script"
+
+    // TODO: Could also name the target parameter (e.g., "p") and get args from:
+    // Trace.tracefn "Parameters: %A" p.Context.Arguments
+
+    let argUsage = """
+Deploy script.
+
+Usage:
+  Deploy [<target>]
+
+The <target> must be specified, either at the command line
+or via a TeamCity build parameter. Valid values are:
+  testing - Deploy to local Vagrant VM for testing
+  staging - Deploy to QA server
+  live - Deploy to live server
+  foo@bar.baz: - Deploy to the foo@bar.baz: location
+"""
+
+    let parser = Docopt(argUsage)
+    let parsedArgs = parser.Parse(scriptArgs |> Option.defaultValue Array.empty)
+
+    // Trace.tracefn "Parsed args look like: %A" parsedArgs
+
+    // Other ways to check parsed args for flags include:
+    // if parsedArgs |> DocoptResult.hasFlag "-v" then
+    //     Trace.tracefn "Would be verbose"
+    // Note that if "-v, --verbose" is listed in the options, then hasFlag "-v" will
+    // be true whether user passed "-v" or "--verbose"
+
+    // if parsedArgs |> DocoptResult.hasFlag "--version" then
+    //     Trace.tracefn "Would show version"
+    //     exit 0
+
+    // Help is not handled automatically in case you want "-h" to mean something else,
+    // but it's simple to check for and handle yourself.
+    // if parsedArgs |> DocoptResult.hasFlag "-h" then
+    //     Trace.tracefn "Help requested"
+    //     Trace.log argUsage
+    //     Trace.tracefn "Exiting"
+    //     exit 0
+
+    let target = parsedArgs |> DocoptResult.tryGetArgument "<target>"
+    Trace.tracefn "Deployment target: %A" target
+
+    match target with
+    | Some "testing" -> failwith "Please run \"DeployTesting\" target instead"
+    // | "staging" -> "deploy@admin.qa.languagedepot.org:upload_areas/ldapi"  // TODO: Activate once deploy user is ready on staging server
+    | Some "staging" -> deploy "rmunn@admin.qa.languagedepot.org:/usr/lib/"
+    | Some "live" -> failwith "Don't run \"Deploy live\" until live server is actually ready"
+    | Some dest -> deploy dest
+    | None ->
+        if BuildServer.buildServer = TeamCity then
+            match TeamCity.BuildParameters.System |> Map.tryFind "dest" with
+            | None -> failwith "No deployment target specified; specify it either on the command line or in TeamCity system parameters"
+            | Some dest -> deploy dest
+        else
+            Trace.traceErrorfn "Invalid deployment target: %A" target
+            failwith "Please specify valid deployment target"
 )
 
 // NOTE: Before this will work, you must run "sudo mysql" and do something like:
@@ -195,6 +263,7 @@ open Fake.Core.TargetOperators
     ==> "DeployTest"
     <=> "DeployStaging"
     <=> "DeployLive"
+    <=> "Deploy"   // Uncomment if you want to run dependencies, comment out while testing this in solo (after dependencies have run once)
 
 
 "Clean"
