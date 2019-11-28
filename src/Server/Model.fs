@@ -6,7 +6,7 @@ open FSharp.Data.Sql
 open Shared
 
 [<Literal>]
-let sampleConnString = "Server=localhost;Database=testldapi;User=rmunn"
+let sampleConnString = "Server=localhost;Database=languagedepot;User=rmunn"
 
 [<Literal>]
 let resolutionPath = __SOURCE_DIRECTORY__
@@ -19,13 +19,13 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 type Dto.ProjectDetails with
-    static member FromSql (sqlProject : sql.dataContext.``testldapi.projectsEntity``) = {
+    static member FromSql (sqlProject : sql.dataContext.``languagedepot.projectsEntity``) = {
         Dto.ProjectDetails.code = sqlProject.Identifier |> Option.defaultWith (fun _ -> sqlProject.Name.ToLowerInvariant().Replace(" ", "_"))
         Dto.ProjectDetails.name = sqlProject.Name
         Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
         Dto.ProjectDetails.membership = None
     }
-    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``testldapi.projectsEntity`` * string * int * string) list) =
+    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``languagedepot.projectsEntity`` * string * int * string) list) =
         match sqlProjectAndRoles |> List.tryHead with
         | None -> None
         | Some (sqlProject, _, _, _) ->
@@ -39,7 +39,7 @@ type Dto.ProjectDetails with
             { Dto.ProjectDetails.FromSql sqlProject with membership = Some memberships } |> Some
 
 type Dto.UserDetails with
-    static member FromSql (sqlUserAndEmails : (sql.dataContext.``testldapi.usersEntity`` * (sbyte * string)) list) =
+    static member FromSql (sqlUserAndEmails : (sql.dataContext.``languagedepot.usersEntity`` * (sbyte * string)) list) =
         // for pair in sqlUserAndEmails do
         //     let user = fst pair
         //     printfn "Found %A: %s (%s %s) with email(s) %A" user user.Login user.Firstname user.Lastname (snd pair)
@@ -67,11 +67,11 @@ type Dto.UserDetails with
         }
 
 type Dto.RoleDetails with
-    static member FromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = {
+    static member FromSql (sqlRole : sql.dataContext.``languagedepot.rolesEntity``) = {
         Dto.RoleDetails.name = sqlRole.Name
         Dto.RoleDetails.``type`` = RoleType.OfString sqlRole.Name
     }
-    static member TypeFromSql (sqlRole : sql.dataContext.``testldapi.rolesEntity``) = RoleType.OfString sqlRole.Name
+    static member TypeFromSql (sqlRole : sql.dataContext.``languagedepot.rolesEntity``) = RoleType.OfString sqlRole.Name
 
 type ListUsers = int option -> int option -> Async<Dto.UserDetails list>
 type ListProjects = bool -> Async<Dto.ProjectList>
@@ -106,8 +106,8 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
     async {
         let ctx = sql.GetDataContext connString
         let usersQuery = query {
-            for user in ctx.Testldapi.Users do
-            join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+            for user in ctx.Languagedepot.Users do
+            join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
             select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
         }
         let! users =
@@ -125,8 +125,8 @@ let searchUsersLoose (connString : string) (searchTerm : string) =
         let ctx = sql.GetDataContext(connString, SelectOperations.DatabaseSide)
         let! users =
             query {
-                for user in ctx.Testldapi.Users do
-                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                for user in ctx.Languagedepot.Users do
+                join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
                 where (user.Login.Contains searchTerm ||
                        user.Firstname.Contains searchTerm ||
                        user.Lastname.Contains searchTerm ||
@@ -141,8 +141,8 @@ let searchUsersExact (connString : string) (searchTerm : string) =
         let ctx = sql.GetDataContext connString
         let! users =
             query {
-                for user in ctx.Testldapi.Users do
-                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                for user in ctx.Languagedepot.Users do
+                join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
                 where (user.Login = searchTerm ||
                        user.Firstname = searchTerm ||
                        user.Lastname = searchTerm ||
@@ -156,7 +156,7 @@ let projectsQueryAsync (connString : string) (isPublic : bool) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Status = ProjectStatus.Active)
             select (Dto.ProjectDetails.FromSql project)
@@ -168,13 +168,13 @@ let projectsAndRolesQueryAsync (connString : string) (isPublic : bool) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Status = ProjectStatus.Active)
-            join membership in !! ctx.Testldapi.Members on (project.Id = membership.ProjectId)
-            join memberRole in !! ctx.Testldapi.MemberRoles on (membership.Id = memberRole.MemberId)
-            join user in !! ctx.Testldapi.Users on (membership.UserId = user.Id)
-            join role in !! ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
+            join membership in !! ctx.Languagedepot.Members on (project.Id = membership.ProjectId)
+            join memberRole in !! ctx.Languagedepot.MemberRoles on (membership.Id = memberRole.MemberId)
+            join user in !! ctx.Languagedepot.Users on (membership.UserId = user.Id)
+            join role in !! ctx.Languagedepot.Roles on (memberRole.RoleId = role.Id)
             select (project, user.Login, role.Id, role.Name)
         }
         let! projectsAndRoles = projectsQuery |> List.executeQueryAsync
@@ -185,7 +185,7 @@ let projectsCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
             where (project.IsPublic > 0y)
             where (project.Status = ProjectStatus.Active)
             count
@@ -206,7 +206,7 @@ let usersCountAsync (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for _ in ctx.Testldapi.Users do
+            for _ in ctx.Languagedepot.Users do
             count
         }
     }
@@ -215,7 +215,7 @@ let userExists (connString : string) username =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for user in ctx.Testldapi.Users do
+            for user in ctx.Languagedepot.Users do
             select user.Login
             contains username }
     }
@@ -224,7 +224,7 @@ let projectExists (connString : string) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
             where (project.IsPublic > 0y)
             // We do NOT check where (project.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
             where (project.Identifier.IsSome)
@@ -236,7 +236,7 @@ let isAdmin (connString : string) username =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for user in ctx.Testldapi.Users do
+            for user in ctx.Languagedepot.Users do
             where (user.Login = username)
             select (user.Admin <> 0y)
             headOrDefault }
@@ -247,9 +247,9 @@ let getUser (connString : string) username =
         let ctx = sql.GetDataContext connString
         let! userAndEmails =
             query {
-                for user in ctx.Testldapi.Users do
+                for user in ctx.Languagedepot.Users do
                 where (user.Login = username)
-                join mail in !! ctx.Testldapi.EmailAddresses on (user.Id = mail.UserId)
+                join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
                 select ((user.Login, user.Firstname, user.Lastname, user.Language), ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
             } |> List.executeQueryAsync
         // for pair in userAndEmails do
@@ -264,7 +264,7 @@ let getProject (connString : string) (isPublic : bool) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (not project.Identifier.IsNone)
             where (project.Identifier.Value = projectCode)
@@ -276,11 +276,11 @@ let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         let projectQuery = query {
-            for project in ctx.Testldapi.Projects do
-            join membership in !! ctx.Testldapi.Members on (project.Id = membership.ProjectId)
-            join memberRole in !! ctx.Testldapi.MemberRoles on (membership.Id = memberRole.MemberId)
-            join user in !! ctx.Testldapi.Users on (membership.UserId = user.Id)
-            join role in !! ctx.Testldapi.Roles on (memberRole.RoleId = role.Id)
+            for project in ctx.Languagedepot.Projects do
+            join membership in !! ctx.Languagedepot.Members on (project.Id = membership.ProjectId)
+            join memberRole in !! ctx.Languagedepot.MemberRoles on (membership.Id = memberRole.MemberId)
+            join user in !! ctx.Languagedepot.Users on (membership.UserId = user.Id)
+            join role in !! ctx.Languagedepot.Roles on (memberRole.RoleId = role.Id)
             where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             select (project, user.Login, role.Id, role.Name)
@@ -293,7 +293,7 @@ let createProject (connString : string) (project : Api.CreateProject) =
     async {
         // TODO: Handle case where project already exists, and reject if it does. Also, API shape needs to become Async<int option> instead of Async<int>
         let ctx = sql.GetDataContext connString
-        let sqlProject = ctx.Testldapi.Projects.Create()
+        let sqlProject = ctx.Languagedepot.Projects.Create()
         // sqlProject.Id <- project.Id // int
         sqlProject.Name <- project.name // string
         sqlProject.Description <- project.description // string option // Long
@@ -315,7 +315,7 @@ let createUserImpl (connString : string) (user : Api.CreateUser) =
         let salt = PasswordHashing.createSalt (Guid.NewGuid())
         let hashedPassword = PasswordHashing.hashPassword salt user.password
 
-        let sqlUser = ctx.Testldapi.Users.Create()
+        let sqlUser = ctx.Languagedepot.Users.Create()
         sqlUser.Firstname <- user.firstName
         sqlUser.Lastname <- user.lastName
         sqlUser.HashedPassword <- hashedPassword
@@ -325,7 +325,7 @@ let createUserImpl (connString : string) (user : Api.CreateUser) =
         let now = DateTime.UtcNow
         if not (List.isEmpty user.emailAddresses) then
             user.emailAddresses |> List.iter (fun email ->
-                let sqlMail = ctx.Testldapi.EmailAddresses.Create()
+                let sqlMail = ctx.Languagedepot.EmailAddresses.Create()
                 sqlMail.UserId <- sqlUser.Id
                 sqlMail.Address <- email
                 sqlMail.IsDefault <- 1y
@@ -343,7 +343,7 @@ let upsertUser (connString : string) (login : string) (updatedUser : Api.CreateU
     async {
         let ctx = sql.GetDataContext connString
         let maybeUser = query {
-            for user in ctx.Testldapi.Users do
+            for user in ctx.Languagedepot.Users do
                 where (user.Login = login)
                 select (Some user)
                 exactlyOneOrDefault
@@ -368,7 +368,7 @@ let changePassword (connString : string) (login : string) (changeRequest : Api.C
     async {
         let ctx = sql.GetDataContext connString
         let maybeUser = query {
-            for user in ctx.Testldapi.Users do
+            for user in ctx.Languagedepot.Users do
                 where (user.Login = login)
                 select (Some user)
                 exactlyOneOrDefault
@@ -389,14 +389,14 @@ let changePassword (connString : string) (login : string) (changeRequest : Api.C
 let projectsAndRolesByUser (connString : string) username = async {
     let ctx = sql.GetDataContext connString
     let projectsQuery = query {
-        for user in ctx.Testldapi.Users do
+        for user in ctx.Languagedepot.Users do
         where (user.Login = username)
-        join membership in ctx.Testldapi.Members
+        join membership in ctx.Languagedepot.Members
             on (user.Id = membership.UserId)
-        join project in ctx.Testldapi.Projects
+        join project in ctx.Languagedepot.Projects
             on (membership.ProjectId = project.Id)
         where (project.Status = ProjectStatus.Active)
-        join memberRole in ctx.Testldapi.MemberRoles
+        join memberRole in ctx.Languagedepot.MemberRoles
             on (membership.Id = memberRole.MemberId)
 
         select (Dto.ProjectDetails.FromSql project, RoleType.OfNumericId memberRole.RoleId)
@@ -424,7 +424,7 @@ let roleNames (connString : string) () =
     async {
         let ctx = sql.GetDataContext connString
         let roleQuery = query {
-            for role in ctx.Testldapi.Roles do
+            for role in ctx.Languagedepot.Roles do
                 select (Dto.RoleDetails.FromSql role)
         }
         return! roleQuery |> List.executeQueryAsync
@@ -439,7 +439,7 @@ let verifyLoginInfo (connString : string) (loginCredentials : Api.LoginCredentia
     async { return true }
     // async {
     //     let ctx = sql.GetDataContext connString
-    //     let! user = query { for user in ctx.Testldapi.Users do
+    //     let! user = query { for user in ctx.Languagedepot.Users do
     //                             where (user.Login = loginCredentials.username)
     //                             select user } |> Seq.tryHeadAsync
     //     match user with
@@ -451,12 +451,12 @@ let addMembershipById (connString : string) (userId : int) (projectId : int) (ro
     async {
         let ctx = sql.GetDataContext connString
         let membershipQuery = query {
-            for membership in ctx.Testldapi.Members do
+            for membership in ctx.Languagedepot.Members do
                 where (membership.ProjectId = projectId && membership.UserId = userId)
                 select membership }
         let withRole = query {
             for membership in membershipQuery do
-                join memberRole in !! ctx.Testldapi.MemberRoles
+                join memberRole in !! ctx.Languagedepot.MemberRoles
                     on (membership.Id = memberRole.MemberId)
                 where (memberRole.RoleId = roleId)
                 select (Some memberRole)
@@ -471,27 +471,27 @@ let addMembershipById (connString : string) (userId : int) (projectId : int) (ro
             match maybeMember with
             | Some membership ->
                 // User is a member already but with a different role
-                let memberRole = ctx.Testldapi.MemberRoles.Create()
+                let memberRole = ctx.Languagedepot.MemberRoles.Create()
                 memberRole.MemberId <- membership.Id
                 memberRole.RoleId <- roleId
                 memberRole.InheritedFrom <- None
                 do! ctx.SubmitUpdatesAsync()
             | None ->
                 // User is not yet a member under any role
-                let membership = ctx.Testldapi.Members.Create()
+                let membership = ctx.Languagedepot.Members.Create()
                 membership.MailNotification <- 0y
                 membership.CreatedOn <- Some (System.DateTime.UtcNow)
                 membership.ProjectId <- projectId
                 membership.UserId <- userId
                 do! ctx.SubmitUpdatesAsync()  // Populate membership.Id
-                let memberRole = ctx.Testldapi.MemberRoles.Create()
+                let memberRole = ctx.Languagedepot.MemberRoles.Create()
                 memberRole.MemberId <- membership.Id
                 memberRole.RoleId <- roleId
                 memberRole.InheritedFrom <- None
                 do! ctx.SubmitUpdatesAsync()
     }
 
-let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql.dataContext.``testldapi.membersEntity``>) =
+let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql.dataContext.``languagedepot.membersEntity``>) =
     async {
         let ctx = sql.GetDataContext connString
         // If the Redmine table had proper foreign key relationships, we could use ON DELETE CASCADE and this would be a lot simpler.
@@ -499,7 +499,7 @@ let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql
         let! memberRolesToDelete =
             query {
                 for membership in membershipQuery do
-                    join memberRole in !! ctx.Testldapi.MemberRoles
+                    join memberRole in !! ctx.Languagedepot.MemberRoles
                         on (membership.Id = memberRole.MemberId)
                     where (memberRole.MemberId = membership.Id)
                     select (memberRole)
@@ -509,13 +509,13 @@ let removeMembershipImpl (connString : string) (membershipQuery : IQueryable<sql
         let membershipIdsToDelete = membershipsToDelete |> List.map (fun mr -> mr.Id)
         let! _deleteCountMemberRoles =
             query {
-                for memberRole in ctx.Testldapi.MemberRoles do
+                for memberRole in ctx.Languagedepot.MemberRoles do
                     where (memberRole.Id |=| memberRoleIdsToDelete)  // The custom |=| operator translates to "item IN (list-of-items)" in SQL
                     select (memberRole)
             } |> Seq.``delete all items from single table``
         let! _deleteCountMemberships =
             query {
-                for membership in ctx.Testldapi.Members do
+                for membership in ctx.Languagedepot.Members do
                     where (membership.Id |=| membershipIdsToDelete)
                     select (membership)
             } |> Seq.``delete all items from single table``
@@ -528,7 +528,7 @@ let removeMembershipById (connString : string) (userId : int) (projectId : int) 
     async {
         let ctx = sql.GetDataContext connString
         let membershipQuery = query {
-            for membership in ctx.Testldapi.Members do
+            for membership in ctx.Languagedepot.Members do
                 where (membership.ProjectId = projectId && membership.UserId = userId)
                 select membership }
         do! removeMembershipImpl connString membershipQuery
@@ -538,9 +538,9 @@ let removeUserFromAllRolesInProject (connString : string) (username : string) (p
     async {
         let ctx = sql.GetDataContext connString
         let membershipQuery = query {
-            for membership in ctx.Testldapi.Members do
-            join project in ctx.Testldapi.Projects on (membership.ProjectId = project.Id)
-            join user in ctx.Testldapi.Users on (membership.UserId = user.Id)
+            for membership in ctx.Languagedepot.Members do
+            join project in ctx.Languagedepot.Projects on (membership.ProjectId = project.Id)
+            join user in ctx.Languagedepot.Users on (membership.UserId = user.Id)
             where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             where (user.Login = username)
             select membership }
@@ -554,12 +554,12 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
         let ctx = sql.GetDataContext connString
         let roleId = roleType.ToNumericId()
         let maybeUserId = query {
-            for user in ctx.Testldapi.Users do
+            for user in ctx.Languagedepot.Users do
                 where (user.Login = username)
                 select (Some user.Id)
                 exactlyOneOrDefault }
         let maybeProjectId = query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
                 where (project.Status = ProjectStatus.Active &&
                        project.Identifier.IsSome &&
                        project.Identifier.Value = projectCode)
@@ -579,7 +579,7 @@ let archiveProject (connString : string) (isPublic : bool) (projectCode : string
     async {
         let ctx = sql.GetDataContext connString
         let maybeProject = query {
-            for project in ctx.Testldapi.Projects do
+            for project in ctx.Languagedepot.Projects do
                 where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
                 where (not project.Identifier.IsNone)
                 where (project.Identifier.Value = projectCode)

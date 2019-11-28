@@ -1,2 +1,2 @@
 #!/bin/bash
-mysql testldapi < testlanguagedepot.sql
+mysql languagedepot < testlanguagedepot.sql
