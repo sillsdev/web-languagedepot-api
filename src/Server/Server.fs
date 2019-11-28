@@ -91,7 +91,6 @@ let app = application {
     use_router webApp
     memory_cache
     error_handler errorHandler
-    use_static publicPath
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
     use_gzip
     host_config hostConfig
