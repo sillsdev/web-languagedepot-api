@@ -59,7 +59,7 @@
       state: directory
       owner: root
       group: root
-      mode: 755
+      mode: u=rwx,g=rx,o=rx
     when: 'ssl_certificate|default("") == "selfsigned"'
   - name: Create private key for certificate signing request
     openssl_privatekey:
@@ -99,6 +99,10 @@
       src: ../deploy/server/Server/
       dest: "{{ server_dest }}"
       use_ssh_args: yes
+      rsync_path: rsync
+      # Without specifying that, synchronize defaults to `--rsync-path='sudo rsync'` which we don't want
+      archive: no
+      recursive: yes
   - name: Copy over service file
     template:
       src: ldapi-server.service
