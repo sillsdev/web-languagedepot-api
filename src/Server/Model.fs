@@ -11,8 +11,12 @@ let sampleConnString = "Server=localhost;Database=languagedepot;User=rmunn"
 [<Literal>]
 let resolutionPath = __SOURCE_DIRECTORY__
 
+[<Literal>]
+let schemaPath = __SOURCE_DIRECTORY__ + "/languagedepot.schema"
+
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            sampleConnString,
+                           ContextSchemaPath = schemaPath,
                            ResolutionPath = resolutionPath,
                            CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL,
                            UseOptionTypes = true>
