@@ -208,7 +208,7 @@ or via a TeamCity build parameter. Valid values are:
     | Some dest -> deploy dest
     | None ->
         if BuildServer.buildServer = TeamCity then
-            match TeamCity.BuildParameters.System |> Map.tryFind "dest" with
+            match TeamCity.BuildParameters.System |> Map.tryFind "upload.destination" with
             | None -> failwith "No deployment target specified; specify it either on the command line or in TeamCity system parameters"
             | Some dest -> deploy dest
         else
