@@ -39,7 +39,7 @@ let platformTool tool winTool =
         failwith errorMsg
 
 let nodeTool = platformTool "node" "node.exe"
-let yarnTool = platformTool "yarn" "yarn.cmd"
+// let yarnTool = platformTool "yarn" "yarn.cmd"
 
 let runTool cmd arguments workingDir =
     Command.RawCommand (cmd, arguments)
@@ -78,28 +78,32 @@ Target.create "Clean" (fun _ ->
 Target.create "InstallClient" (fun _ ->
     printfn "Node version:"
     runToolSimple nodeTool "--version" __SOURCE_DIRECTORY__
-    printfn "Yarn version:"
-    runToolSimple yarnTool "--version" __SOURCE_DIRECTORY__
-    runToolSimple yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
+    // printfn "Yarn version:"
+    // runToolSimple yarnTool "--version" __SOURCE_DIRECTORY__
+    // runToolSimple yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
 )
 
 Target.create "Build" (fun _ ->
     runDotNet "build" serverPath
-    Shell.regexReplaceInFileWithEncoding
-        "let app = \".+\""
-       ("let app = \"" + release.NugetVersion + "\"")
-        System.Text.Encoding.UTF8
-        (Path.combine clientPath "Version.fs")
-    runToolSimple yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
+    // Shell.regexReplaceInFileWithEncoding
+    //     "let app = \".+\""
+    //    ("let app = \"" + release.NugetVersion + "\"")
+    //     System.Text.Encoding.UTF8
+    //     (Path.combine clientPath "Version.fs")
+    // runToolSimple yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
+)
+
+Target.create "BuildServerOnly" (fun _ ->
+    runDotNet "build" serverPath
 )
 
 Target.create "Run" (fun _ ->
     let server = async {
         runDotNet "watch run" serverPath
     }
-    let client = async {
-        runToolSimple yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
-    }
+    // let client = async {
+    //     runToolSimple yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
+    // }
     let browser = async {
         do! Async.Sleep 5000
         openBrowser "http://localhost:8080"
@@ -110,7 +114,7 @@ Target.create "Run" (fun _ ->
 
     let tasks =
         [ if not safeClientOnly then yield server
-          yield client
+        //   yield client
           if not vsCodeSession then yield browser ]
 
     tasks
@@ -132,13 +136,13 @@ let vagrant() =
 
 Target.create "Bundle" (fun _ ->
     let serverDir = Path.combine bundleDir "Server"
-    let clientDir = Path.combine bundleDir "Client"
-    let publicDir = Path.combine clientDir "public"
+    // let clientDir = Path.combine bundleDir "Client"
+    // let publicDir = Path.combine clientDir "public"
 
     let publishArgs = sprintf "publish -c Release -o \"%s\"" serverDir
     runDotNet publishArgs serverPath
 
-    Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
+    // Shell.copyDir publicDir clientDeployPath FileFilter.allFiles
 )
 
 let dockerUser = "rmunn"
@@ -248,9 +252,9 @@ Target.create "CopyNeededMySqlDlls" (fun _ ->
 open Fake.Core.TargetOperators
 
 "Clean"
-    ==> "InstallClient"
+    // ==> "InstallClient"
     // ==> "CopyNeededMySqlDlls"
-    ==> "Build"
+    ==> "BuildServerOnly"
     ==> "Bundle"
     ==> "DeployTest"
     <=> "DeployStaging"
