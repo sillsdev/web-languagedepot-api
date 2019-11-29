@@ -15,7 +15,7 @@ open Fake.IO.FileSystemOperators
 open Fake.Runtime
 open Fake.BuildServer
 
-let scriptArgs = Target.getArguments()
+Target.initEnvironment()
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
@@ -159,15 +159,7 @@ Target.create "DeployTest" (fun _ ->
     vagrant ()
 )
 
-Target.create "Deploy" (fun _ ->
-
-    match scriptArgs with
-    | Some argv -> Trace.tracefn "Arguments: %A" argv
-    | None -> Trace.tracefn "No arguments passed to script"
-
-    // TODO: Could also name the target parameter (e.g., "p") and get args from:
-    // Trace.tracefn "Parameters: %A" p.Context.Arguments
-
+Target.create "Deploy" (fun p ->
     let argUsage = """
 Deploy script.
 
@@ -183,7 +175,7 @@ or via a TeamCity build parameter. Valid values are:
 """
 
     let parser = Docopt(argUsage)
-    let parsedArgs = parser.Parse(scriptArgs |> Option.defaultValue Array.empty)
+    let parsedArgs = parser.Parse(Array.ofList p.Context.Arguments)
 
     // Trace.tracefn "Parsed args look like: %A" parsedArgs
 
