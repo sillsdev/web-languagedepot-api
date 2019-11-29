@@ -51,3 +51,4 @@ group Build
     nuget Fake.DotNet.Cli
     nuget Fake.IO.FileSystem
     nuget Fake.Runtime
+    nuget Fake.BuildServer.TeamCity

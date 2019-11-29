@@ -1,0 +1,16 @@
+[Unit]
+Description=LanguageDepot API server
+
+[Service]
+WorkingDirectory={{ server_dest }}
+ExecStart={{ server_dest }}/Server
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=ldapi-server
+User={{ server_user }}
+Environment=ASPNETCORE_ENVIRONMENT={{ aspnet_environment | default("Production") }}
+
+[Install]
+WantedBy=multi-user.target

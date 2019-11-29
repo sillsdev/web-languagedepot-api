@@ -1,0 +1,23 @@
+---
+# Create MySQL database and populate from testlanguagedepot.sql
+  - name: Create database
+    become: yes
+    mysql_db:
+      login_unix_socket: /var/run/mysqld/mysqld.sock
+      name: "{{ db_database }}"
+      state: present
+    register: createdb
+  - name: Populate database
+    mysql_db:
+      login_unix_socket: /var/run/mysqld/mysqld.sock
+      state: import
+      name: "{{ db_database }}"
+      target: /home/vagrant/testlanguagedepot.sql
+      # NOTE: This task only runs when populate_test_database is true, so the hardcoded /home/vagrant is okay here
+    when: createdb.changed
+  - name: Create user
+    mysql_user:
+      login_unix_socket: /var/run/mysqld/mysqld.sock
+      name: "{{ db_username }}"
+      state: present
+      priv: "{{ db_database }}.*:ALL"
