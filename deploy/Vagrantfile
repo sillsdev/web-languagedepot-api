@@ -77,12 +77,40 @@ Vagrant.configure("2") do |config|
     a2enmod proxy_http
     a2enmod headers
     a2ensite qa.languagedepot.org_admin
+    addgroup --system uag_ldapi-server
+    adduser --system ldapi-server
+    adduser ldapi-server uag_ldapi-server
+    mkdir -p /var/lib/ldapi-server
+    chown ldapi-server:uag_ldapi-server /var/lib/ldapi-server
+    chmod u=rwx,g=rws,o=rx /var/lib/ldapi-server
   SHELL
 
   # Copy over the SQL data to populate the test server
   config.vm.provision "file", source: "../testlanguagedepot.sql", destination: "/home/vagrant/testlanguagedepot.sql"
 
-  # Run the Ansible script against our Vagrant VM
+  # Run the Ansible install tags only on first vagrant up
+  config.vm.provision "ansible", do |ansible|
+    ansible.playbook = "main.yaml"
+    ansible.host_vars = {
+      "default" => {
+        "db_hostname" => "localhost",
+        "db_database" => "testldapi",
+        "db_username" => "vagrant",
+        "edit_etc_hosts" => "yes",
+        "populate_test_database" => "yes",
+        "ssl_certificate" => "selfsigned",
+        "aspnet_environment" => "Staging",
+        "server_dest" => "/home/vagrant/server",
+        "server_user" => "vagrant"
+      }
+    }
+    ansible.groups = {
+      "all" => ["default"]
+    }
+    ansible.tags = ["install"]
+  end
+
+  # Run the non-install Ansible tags every time `vagrant up` is run
   config.vm.provision "ansible", run: "always" do |ansible|
     ansible.playbook = "main.yaml"
     ansible.host_vars = {

@@ -163,15 +163,71 @@ Target.create "DeployTest" (fun _ ->
     vagrant ()
 )
 
+Target.create "CreateAppSettings" (fun p ->
+    let argUsage = """
+CreateAppSettings target.
+
+Usage:
+  CreateAppSettings [options]
+
+Options:
+  --mysql-username  Username for MySql config
+  --mysql-password  Password for MySql config
+  --mysql-hostname  Hostname of DB server for MySql config
+  --mysql-database  Database name for MySql config
+  --aspnet-environment  ASP.Net Core environment to run in (default: Production)
+
+All options can be specified via TeamCity system parameters instead, replacing `-` with `.` in the name.
+E.g., --aspnet-environment becomes the `system.aspnet.environment` variable in TeamCity.
+"""
+    let optionNameToTeamCityName (optionName : string) =
+        let start = if optionName.StartsWith "--" then 2 else 0
+        optionName.Substring(start).Replace('-','.')
+        // No `system.` at front since FAKE adds that for you
+
+    let parser = Docopt(argUsage)
+    let parsedArgs = parser.Parse(Array.ofList p.Context.Arguments)
+
+    let getValue optionName =
+        parsedArgs
+        |> DocoptResult.tryGetArgument optionName
+        |> Option.defaultWith (fun () ->
+            let varName = optionNameToTeamCityName optionName
+            if BuildServer.buildServer = TeamCity then
+                match TeamCity.BuildParameters.System |> Map.tryFind varName with
+                | None -> failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName varName
+                | Some value -> value
+            else
+                failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName varName
+            )
+
+    let jsonConfigFmt = """{
+  "MySql": {
+    "Hostname": "{0}",
+    "Database": "{1}",
+    "User": "{2}",
+    "Password": "{3}"
+  }
+}"""
+    let jsonConfig = System.String.Format(jsonConfigFmt, getValue "--mysql-hostname", getValue "--mysql-database", getValue "--mysql-username", getValue "--mysql-password")
+    let filename = sprintf "appsettings.%s.json" (getValue "--aspnet-environment")
+    let outputPath = bundleDir </> "Server" </> filename
+    let utf8 = System.Text.UTF8Encoding(false)
+    File.writeStringWithEncoding utf8 false outputPath jsonConfig
+)
+
 Target.create "Deploy" (fun p ->
     let argUsage = """
 Deploy script.
 
 Usage:
-  Deploy [<target>]
+  Deploy [options]
 
-The <target> must be specified, either at the command line
-or via a TeamCity build parameter. Valid values are:
+Options:
+  --upload-destination  Upload destination for rsync command (user@host:/path)
+
+The deployment target may be specified either at the command line or via a TeamCity
+system parameter named `system.upload.destination`. Valid values are:
   testing - Deploy to local Vagrant VM for testing
   staging - Deploy to QA server
   live - Deploy to live server
@@ -201,7 +257,7 @@ or via a TeamCity build parameter. Valid values are:
     //     Trace.tracefn "Exiting"
     //     exit 0
 
-    let target = parsedArgs |> DocoptResult.tryGetArgument "<target>"
+    let target = parsedArgs |> DocoptResult.tryGetArgument "--upload-destination"
     Trace.tracefn "Deployment target: %A" target
 
     match target with
@@ -256,6 +312,7 @@ open Fake.Core.TargetOperators
     // ==> "CopyNeededMySqlDlls"
     ==> "BuildServerOnly"
     ==> "Bundle"
+    ==> "CreateAppSettings"
     ==> "DeployTest"
     <=> "DeployStaging"
     <=> "DeployLive"

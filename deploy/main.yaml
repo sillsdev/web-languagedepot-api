@@ -1,9 +1,12 @@
 ---
 - hosts: all
   become: yes
+  # NOTE to self: don't set owner and group of /usr/lib/ldapi-server
+  # Also, use "tags: never,install" on things that should only be run
+  # once, and use a different tag on things that can be run repeatedly.
   tasks:
   - include_tasks: tasks/mysql.yaml
-    tags: db
+    tags: [ never, db ]
     when: populate_test_database|default(False)|bool
   - name: Port 80 proxy conf
     blockinfile:
@@ -16,7 +19,7 @@
       insertafter: '^<VirtualHost \*:80>'
       marker: "# {mark} port 80 ANSIBLE MANAGED BLOCK"
     notify: Restart apache
-    tags: webserver
+    tags: [ never, install ]
   - name: Port 443 proxy conf
     blockinfile:
       path: /etc/apache2/sites-available/qa.languagedepot.org_admin.conf
@@ -28,31 +31,36 @@
       insertafter: '^<VirtualHost \*:443>'
       marker: "# {mark} port 443 ANSIBLE MANAGED BLOCK"
     notify: Restart apache
-    tags: webserver
+    tags: [ never, install ]
   - name: Point admin.qa.languagedepot.org to localhost
     lineinfile:
       path: /etc/hosts
       line: "127.0.0.1 admin.qa.languagedepot.org"
     when: "edit_etc_hosts|default(False)|bool"
+    tags: [ never, install ]
   - name: Install Microsoft GPG key and APT feed, step 1
     get_url:
       url: https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb
       dest: /tmp/packages-microsoft-prod.deb
       checksum: "sha256:bf47049a5838ac6b7f79063b8908727f2ec2a83d95d3da23333bc3c006016583"
+    tags: [ never, install ]
   - name: Install Microsoft GPG key and APT feed, step 2
     shell: dpkg -i packages-microsoft-prod.deb
     args:
       chdir: /tmp/
       creates: /etc/apt/sources.list.d/microsoft-prod.list
     register: mspackages
+    tags: [ never, install ]
   - name: Update APT cache
     apt:
       update_cache: yes
     when: mspackages.changed
+    tags: [ never, install ]
   - name: Install prerequisites
     apt:
       name:
         - aspnetcore-runtime-3.0
+    tags: [ never, install ]
   - name: Ensure Apache2 SSL directory exists
     file:
       path: /etc/apache2/ssl
@@ -61,10 +69,12 @@
       group: root
       mode: u=rwx,g=rx,o=rx
     when: 'ssl_certificate|default("") == "selfsigned"'
+    tags: [ never, install ]
   - name: Create private key for certificate signing request
     openssl_privatekey:
       path: /etc/apache2/ssl/qa.languagedepot_org_admin.key
     when: 'ssl_certificate|default("") == "selfsigned"'
+    tags: [ never, install ]
   - name: Create certificate signing request for self-signed cert
     openssl_csr:
       path: /etc/apache2/ssl/qa.languagedepot_org_admin.csr
@@ -73,6 +83,7 @@
       organization_name: SIL
       common_name: admin.qa.languagedepot.org
     when: 'ssl_certificate|default("") == "selfsigned"'
+    tags: [ never, install ]
   - name: Create self-signed certificate
     openssl_certificate:
       path: /etc/apache2/ssl/qa.languagedepot_org_admin.pem
@@ -81,43 +92,24 @@
       provider: selfsigned
     register: certificate
     when: 'ssl_certificate|default("") == "selfsigned"'
+    tags: [ never, install ]
   - name: Copy self-signed certificate to chain file
     copy:
       remote_src: yes
       src: /etc/apache2/ssl/qa.languagedepot_org_admin.pem
       dest: /etc/apache2/ssl/qa.languagedepot_org_admin_chain.pem
     when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
-  - name: Ensure server destination exists
-    file:
-      path: "{{ server_dest }}"
-      state: directory
-      owner: root
-      group: root
-      mode: 755
-  - name: Deploy server code
-    synchronize:
-      src: ../deploy/server/Server/
-      dest: "{{ server_dest }}"
-      use_ssh_args: yes
-      rsync_path: rsync
-      # Without specifying that, synchronize defaults to `--rsync-path='sudo rsync'` which we don't want
-      archive: no
-      recursive: yes
+    tags: [ never, install ]
   - name: Copy over service file
     template:
       src: ldapi-server.service
       dest: /etc/systemd/system
     register: servicefile
-    notify: Start LD API server
   - name: Reload systemd service files
     systemd:
       daemon_reload: yes
     when: servicefile.changed
-  - name: Create appsettings for appropriate ASP.NET environment
-    template:
-      src: templates/appsettings.j2
-      dest: "{{ server_dest }}/appsettings.{{ aspnet_environment }}.json"
-    notify: Restart LD API server
+    notify: Enable and start LD API server
   - name: Install local web browser for testing
     apt:
       name:
@@ -130,13 +122,8 @@
     systemd:
       service: apache2
       state: restarted
-  - name: Start LD API server
+  - name: Enable and start LD API server
     systemd:
       service: ldapi-server
       enabled: yes
       state: started
-  - name: Restart LD API server
-    systemd:
-      service: ldapi-server
-      enabled: yes
-      state: restarted
