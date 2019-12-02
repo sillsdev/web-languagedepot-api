@@ -101,7 +101,8 @@ Vagrant.configure("2") do |config|
         "ssl_certificate" => "selfsigned",
         "aspnet_environment" => "Staging",
         "server_dest" => "/home/vagrant/server",
-        "server_user" => "vagrant"
+        "server_user" => "vagrant",
+        "server_group" => "vagrant"
       }
     }
     ansible.groups = {
@@ -123,7 +124,8 @@ Vagrant.configure("2") do |config|
         "ssl_certificate" => "selfsigned",
         "aspnet_environment" => "Staging",
         "server_dest" => "/home/vagrant/server",
-        "server_user" => "vagrant"
+        "server_user" => "vagrant",
+        "server_group" => "vagrant"
       }
     }
     ansible.groups = {

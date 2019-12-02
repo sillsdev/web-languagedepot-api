@@ -100,6 +100,25 @@
       dest: /etc/apache2/ssl/qa.languagedepot_org_admin_chain.pem
     when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
     tags: [ never, install ]
+  - name: Ensure config directory exists
+    file:
+      path: /etc/ldapi-server
+      state: directory
+      owner: root
+      group: "{{ server_group }}"
+      mode: u=rwx,g=rx,o-rwx
+    tags: [ never, install ]
+  - name: Check if config file exists
+    stat:
+      path: /etc/ldapi-server/ldapi-server.ini
+    register: configfile
+    tags: [ never, install ]
+  - name: Copy over config file
+    template:
+      src: templates/ldapi-server.ini
+      dest: /etc/ldapi-server/ldapi-server.ini
+    when: not configfile.stat.exists
+    tags: [ never, install ]
   - name: Copy over service files
     template:
       src: "templates/{{ item }}"

@@ -1,5 +1,5 @@
 [Unit]
-Description=LanguageDepot API server (test 3)
+Description=LanguageDepot API server
 
 [Service]
 WorkingDirectory={{ server_dest }}

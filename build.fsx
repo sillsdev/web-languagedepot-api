@@ -163,57 +163,6 @@ Target.create "DeployTest" (fun _ ->
     vagrant ()
 )
 
-Target.create "CreateIniFile" (fun p ->
-    let argUsage = """
-CreateIniFile target.
-
-Usage:
-  CreateIniFile [options]
-
-Options:
-  --mysql-username=<username>          Username for MySql config
-  --mysql-password=<password>          Password for MySql config
-  --mysql-hostname=<hostname>          Hostname of DB server for MySql config
-  --mysql-database=<database>          Database name for MySql config
-"""
-    let optionNameToTeamCityName (optionName : string) =
-        let start = if optionName.StartsWith "--" then 2 else 0
-        optionName.Substring(start).Replace('-','.')
-        // No `system.` at front since FAKE adds that for you
-
-    let parser = Docopt(argUsage)
-    let parsedArgs = parser.Parse(Array.ofList p.Context.Arguments)
-
-    let getValue optionName =
-        parsedArgs
-        |> DocoptResult.tryGetArgument optionName
-        |> Option.orElseWith (fun () ->
-            let varName = optionNameToTeamCityName optionName
-            if BuildServer.buildServer = TeamCity then
-                TeamCity.BuildParameters.System |> Map.tryFind varName
-            else
-                None
-            )
-
-    let getRequiredValue optionName =
-        match getValue optionName with
-        | None -> failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName (optionNameToTeamCityName optionName)
-        | Some value -> value
-
-    let iniFileLines = [
-        yield "[MySql]"
-        yield getRequiredValue "--mysql-hostname" |> sprintf "Hostname=%s"
-        yield getRequiredValue "--mysql-database" |> sprintf "Database=%s"
-        yield getRequiredValue "--mysql-username" |> sprintf "Username=%s"
-        match getValue "--mysql-password" with
-        | Some password -> yield sprintf "Password=%s" password
-        | None -> ()
-    ]
-
-    let outputPath = bundleDir </> "Server" </> "ldapi-server.ini"
-    File.writeNew outputPath iniFileLines
-)
-
 Target.create "Deploy" (fun p ->
     let argUsage = """
 Deploy script.
@@ -310,7 +259,6 @@ open Fake.Core.TargetOperators
     // ==> "CopyNeededMySqlDlls"
     ==> "BuildServerOnly"
     ==> "Bundle"
-    ==> "CreateIniFile"
     ==> "DeployTest"
     <=> "DeployStaging"
     <=> "DeployLive"
