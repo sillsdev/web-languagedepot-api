@@ -89,7 +89,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision "file", source: "../testlanguagedepot.sql", destination: "/home/vagrant/testlanguagedepot.sql"
 
   # Run the Ansible install tags only on first vagrant up
-  config.vm.provision "ansible", do |ansible|
+  config.vm.provision "ansible" do |ansible|
     ansible.playbook = "main.yaml"
     ansible.host_vars = {
       "default" => {
