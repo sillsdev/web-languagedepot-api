@@ -76,6 +76,8 @@ let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigu
         configBuilder
             .AddJsonFile("secrets.json")
         |> ignore
+    configBuilder.AddJsonFile("/etc/ldapi-server/appsettings.json", optional=true, reloadOnChange=false) |> ignore
+    // TODO: Find out how to catch "configuration reloaded" event and re-register MySQL services when that happens. Then set reloadOnChange=true instead
 
 let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
     let x = getSettingsValue<MySqlSettings> context.Configuration

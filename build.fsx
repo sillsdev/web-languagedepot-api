@@ -171,14 +171,11 @@ Usage:
   CreateAppSettings [options]
 
 Options:
-  --mysql-username  Username for MySql config
-  --mysql-password  Password for MySql config
-  --mysql-hostname  Hostname of DB server for MySql config
-  --mysql-database  Database name for MySql config
-  --aspnet-environment  ASP.Net Core environment to run in (default: Production)
-
-All options can be specified via TeamCity system parameters instead, replacing `-` with `.` in the name.
-E.g., --aspnet-environment becomes the `system.aspnet.environment` variable in TeamCity.
+  --mysql-username=<username>          Username for MySql config
+  --mysql-password=<password>          Password for MySql config
+  --mysql-hostname=<hostname>          Hostname of DB server for MySql config
+  --mysql-database=<database>          Database name for MySql config
+  --aspnet-environment=<environment>   ASP.Net Core environment to run in (default: Production)
 """
     let optionNameToTeamCityName (optionName : string) =
         let start = if optionName.StartsWith "--" then 2 else 0
@@ -232,7 +229,7 @@ Usage:
   Deploy [options]
 
 Options:
-  --upload-destination  Upload destination for rsync command (user@host:/path)
+  --upload-destination=<dest>  Upload destination for rsync command (user@host:/path)
 
 The deployment target may be specified either at the command line or via a TeamCity
 system parameter named `system.upload.destination`. Valid values are:
