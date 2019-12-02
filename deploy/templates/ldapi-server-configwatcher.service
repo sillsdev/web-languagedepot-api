@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart LD API when important files change
+After=ldapi-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart ldapi-server
+
+[Install]
+WantedBy=multi-user.target

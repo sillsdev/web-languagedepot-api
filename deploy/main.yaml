@@ -100,16 +100,20 @@
       dest: /etc/apache2/ssl/qa.languagedepot_org_admin_chain.pem
     when: 'certificate.changed and ssl_certificate|default("") == "selfsigned"'
     tags: [ never, install ]
-  - name: Copy over service file
+  - name: Copy over service files
     template:
-      src: ldapi-server.service
-      dest: /etc/systemd/system
+      src: "templates/{{ item }}"
+      dest: "/etc/systemd/system/{{ item }}"
+    with_items:
+      - ldapi-server.service
+      - ldapi-server-configwatcher.service
+      - ldapi-server-configwatcher.path
     register: servicefile
+    notify: Enable and start LD API server
   - name: Reload systemd service files
     systemd:
       daemon_reload: yes
     when: servicefile.changed
-    notify: Enable and start LD API server
   - name: Install local web browser for testing
     apt:
       name:
@@ -124,6 +128,9 @@
       state: restarted
   - name: Enable and start LD API server
     systemd:
-      service: ldapi-server
+      service: "{{ item }}"
       enabled: yes
       state: started
+    with_items:
+      - ldapi-server
+      - ldapi-server-configwatcher.path

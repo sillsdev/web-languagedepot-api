@@ -128,7 +128,7 @@ let buildDocker tag =
     runToolSimple "docker" args __SOURCE_DIRECTORY__
 
 let deploy dest =
-    let args = sprintf "-vzr server/Server/ %s" dest
+    let args = sprintf "-vzr --exclude=secrets.json server/Server/ %s" dest
     runToolSimple "rsync" args deployDir
 
 let vagrant() =

@@ -12,5 +12,6 @@ release.sh
 .idea/
 *.orig
 *.DotSettings.user
-deploy
+deploy/server
+deploy/.vagrant
 .ionide/

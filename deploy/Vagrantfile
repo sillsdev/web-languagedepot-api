@@ -94,7 +94,7 @@ Vagrant.configure("2") do |config|
     ansible.host_vars = {
       "default" => {
         "db_hostname" => "localhost",
-        "db_database" => "testldapi",
+        "db_database" => "languagedepot",
         "db_username" => "vagrant",
         "edit_etc_hosts" => "yes",
         "populate_test_database" => "yes",
@@ -107,7 +107,7 @@ Vagrant.configure("2") do |config|
     ansible.groups = {
       "all" => ["default"]
     }
-    ansible.tags = ["install"]
+    ansible.tags = ["install", "db"]
   end
 
   # Run the non-install Ansible tags every time `vagrant up` is run
@@ -116,7 +116,7 @@ Vagrant.configure("2") do |config|
     ansible.host_vars = {
       "default" => {
         "db_hostname" => "localhost",
-        "db_database" => "testldapi",
+        "db_database" => "languagedepot",
         "db_username" => "vagrant",
         "edit_etc_hosts" => "yes",
         "populate_test_database" => "yes",
