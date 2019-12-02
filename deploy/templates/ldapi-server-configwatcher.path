@@ -2,4 +2,4 @@
 Description=Restart LD API on config change
 
 [Path]
-PathChanged=/etc/ldapi-server/appsettings.json
+PathChanged=/etc/ldapi-server/ldapi-server.ini

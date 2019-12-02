@@ -128,7 +128,7 @@ let buildDocker tag =
     runToolSimple "docker" args __SOURCE_DIRECTORY__
 
 let deploy dest =
-    let args = sprintf "-vzr --exclude=secrets.json server/Server/ %s" dest
+    let args = sprintf "-vzr --exclude=secrets.json --exclude=ldapi-server.ini server/Server/ %s" dest
     runToolSimple "rsync" args deployDir
 
 let vagrant() =
@@ -163,19 +163,18 @@ Target.create "DeployTest" (fun _ ->
     vagrant ()
 )
 
-Target.create "CreateAppSettings" (fun p ->
+Target.create "CreateIniFile" (fun p ->
     let argUsage = """
-CreateAppSettings target.
+CreateIniFile target.
 
 Usage:
-  CreateAppSettings [options]
+  CreateIniFile [options]
 
 Options:
   --mysql-username=<username>          Username for MySql config
   --mysql-password=<password>          Password for MySql config
   --mysql-hostname=<hostname>          Hostname of DB server for MySql config
   --mysql-database=<database>          Database name for MySql config
-  --aspnet-environment=<environment>   ASP.Net Core environment to run in (default: Production)
 """
     let optionNameToTeamCityName (optionName : string) =
         let start = if optionName.StartsWith "--" then 2 else 0
@@ -188,37 +187,31 @@ Options:
     let getValue optionName =
         parsedArgs
         |> DocoptResult.tryGetArgument optionName
-        |> Option.defaultWith (fun () ->
+        |> Option.orElseWith (fun () ->
             let varName = optionNameToTeamCityName optionName
             if BuildServer.buildServer = TeamCity then
-                match TeamCity.BuildParameters.System |> Map.tryFind varName with
-                | None -> failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName varName
-                | Some value -> value
+                TeamCity.BuildParameters.System |> Map.tryFind varName
             else
-                failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName varName
+                None
             )
 
-    let jsonConfigFmt = """{{
-  "MySql": {{
-    "Hostname": "{0}",
-    "Database": "{1}",
-    "User": "{2}"
-  }}
-}}"""
-    let jsonConfig = System.String.Format(jsonConfigFmt, getValue "--mysql-hostname", getValue "--mysql-database", getValue "--mysql-username")
-    let filename = sprintf "appsettings.%s.json" (getValue "--aspnet-environment")
-    let outputPath = bundleDir </> "Server" </> filename
-    let utf8 = System.Text.UTF8Encoding(false)
-    File.writeStringWithEncoding utf8 false outputPath jsonConfig
+    let getRequiredValue optionName =
+        match getValue optionName with
+        | None -> failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName (optionNameToTeamCityName optionName)
+        | Some value -> value
 
-    let secretsConfigFmt = """{{
-  "MySql": {{
-    "Password": "{0}"
-  }}
-}}"""
-    let secretsConfig = System.String.Format(secretsConfigFmt, getValue "--mysql-password")
-    let outputPath = bundleDir </> "Server" </> "secrets.json"
-    File.writeStringWithEncoding utf8 false outputPath secretsConfig
+    let iniFileLines = [
+        yield "[MySql]"
+        yield getRequiredValue "--mysql-hostname" |> sprintf "Hostname=%s"
+        yield getRequiredValue "--mysql-database" |> sprintf "Database=%s"
+        yield getRequiredValue "--mysql-username" |> sprintf "Username=%s"
+        match getValue "--mysql-password" with
+        | Some password -> yield sprintf "Password=%s" password
+        | None -> ()
+    ]
+
+    let outputPath = bundleDir </> "Server" </> "ldapi-server.ini"
+    File.writeNew outputPath iniFileLines
 )
 
 Target.create "Deploy" (fun p ->
@@ -317,7 +310,7 @@ open Fake.Core.TargetOperators
     // ==> "CopyNeededMySqlDlls"
     ==> "BuildServerOnly"
     ==> "Bundle"
-    ==> "CreateAppSettings"
+    ==> "CreateIniFile"
     ==> "DeployTest"
     <=> "DeployStaging"
     <=> "DeployLive"

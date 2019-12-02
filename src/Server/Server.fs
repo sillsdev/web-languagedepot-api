@@ -70,13 +70,8 @@ let webApp = router {
     // Rejected API: POST /api/project/{projId}/add-user/{username}
 }
 
-let setupUserSecrets (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
-    let env = context.HostingEnvironment
-    if env.IsDevelopment() || env.IsEnvironment("Testing") then
-        configBuilder
-            .AddJsonFile("secrets.json")
-        |> ignore
-    configBuilder.AddJsonFile("/etc/ldapi-server/appsettings.json", optional=true, reloadOnChange=false) |> ignore
+let setupAppConfig (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
+    configBuilder.AddIniFile("/etc/ldapi-server/ldapi-server.ini", optional=true, reloadOnChange=false) |> ignore
     // TODO: Find out how to catch "configuration reloaded" event and re-register MySQL services when that happens. Then set reloadOnChange=true instead
 
 let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
@@ -85,7 +80,7 @@ let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceColle
 
 let hostConfig (builder : IWebHostBuilder) =
     builder
-        .ConfigureAppConfiguration(setupUserSecrets)
+        .ConfigureAppConfiguration(setupAppConfig)
         .ConfigureServices(registerMySqlServices)
 
 let app = application {
