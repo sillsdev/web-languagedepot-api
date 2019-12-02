@@ -128,7 +128,7 @@ let buildDocker tag =
     runToolSimple "docker" args __SOURCE_DIRECTORY__
 
 let deploy dest =
-    let args = sprintf "-vzr --exclude secrets.json server/Server/ %s" dest
+    let args = sprintf "-vzr server/Server/ %s" dest
     runToolSimple "rsync" args deployDir
 
 let vagrant() =
@@ -205,15 +205,23 @@ E.g., --aspnet-environment becomes the `system.aspnet.environment` variable in T
   "MySql": {{
     "Hostname": "{0}",
     "Database": "{1}",
-    "User": "{2}",
-    "Password": "{3}"
+    "User": "{2}"
   }}
 }}"""
-    let jsonConfig = System.String.Format(jsonConfigFmt, getValue "--mysql-hostname", getValue "--mysql-database", getValue "--mysql-username", getValue "--mysql-password")
+    let jsonConfig = System.String.Format(jsonConfigFmt, getValue "--mysql-hostname", getValue "--mysql-database", getValue "--mysql-username")
     let filename = sprintf "appsettings.%s.json" (getValue "--aspnet-environment")
     let outputPath = bundleDir </> "Server" </> filename
     let utf8 = System.Text.UTF8Encoding(false)
     File.writeStringWithEncoding utf8 false outputPath jsonConfig
+
+    let secretsConfigFmt = """{{
+  "MySql": {{
+    "Password": "{0}"
+  }}
+}}"""
+    let secretsConfig = System.String.Format(secretsConfigFmt, getValue "--mysql-password")
+    let outputPath = bundleDir </> "Server" </> "secrets.json"
+    File.writeStringWithEncoding utf8 false outputPath secretsConfig
 )
 
 Target.create "Deploy" (fun p ->
