@@ -597,6 +597,13 @@ let archiveProject (connString : string) (isPublic : bool) (projectCode : string
             return true
     }
 
+// NOTE: If you change the database schema, you must UNCOMMENT the next two lines and then
+// reload Visual Studio or VS Code. (Yes, just reload your *editor*). This will cause the
+// updated schema to be saved to the location defined in schemaPath.)
+
+// let ctx = sql.GetDataContext sampleConnString
+// ctx.SaveContextSchema()
+
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
 
