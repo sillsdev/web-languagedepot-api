@@ -201,14 +201,14 @@ E.g., --aspnet-environment becomes the `system.aspnet.environment` variable in T
                 failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName varName
             )
 
-    let jsonConfigFmt = """{
-  "MySql": {
+    let jsonConfigFmt = """{{
+  "MySql": {{
     "Hostname": "{0}",
     "Database": "{1}",
     "User": "{2}",
     "Password": "{3}"
-  }
-}"""
+  }}
+}}"""
     let jsonConfig = System.String.Format(jsonConfigFmt, getValue "--mysql-hostname", getValue "--mysql-database", getValue "--mysql-username", getValue "--mysql-password")
     let filename = sprintf "appsettings.%s.json" (getValue "--aspnet-environment")
     let outputPath = bundleDir </> "Server" </> filename
