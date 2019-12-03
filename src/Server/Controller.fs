@@ -112,6 +112,10 @@ let listUsers : HttpHandler =
     withServiceFunc true
         (fun connString (listUsers : Model.ListUsers) -> listUsers connString None None)
 
+let listUsersPrivate : HttpHandler =
+    withServiceFunc false
+        (fun connString (listUsers : Model.ListUsers) -> listUsers connString None None)
+
 let listUsersLimit limit : HttpHandler =
     withServiceFunc true
         (fun connString (listUsers : Model.ListUsers) -> listUsers connString (Some limit) None)
