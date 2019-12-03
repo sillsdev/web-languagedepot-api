@@ -6,7 +6,7 @@ open FSharp.Data.Sql
 open Shared
 
 [<Literal>]
-let sampleConnString = "Server=localhost;Database=languagedepot;User=rmunn"
+let sampleConnString = "Server=localhost;Database=testldapi;User=rmunn"
 
 [<Literal>]
 let resolutionPath = __SOURCE_DIRECTORY__
@@ -16,6 +16,7 @@ let schemaPath = __SOURCE_DIRECTORY__ + "/languagedepot.schema"
 
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            sampleConnString,
+                           Owner = "languagedepot",
                            ContextSchemaPath = schemaPath,
                            ResolutionPath = resolutionPath,
                            CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL,
@@ -77,34 +78,34 @@ type Dto.RoleDetails with
     }
     static member TypeFromSql (sqlRole : sql.dataContext.``languagedepot.rolesEntity``) = RoleType.OfString sqlRole.Name
 
-type ListUsers = int option -> int option -> Async<Dto.UserDetails list>
-type ListProjects = bool -> Async<Dto.ProjectList>
+type ListUsers = string -> int option -> int option -> Async<Dto.UserDetails list>
+type ListProjects = string -> Async<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
-type CountUsers = CountUsers of (unit -> Async<int>)
-type CountProjects = CountProjects of (unit -> Async<int>)
-type CountRealProjects = CountRealProjects of (unit -> Async<int>)
-type ListRoles = unit -> Async<Dto.RoleDetails list>
-type ProjectsByUser = string -> Async<Dto.ProjectDetails list>
-type ProjectsByUserRole = string -> RoleType -> Async<Dto.ProjectDetails list>
-type ProjectsAndRolesByUser = string -> Async<(Dto.ProjectDetails * RoleType list) list>
-type ProjectsAndRolesByUserRole = string -> RoleType -> Async<(Dto.ProjectDetails * RoleType list) list>
+type CountUsers = CountUsers of (string -> unit -> Async<int>)
+type CountProjects = CountProjects of (string -> unit -> Async<int>)
+type CountRealProjects = CountRealProjects of (string -> unit -> Async<int>)
+type ListRoles = string -> unit -> Async<Dto.RoleDetails list>
+type ProjectsByUser = string -> string -> Async<Dto.ProjectDetails list>
+type ProjectsByUserRole = string -> string -> RoleType -> Async<Dto.ProjectDetails list>
+type ProjectsAndRolesByUser = string -> string -> Async<(Dto.ProjectDetails * RoleType list) list>
+type ProjectsAndRolesByUserRole = string -> string -> RoleType -> Async<(Dto.ProjectDetails * RoleType list) list>
 // Ditto for these two FooExists types: need a DU
-type UserExists = UserExists of (string -> Async<bool>)
-type ProjectExists = ProjectExists of (string -> Async<bool>)
-type IsAdmin = IsAdmin of (string -> Async<bool>)
-type SearchUsersExact = SearchUsersExact of (string -> Async<Dto.UserList>)
-type SearchUsersLoose = SearchUsersLoose of (string -> Async<Dto.UserList>)
-type GetUser = string -> Async<Dto.UserDetails option>
-type GetProject = bool -> string -> Async<Dto.ProjectDetails option>
-type CreateProject = Api.CreateProject -> Async<int>
-type CreateUser = Api.CreateUser -> Async<int>
-type UpsertUser = string -> Api.CreateUser -> Async<int>
-type ChangePassword = string -> Api.ChangePassword -> Async<bool>
-type VerifyLoginCredentials = Api.LoginCredentials -> Async<bool>
-type AddMembership = AddMembership of (string -> string -> RoleType -> Async<bool>)
-type RemoveMembership = RemoveMembership of (string -> string -> RoleType -> Async<bool>)
-type RemoveUserFromAllRolesInProject = RemoveUserFromAllRolesInProject of (string -> string -> Async<bool>)
-type ArchiveProject = bool -> string -> Async<bool>
+type UserExists = UserExists of (string -> string -> Async<bool>)
+type ProjectExists = ProjectExists of (string -> string -> Async<bool>)
+type IsAdmin = IsAdmin of (string -> string -> Async<bool>)
+type SearchUsersExact = SearchUsersExact of (string -> string -> Async<Dto.UserList>)
+type SearchUsersLoose = SearchUsersLoose of (string -> string -> Async<Dto.UserList>)
+type GetUser = string -> string -> Async<Dto.UserDetails option>
+type GetProject = string -> string -> Async<Dto.ProjectDetails option>
+type CreateProject = string -> Api.CreateProject -> Async<int>
+type CreateUser = string -> Api.CreateUser -> Async<int>
+type UpsertUser = string -> string -> Api.CreateUser -> Async<int>
+type ChangePassword = string -> string -> Api.ChangePassword -> Async<bool>
+type VerifyLoginCredentials = string -> Api.LoginCredentials -> Async<bool>
+type AddMembership = AddMembership of (string -> string -> string -> RoleType -> Async<bool>)
+type RemoveMembership = RemoveMembership of (string -> string -> string -> RoleType -> Async<bool>)
+type RemoveUserFromAllRolesInProject = RemoveUserFromAllRolesInProject of (string -> string -> string -> Async<bool>)
+type ArchiveProject = string -> string -> Async<bool>
 
 let usersQueryAsync (connString : string) (limit : int option) (offset : int option) =
     async {
@@ -156,24 +157,22 @@ let searchUsersExact (connString : string) (searchTerm : string) =
         return users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
     }
 
-let projectsQueryAsync (connString : string) (isPublic : bool) =
+let projectsQueryAsync (connString : string) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
             for project in ctx.Languagedepot.Projects do
-            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Status = ProjectStatus.Active)
             select (Dto.ProjectDetails.FromSql project)
         }
         return! projectsQuery |> List.executeQueryAsync
     }
 
-let projectsAndRolesQueryAsync (connString : string) (isPublic : bool) =
+let projectsAndRolesQueryAsync (connString : string) =
     async {
         let ctx = sql.GetDataContext connString
         let projectsQuery = query {
             for project in ctx.Languagedepot.Projects do
-            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Status = ProjectStatus.Active)
             join membership in !! ctx.Languagedepot.Members on (project.Id = membership.ProjectId)
             join memberRole in !! ctx.Languagedepot.MemberRoles on (membership.Id = memberRole.MemberId)
@@ -190,7 +189,6 @@ let projectsCountAsync (connString : string) () =
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Languagedepot.Projects do
-            where (project.IsPublic > 0y)
             where (project.Status = ProjectStatus.Active)
             count
         }
@@ -198,7 +196,7 @@ let projectsCountAsync (connString : string) () =
 
 let realProjectsCountAsync (connString : string) () =
     async {
-        let! projects = projectsQueryAsync connString true
+        let! projects = projectsQueryAsync connString
         return
             projects
             |> Seq.map (fun project -> project, GuessProjectType.guessType project.code project.name project.description)
@@ -229,7 +227,6 @@ let projectExists (connString : string) projectCode =
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Languagedepot.Projects do
-            where (project.IsPublic > 0y)
             // We do NOT check where (project.Status = ProjectStatus.Active) here because we want to forbid re-using project codes even of inactive projects
             where (project.Identifier.IsSome)
             select project.Identifier.Value
@@ -264,19 +261,18 @@ let getUser (connString : string) username =
         else return userAndEmails |> Dto.UserDetails.FromSqlWithEmails |> Some
     }
 
-let getProject (connString : string) (isPublic : bool) projectCode =
+let getProject (connString : string) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         return query {
             for project in ctx.Languagedepot.Projects do
-            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (not project.Identifier.IsNone)
             where (project.Identifier.Value = projectCode)
             select (Some (Dto.ProjectDetails.FromSql project))
             exactlyOneOrDefault }
     }
 
-let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
+let getProjectWithRoles (connString : string) projectCode =
     async {
         let ctx = sql.GetDataContext connString
         let projectQuery = query {
@@ -285,7 +281,6 @@ let getProjectWithRoles (connString : string) (isPublic : bool) projectCode =
             join memberRole in !! ctx.Languagedepot.MemberRoles on (membership.Id = memberRole.MemberId)
             join user in !! ctx.Languagedepot.Users on (membership.UserId = user.Id)
             join role in !! ctx.Languagedepot.Roles on (memberRole.RoleId = role.Id)
-            where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
             where (project.Identifier.IsSome && project.Identifier.Value = projectCode)
             select (project, user.Login, role.Id, role.Name)
         }
@@ -552,7 +547,7 @@ let removeUserFromAllRolesInProject (connString : string) (username : string) (p
         return true
     }
 
-let addOrRemoveMembership (connString : string) (isAdd : bool) (username : string) (projectCode : string) (roleType : RoleType) =
+let addOrRemoveMembership (isAdd : bool) (connString : string) (username : string) (projectCode : string) (roleType : RoleType) =
     // Most of the code checking usernames and project codes and fetching numeric IDs is shared between add and remove operations
     async {
         let ctx = sql.GetDataContext connString
@@ -579,12 +574,11 @@ let addOrRemoveMembership (connString : string) (isAdd : bool) (username : strin
             return true
     }
 
-let archiveProject (connString : string) (isPublic : bool) (projectCode : string) =
+let archiveProject (connString : string) (projectCode : string) =
     async {
         let ctx = sql.GetDataContext connString
         let maybeProject = query {
             for project in ctx.Languagedepot.Projects do
-                where (if isPublic then project.IsPublic > 0y else project.IsPublic = 0y)
                 where (not project.Identifier.IsNone)
                 where (project.Identifier.Value = projectCode)
                 select (Some project)
@@ -611,56 +605,56 @@ module ModelRegistration =
     let registerServices (builder : IServiceCollection) (connString : string) =
         builder
             .RemoveAll<ListUsers>()
-            .AddSingleton<ListUsers>(usersQueryAsync connString)
+            .AddSingleton<ListUsers>(usersQueryAsync)
             .RemoveAll<ListProjects>()
-            .AddSingleton<ListProjects>(projectsAndRolesQueryAsync connString)
+            .AddSingleton<ListProjects>(projectsAndRolesQueryAsync)
             .RemoveAll<CountUsers>()
-            .AddSingleton<CountUsers>(CountUsers (usersCountAsync connString))
+            .AddSingleton<CountUsers>(CountUsers (usersCountAsync))
             .RemoveAll<CountProjects>()
-            .AddSingleton<CountProjects>(CountProjects (projectsCountAsync connString))
+            .AddSingleton<CountProjects>(CountProjects (projectsCountAsync))
             .RemoveAll<CountRealProjects>()
-            .AddSingleton<CountRealProjects>(CountRealProjects (realProjectsCountAsync connString))
+            .AddSingleton<CountRealProjects>(CountRealProjects (realProjectsCountAsync))
             .RemoveAll<ListRoles>()
-            .AddSingleton<ListRoles>(roleNames connString)
+            .AddSingleton<ListRoles>(roleNames)
             .RemoveAll<UserExists>()
-            .AddSingleton<UserExists>(UserExists (userExists connString))
+            .AddSingleton<UserExists>(UserExists (userExists))
             .RemoveAll<ProjectExists>()
-            .AddSingleton<ProjectExists>(ProjectExists (projectExists connString))
+            .AddSingleton<ProjectExists>(ProjectExists (projectExists))
             .RemoveAll<IsAdmin>()
-            .AddSingleton<IsAdmin>(IsAdmin (isAdmin connString))
+            .AddSingleton<IsAdmin>(IsAdmin (isAdmin))
             .RemoveAll<SearchUsersExact>()
-            .AddSingleton<SearchUsersExact>(SearchUsersExact (searchUsersExact connString))
+            .AddSingleton<SearchUsersExact>(SearchUsersExact (searchUsersExact))
             .RemoveAll<SearchUsersLoose>()
-            .AddSingleton<SearchUsersLoose>(SearchUsersLoose (searchUsersLoose connString))
+            .AddSingleton<SearchUsersLoose>(SearchUsersLoose (searchUsersLoose))
             .RemoveAll<GetUser>()
-            .AddSingleton<GetUser>(getUser connString)
+            .AddSingleton<GetUser>(getUser)
             .RemoveAll<GetProject>()
-            .AddSingleton<GetProject>(getProjectWithRoles connString)
+            .AddSingleton<GetProject>(getProjectWithRoles)
             .RemoveAll<CreateProject>()
-            .AddSingleton<CreateProject>(createProject connString)
+            .AddSingleton<CreateProject>(createProject)
             .RemoveAll<CreateUser>()
-            .AddSingleton<CreateUser>(createUser connString)
+            .AddSingleton<CreateUser>(createUser)
             .RemoveAll<UpsertUser>()
-            .AddSingleton<UpsertUser>(upsertUser connString)
+            .AddSingleton<UpsertUser>(upsertUser)
             .RemoveAll<ChangePassword>()
-            .AddSingleton<ChangePassword>(changePassword connString)
+            .AddSingleton<ChangePassword>(changePassword)
             .RemoveAll<ProjectsByUser>()
-            .AddSingleton<ProjectsByUser>(projectsByUser connString)
+            .AddSingleton<ProjectsByUser>(projectsByUser)
             .RemoveAll<ProjectsByUserRole>()
-            .AddSingleton<ProjectsByUserRole>(projectsByUserRole connString)
+            .AddSingleton<ProjectsByUserRole>(projectsByUserRole)
             .RemoveAll<ProjectsAndRolesByUserRole>()
-            .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole connString)
+            .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole)
             .RemoveAll<ProjectsAndRolesByUser>()
-            .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser connString)
+            .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser)
             .RemoveAll<VerifyLoginCredentials>()
-            .AddSingleton<VerifyLoginCredentials>(verifyLoginInfo connString)
+            .AddSingleton<VerifyLoginCredentials>(verifyLoginInfo)
             .RemoveAll<AddMembership>()
-            .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership connString true))
+            .AddSingleton<AddMembership>(AddMembership (addOrRemoveMembership true))
             .RemoveAll<RemoveMembership>()
-            .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership connString false))
+            .AddSingleton<RemoveMembership>(RemoveMembership (addOrRemoveMembership false))
             .RemoveAll<RemoveUserFromAllRolesInProject>()
-            .AddSingleton<RemoveUserFromAllRolesInProject>(RemoveUserFromAllRolesInProject (removeUserFromAllRolesInProject connString))
+            .AddSingleton<RemoveUserFromAllRolesInProject>(RemoveUserFromAllRolesInProject (removeUserFromAllRolesInProject))
             .RemoveAll<ArchiveProject>()
-            .AddSingleton<ArchiveProject>(archiveProject connString)
+            .AddSingleton<ArchiveProject>(archiveProject)
         |> ignore
         FSharp.Data.Sql.Common.QueryEvents.SqlQueryEvent |> Event.add (printfn "Executing SQL: %O")
