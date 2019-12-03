@@ -236,7 +236,7 @@ let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershi
 
 let getAllRoles : HttpHandler =
     withServiceFunc true
-        (fun connString (roleNames : Model.ListRoles) -> roleNames connString ())
+        (fun connString (roleNames : Model.ListRoles) -> roleNames connString)
 
 let createUser (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
@@ -283,21 +283,21 @@ let countUsers : HttpHandler =
     withServiceFunc true
         (fun connString (Model.CountUsers countUsers) -> async {
                 do! Async.Sleep 500 // Simulate server load
-                return! countUsers connString ()
+                return! countUsers connString
         })
 
 let countProjects : HttpHandler =
     withServiceFunc true
         (fun connString (Model.CountProjects countProjects) -> async {
                 do! Async.Sleep 750 // Simulate server load
-                return! countProjects connString ()
+                return! countProjects connString
         })
 
 let countRealProjects : HttpHandler =
     withServiceFunc true
         (fun connString (Model.CountRealProjects countRealProjects) -> async {
                 do! Async.Sleep 1000 // Simulate server load
-                return! countRealProjects connString ()
+                return! countRealProjects connString
         })
 
 let getMySqlSettings : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {

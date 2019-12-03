@@ -81,10 +81,10 @@ type Dto.RoleDetails with
 type ListUsers = string -> int option -> int option -> Async<Dto.UserDetails list>
 type ListProjects = string -> Async<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
-type CountUsers = CountUsers of (string -> unit -> Async<int>)
-type CountProjects = CountProjects of (string -> unit -> Async<int>)
-type CountRealProjects = CountRealProjects of (string -> unit -> Async<int>)
-type ListRoles = string -> unit -> Async<Dto.RoleDetails list>
+type CountUsers = CountUsers of (string -> Async<int>)
+type CountProjects = CountProjects of (string -> Async<int>)
+type CountRealProjects = CountRealProjects of (string -> Async<int>)
+type ListRoles = string -> Async<Dto.RoleDetails list>
 type ProjectsByUser = string -> string -> Async<Dto.ProjectDetails list>
 type ProjectsByUserRole = string -> string -> RoleType -> Async<Dto.ProjectDetails list>
 type ProjectsAndRolesByUser = string -> string -> Async<(Dto.ProjectDetails * RoleType list) list>
@@ -184,7 +184,7 @@ let projectsAndRolesQueryAsync (connString : string) =
         return projectsAndRoles |> List.groupBy (fun (project, _, _, _) -> project.Identifier) |> List.choose (snd >> Dto.ProjectDetails.FromSqlWithRoles)
     }
 
-let projectsCountAsync (connString : string) () =
+let projectsCountAsync (connString : string) =
     async {
         let ctx = sql.GetDataContext connString
         return query {
@@ -194,7 +194,7 @@ let projectsCountAsync (connString : string) () =
         }
     }
 
-let realProjectsCountAsync (connString : string) () =
+let realProjectsCountAsync (connString : string) =
     async {
         let! projects = projectsQueryAsync connString
         return
@@ -204,7 +204,7 @@ let realProjectsCountAsync (connString : string) () =
             |> Seq.length
     }
 
-let usersCountAsync (connString : string) () =
+let usersCountAsync (connString : string) =
     async {
         let ctx = sql.GetDataContext connString
         return query {
@@ -419,7 +419,7 @@ let projectsByUser connString username = async {
     return projectsAndRoles |> List.map fst
 }
 
-let roleNames (connString : string) () =
+let roleNames (connString : string) =
     async {
         let ctx = sql.GetDataContext connString
         let roleQuery = query {

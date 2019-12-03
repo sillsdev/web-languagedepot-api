@@ -18,11 +18,11 @@ let listProjects : Model.ListProjects = fun _connString -> async {
     return MemoryStorage.projectStorage.Values |> List.ofSeq
 }
 
-let countUsers = Model.CountUsers (fun _connString () -> async {
+let countUsers = Model.CountUsers (fun _connString -> async {
     return MemoryStorage.userStorage.Count
 })
 
-let countProjects = Model.CountProjects (fun _connString () -> async {
+let countProjects = Model.CountProjects (fun _connString -> async {
     return MemoryStorage.projectStorage.Count
 })
 
@@ -30,11 +30,11 @@ let isRealProject (proj : Dto.ProjectDetails) =
     let projType = GuessProjectType.guessType proj.code proj.name proj.description
     projType <> Test && not (proj.code.StartsWith "test")
 
-let countRealProjects = Model.CountRealProjects (fun _connString () -> async {
+let countRealProjects = Model.CountRealProjects (fun _connString -> async {
     return MemoryStorage.projectStorage.Values |> Seq.filter isRealProject |> Seq.length
 })
 
-let listRoles : Model.ListRoles = fun _connString () -> async {
+let listRoles : Model.ListRoles = fun _connString -> async {
     return Dto.standardRoles
 }
 
