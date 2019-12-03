@@ -16,7 +16,7 @@ let schemaPath = __SOURCE_DIRECTORY__ + "/languagedepot.schema"
 
 type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            sampleConnString,
-                           Owner = "languagedepot",
+                        //    Owner = "languagedepot",
                            ContextSchemaPath = schemaPath,
                            ResolutionPath = resolutionPath,
                            CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL,
