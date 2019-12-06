@@ -83,7 +83,7 @@ module Dto =
         username : string
         firstName : string
         lastName : string
-        emailAddresses : string option  // TODO: Rename to "email" once we fix the types everywhere
+        email : string option
         // (two queries: select from emails where is_default = true, then select from emails where is_default = false. Then (default :: rest)).
         language : string // (interface language for this user) - is this useful to the frontend? ... yeah, because when you log in, the front end wants to know who logged in and what language to give you
     }

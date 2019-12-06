@@ -89,7 +89,7 @@ let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> asy
             user.username = searchText ||
             user.firstName = searchText ||
             user.lastName = searchText ||
-            user.emailAddresses |> Option.contains searchText)
+            user.email |> Option.contains searchText)
         |> List.ofSeq
 })
 
@@ -100,7 +100,7 @@ let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> asy
             user.username.Contains(searchText) ||
             user.firstName.Contains(searchText) ||
             user.lastName.Contains(searchText) ||
-            (user.emailAddresses |> Option.defaultValue "").Contains(searchText))
+            (user.email |> Option.defaultValue "").Contains(searchText))
         |> List.ofSeq
 })
 
@@ -133,7 +133,7 @@ let mkUserDetailsFromApiData (createUserApiData : Api.CreateUser) : Dto.UserDeta
     username = createUserApiData.username
     firstName = createUserApiData.firstName
     lastName = createUserApiData.lastName
-    emailAddresses = createUserApiData.emailAddresses
+    email = createUserApiData.emailAddresses
     language = createUserApiData.language |> Option.defaultValue "en"
 }
 

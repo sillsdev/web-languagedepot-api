@@ -49,7 +49,7 @@ type Dto.UserDetails with
             Dto.UserDetails.username = login
             Dto.UserDetails.firstName = firstname
             Dto.UserDetails.lastName = lastname
-            Dto.UserDetails.emailAddresses = email
+            Dto.UserDetails.email = email
             Dto.UserDetails.language = language |> Option.defaultValue "en"
         }
 

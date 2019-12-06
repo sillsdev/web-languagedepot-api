@@ -34,7 +34,7 @@ let blankUserRecord : Dto.UserDetails = {
     username = ""
     firstName = ""
     lastName = ""
-    emailAddresses = None
+    email = None
     language = "" }
 
 let blankProjectRecord : Dto.ProjectDetails = {
