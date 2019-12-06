@@ -4,6 +4,7 @@ open System
 open System.Linq
 open FSharp.Data.Sql
 open Shared
+open MySql.Data.MySqlClient
 
 [<Literal>]
 let sampleConnString = "Server=localhost;Database=testldapi;User=rmunn"
@@ -105,6 +106,41 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
             | Some limit, Some offset -> query { for user in usersQuery do skip offset; take limit } |> List.executeQueryAsync
         let usersAndEmails = users |> List.map Dto.UserDetails.FromSql
         return usersAndEmails
+    }
+
+open FSharp.Control.Tasks.V2
+
+let fetchData (convertRow : MySqlDataReader -> 'result) (reader : MySqlDataReader) = task {
+    if not reader.HasRows then
+        return Array.empty
+    else
+        let result = new ResizeArray<'result>()
+        let mutable hasMore = true
+        let! readResult = reader.ReadAsync()
+        hasMore <- readResult
+        while hasMore do
+            let item = convertRow reader
+            result.Add item
+            let! readResult = reader.ReadAsync()
+            hasMore <- readResult
+        return result.ToArray()
+}
+
+let manualUsersQuery (connString : string) (limit : int option) (offset : int option) =
+    task {
+        use conn = new MySqlConnection(connString)
+        do! conn.OpenAsync()
+        use cmd = new MySqlCommand("SELECT login, first_name, last_name, language, is_default, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id", conn)
+        use! reader = cmd.ExecuteReaderAsync()
+        let! result = reader :?> MySqlDataReader |> fetchData (fun reader ->
+            {
+                Dto.UserDetails.username = reader.GetString(0)
+                Dto.UserDetails.firstName = reader.GetString(1)
+                Dto.UserDetails.lastName = reader.GetString(2)
+                Dto.UserDetails.email = if reader.IsDBNull(3) then None else Some (reader.GetString(3))
+                Dto.UserDetails.language = if reader.IsDBNull(4) then "en" else reader.GetString(4)
+            })
+        return result
     }
 
 let searchUsersLoose (connString : string) (searchTerm : string) =
