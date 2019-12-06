@@ -44,30 +44,12 @@ type Dto.ProjectDetails with
             { Dto.ProjectDetails.FromSql sqlProject with membership = Some memberships } |> Some
 
 type Dto.UserDetails with
-    static member FromSql (sqlUserAndEmails : (sql.dataContext.``languagedepot.usersEntity`` * (sbyte * string)) list) =
-        // for pair in sqlUserAndEmails do
-        //     let user = fst pair
-        //     printfn "Found %A: %s (%s %s) with email(s) %A" user user.Login user.Firstname user.Lastname (snd pair)
-        let sqlUser = sqlUserAndEmails |> List.head |> fst
-        let emails = sqlUserAndEmails |> List.sortBy snd |> List.map (fun (_, (_, address)) -> address)
-        {
-            Dto.UserDetails.username = sqlUser.Login
-            Dto.UserDetails.firstName = sqlUser.Firstname
-            Dto.UserDetails.lastName = sqlUser.Lastname
-            Dto.UserDetails.emailAddresses = emails
-            Dto.UserDetails.language = sqlUser.Language |> Option.defaultValue "en"
-        }
-    static member FromSqlWithEmails (sqlUserAndEmails : ((string * string * string * string option) * (sbyte * string)) list) =
-        // for pair in sqlUserAndEmails do
-        //     let (login, firstname, lastname, language) = fst pair
-        //     printfn "Found %s (%s %s) with email(s) %A" login firstname lastname (snd pair)
-        let (login, firstname, lastname, language) = sqlUserAndEmails |> List.head |> fst
-        let emails = sqlUserAndEmails |> List.sortBy snd |> List.map (fun (_, (_, address)) -> address)
+    static member FromSql ((login, firstname, lastname, language, email) : (string * string * string * string option * string option)) =
         {
             Dto.UserDetails.username = login
             Dto.UserDetails.firstName = firstname
             Dto.UserDetails.lastName = lastname
-            Dto.UserDetails.emailAddresses = emails
+            Dto.UserDetails.emailAddresses = email
             Dto.UserDetails.language = language |> Option.defaultValue "en"
         }
 
@@ -113,7 +95,7 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
         let usersQuery = query {
             for user in ctx.Languagedepot.Users do
             join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
-            select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
+            select (user.Login, user.Firstname, user.Lastname, user.Language, (if isNull mail then None else Some mail.Address))
         }
         let! users =
             match limit, offset with
@@ -121,7 +103,7 @@ let usersQueryAsync (connString : string) (limit : int option) (offset : int opt
             | None, Some offset -> query { for user in usersQuery do skip offset } |> List.executeQueryAsync
             | Some limit, None -> query { for user in usersQuery do take limit } |> List.executeQueryAsync
             | Some limit, Some offset -> query { for user in usersQuery do skip offset; take limit } |> List.executeQueryAsync
-        let usersAndEmails = users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
+        let usersAndEmails = users |> List.map Dto.UserDetails.FromSql
         return usersAndEmails
     }
 
@@ -136,9 +118,9 @@ let searchUsersLoose (connString : string) (searchTerm : string) =
                        user.Firstname.Contains searchTerm ||
                        user.Lastname.Contains searchTerm ||
                        mail.Address.Contains searchTerm)
-                select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
+                select (user.Login, user.Firstname, user.Lastname, user.Language, (if isNull mail then None else Some mail.Address))
             } |> List.executeQueryAsync
-        return users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
+        return users |> List.map Dto.UserDetails.FromSql
     }
 
 let searchUsersExact (connString : string) (searchTerm : string) =
@@ -152,9 +134,9 @@ let searchUsersExact (connString : string) (searchTerm : string) =
                        user.Firstname = searchTerm ||
                        user.Lastname = searchTerm ||
                        mail.Address = searchTerm)
-                select (user, ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
+                select (user.Login, user.Firstname, user.Lastname, user.Language, (if isNull mail then None else Some mail.Address))
             } |> List.executeQueryAsync
-        return users |> List.groupBy (fun (user, _) -> user.Login) |> List.map (snd >> Dto.UserDetails.FromSql)
+        return users |> List.map Dto.UserDetails.FromSql
     }
 
 let projectsQueryAsync (connString : string) =
@@ -246,19 +228,15 @@ let isAdmin (connString : string) username =
 let getUser (connString : string) username =
     async {
         let ctx = sql.GetDataContext connString
-        let! userAndEmails =
+        let userAndEmails =
             query {
                 for user in ctx.Languagedepot.Users do
                 where (user.Login = username)
                 join mail in !! ctx.Languagedepot.EmailAddresses on (user.Id = mail.UserId)
-                select ((user.Login, user.Firstname, user.Lastname, user.Language), ((if mail.IsDefault <> 0y then 1y else 2y), mail.Address))  // Sort default email(s) first, all others second
-            } |> List.executeQueryAsync
-        // for pair in userAndEmails do
-        //     let (login, firstname, lastname, language) = fst pair
-        //     printfn "In getUser: found %s (%s %s) with language %A and email(s) %A" login firstname lastname language (snd pair)
-        if userAndEmails |> List.isEmpty
-        then return None
-        else return userAndEmails |> Dto.UserDetails.FromSqlWithEmails |> Some
+                select (Some (user.Login, user.Firstname, user.Lastname, user.Language, (if isNull mail then None else Some mail.Address)))
+                headOrDefault
+            }
+        return userAndEmails |> Option.map Dto.UserDetails.FromSql
     }
 
 let getProject (connString : string) projectCode =
@@ -322,16 +300,16 @@ let createUserImpl (connString : string) (user : Api.CreateUser) =
         do! ctx.SubmitUpdatesAsync()  // This populates sqlUser.Id, which we'll need when we create email address records
 
         let now = DateTime.UtcNow
-        if not (List.isEmpty user.emailAddresses) then
-            user.emailAddresses |> List.iter (fun email ->
-                let sqlMail = ctx.Languagedepot.EmailAddresses.Create()
-                sqlMail.UserId <- sqlUser.Id
-                sqlMail.Address <- email
-                sqlMail.IsDefault <- 1y
-                sqlMail.Notify <- 0y
-                sqlMail.CreatedOn <- now
-                sqlMail.UpdatedOn <- now
-            )
+        match user.emailAddresses with
+        | None -> ()
+        | Some email ->
+            let sqlMail = ctx.Languagedepot.EmailAddresses.Create()
+            sqlMail.UserId <- sqlUser.Id
+            sqlMail.Address <- email
+            sqlMail.IsDefault <- 1y
+            sqlMail.Notify <- 0y
+            sqlMail.CreatedOn <- now
+            sqlMail.UpdatedOn <- now
             do! ctx.SubmitUpdatesAsync()
         return sqlUser.Id
     }

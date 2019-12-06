@@ -83,7 +83,7 @@ module Dto =
         username : string
         firstName : string
         lastName : string
-        emailAddresses : string list // (default first, rest in whatever order they come back from the database)
+        emailAddresses : string option  // TODO: Rename to "email" once we fix the types everywhere
         // (two queries: select from emails where is_default = true, then select from emails where is_default = false. Then (default :: rest)).
         language : string // (interface language for this user) - is this useful to the frontend? ... yeah, because when you log in, the front end wants to know who logged in and what language to give you
     }
@@ -191,7 +191,7 @@ module Api =
         firstName : string
         lastName : string
         language : string option // (will default to "en" if not provided)
-        emailAddresses : string list // (may be empty. If not empty, first email in list will be default email and rest will not be default)
+        emailAddresses : string option
     }
 
     type EditUser = {

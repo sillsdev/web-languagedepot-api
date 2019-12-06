@@ -89,7 +89,7 @@ let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> asy
             user.username = searchText ||
             user.firstName = searchText ||
             user.lastName = searchText ||
-            user.emailAddresses |> List.contains searchText)
+            user.emailAddresses |> Option.contains searchText)
         |> List.ofSeq
 })
 
@@ -100,7 +100,7 @@ let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> asy
             user.username.Contains(searchText) ||
             user.firstName.Contains(searchText) ||
             user.lastName.Contains(searchText) ||
-            user.emailAddresses |> List.exists (fun email -> email.Contains(searchText)))
+            (user.emailAddresses |> Option.defaultValue "").Contains(searchText))
         |> List.ofSeq
 })
 
