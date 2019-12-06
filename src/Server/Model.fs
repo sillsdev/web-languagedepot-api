@@ -127,20 +127,23 @@ let fetchData (convertRow : MySqlDataReader -> 'result) (reader : MySqlDataReade
 }
 
 let manualUsersQuery (connString : string) (limit : int option) (offset : int option) =
-    task {
+    async {
         use conn = new MySqlConnection(connString)
-        do! conn.OpenAsync()
-        use cmd = new MySqlCommand("SELECT login, first_name, last_name, language, is_default, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id", conn)
-        use! reader = cmd.ExecuteReaderAsync()
-        let! result = reader :?> MySqlDataReader |> fetchData (fun reader ->
+        do! conn.OpenAsync() |> Async.AwaitTask
+        use cmd = new MySqlCommand("SELECT login, firstname, lastname, language, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id", conn)
+        use! reader = cmd.ExecuteReaderAsync() |> Async.AwaitTask
+        let! result =
+            reader :?> MySqlDataReader
+            |> fetchData (fun reader ->
             {
                 Dto.UserDetails.username = reader.GetString(0)
                 Dto.UserDetails.firstName = reader.GetString(1)
                 Dto.UserDetails.lastName = reader.GetString(2)
-                Dto.UserDetails.email = if reader.IsDBNull(3) then None else Some (reader.GetString(3))
-                Dto.UserDetails.language = if reader.IsDBNull(4) then "en" else reader.GetString(4)
+                Dto.UserDetails.language = if reader.IsDBNull(3) then "en" else reader.GetString(3)
+                Dto.UserDetails.email = if reader.IsDBNull(4) then None else Some (reader.GetString(4))
             })
-        return result
+            |> Async.AwaitTask
+        return result |> List.ofArray
     }
 
 let searchUsersLoose (connString : string) (searchTerm : string) =
@@ -619,7 +622,7 @@ module ModelRegistration =
     let registerServices (builder : IServiceCollection) (connString : string) =
         builder
             .RemoveAll<ListUsers>()
-            .AddSingleton<ListUsers>(usersQueryAsync)
+            .AddSingleton<ListUsers>(manualUsersQuery)
             .RemoveAll<ListProjects>()
             .AddSingleton<ListProjects>(projectsAndRolesQueryAsync)
             .RemoveAll<CountUsers>()
