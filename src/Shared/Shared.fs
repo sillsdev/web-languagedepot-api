@@ -92,6 +92,14 @@ module Dto =
 
     type MemberList = (string * RoleType) list
 
+    type ProjectDetailsInternal = {
+        code : string
+        name : string
+        description : string
+        // ``type`` : ProjectType  // TODO: Decide if we want this one or not
+        membership : System.Collections.Generic.Dictionary<string,string>  // Keys will be usernames and values will be role names
+    }
+
     type ProjectDetails = {
         code : string
         name : string
