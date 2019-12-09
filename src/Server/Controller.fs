@@ -25,7 +25,7 @@ let jsonResult (result : Result<'a, string>) : HttpHandler =
     | Ok data -> jsonSuccess data
     | Error msg -> jsonError msg
 
-let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
     let cfg = ctx |> getSettings<MySqlSettings>
     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
@@ -33,14 +33,14 @@ let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Async<'a>) (
     return! jsonSuccess result next ctx
 }
 
-let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     try
         return! withServiceFunc isPublic impl next ctx
     with e ->
         return! jsonError e.Message next ctx
 }
 
-let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> Async<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
     let cfg = ctx |> getSettings<MySqlSettings>
     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
@@ -51,7 +51,7 @@ let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> As
     | None -> return! RequestErrors.notFound (jsonError msg) next ctx
 }
 
-let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Async<'a>) =
+let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Task<'a>) =
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
         let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
         let cfg = ctx |> getSettings<MySqlSettings>
@@ -285,21 +285,21 @@ let createProject (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFun
 
 let countUsers : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountUsers countUsers) -> async {
+        (fun connString (Model.CountUsers countUsers) -> task {
                 do! Async.Sleep 500 // Simulate server load
                 return! countUsers connString
         })
 
 let countProjects : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountProjects countProjects) -> async {
+        (fun connString (Model.CountProjects countProjects) -> task {
                 do! Async.Sleep 750 // Simulate server load
                 return! countProjects connString
         })
 
 let countRealProjects : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountRealProjects countRealProjects) -> async {
+        (fun connString (Model.CountRealProjects countRealProjects) -> task {
                 do! Async.Sleep 1000 // Simulate server load
                 return! countRealProjects connString
         })
