@@ -30,9 +30,9 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
 type ListUsers = string -> int option -> int option -> Task<Dto.UserDetails []>
 type ListProjects = string -> Task<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
-type CountUsers = CountUsers of (string -> Task<int>)
-type CountProjects = CountProjects of (string -> Task<int>)
-type CountRealProjects = CountRealProjects of (string -> Task<int>)
+type CountUsers = CountUsers of (string -> Task<int64>)
+type CountProjects = CountProjects of (string -> Task<int64>)
+type CountRealProjects = CountRealProjects of (string -> Task<int64>)
 type ListRoles = string -> Task<(int * string)[]>
 type ProjectsByUser = string -> string -> Task<Dto.ProjectDetails []>
 type ProjectsByUserRole = string -> string -> string -> Task<Dto.ProjectDetails []>
@@ -98,10 +98,7 @@ let doScalarQueryWithParams<'result> (connString : string) (sql : string) (setPa
 let doScalarQuery<'result> connString sql =
     doScalarQueryWithParams<'result> connString sql ignore
 
-let doCountQueryWithParams connString sql setParams = task {
-    let! count = doScalarQueryWithParams<int64> connString sql setParams
-    if count > int64 Int32.MaxValue then return Int32.MaxValue else return Convert.ToInt32 count
-}
+let doCountQueryWithParams connString sql setParams = doScalarQueryWithParams<int64> connString sql setParams
 
 let doCountQuery connString sql = doCountQueryWithParams connString sql ignore
 
@@ -224,6 +221,7 @@ let realProjectsCountAsync (connString : string) =
             |> Seq.map (fun project -> project, GuessProjectType.guessType project.code project.name project.description)
             |> Seq.filter (fun (project, projectType) -> projectType <> Test && not (project.code.StartsWith "test"))
             |> Seq.length
+            |> int64
     }
 
 let usersCountAsync (connString : string) =
@@ -240,7 +238,7 @@ let userExists (connString : string) username =
         let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("username", username) |> ignore
         let! count = doCountQueryWithParams connString sql setParams
-        return (count > 0)
+        return (count > 0L)
     }
 
 let projectExists (connString : string) projectCode =
@@ -249,7 +247,7 @@ let projectExists (connString : string) projectCode =
         let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
         let! count = doCountQueryWithParams connString sql setParams
-        return (count > 0)
+        return (count > 0L)
     }
 
 let isAdmin (connString : string) username =

@@ -13,6 +13,7 @@ open Giraffe.HttpStatusCodeHandlers
 open Saturn
 open Shared
 open Shared.Settings
+open Thoth.Json.Net
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -83,13 +84,17 @@ let hostConfig (builder : IWebHostBuilder) =
         .ConfigureAppConfiguration(setupAppConfig)
         .ConfigureServices(registerMySqlServices)
 
+let extraJsonCoders =
+    Extra.empty
+    |> Extra.withInt64
+
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
     disable_diagnostics  // Don't create site.map file
     error_handler errorHandler
-    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
+    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
     use_gzip
     host_config hostConfig
     use_config buildConfig // TODO: Get rid of this

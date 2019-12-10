@@ -21,11 +21,11 @@ let listProjects : Model.ListProjects = fun _connString -> task {
 }
 
 let countUsers = Model.CountUsers (fun _connString -> task {
-    return MemoryStorage.userStorage.Count
+    return int64 MemoryStorage.userStorage.Count
 })
 
 let countProjects = Model.CountProjects (fun _connString -> task {
-    return MemoryStorage.projectStorage.Count
+    return int64 MemoryStorage.projectStorage.Count
 })
 
 let isRealProject (proj : Dto.ProjectDetails) =
@@ -33,7 +33,7 @@ let isRealProject (proj : Dto.ProjectDetails) =
     projType <> Test && not (proj.code.StartsWith "test")
 
 let countRealProjects = Model.CountRealProjects (fun _connString -> task {
-    return MemoryStorage.projectStorage.Values |> Seq.filter isRealProject |> Seq.length
+    return MemoryStorage.projectStorage.Values |> Seq.filter isRealProject |> Seq.length |> int64
 })
 
 let listRoles : Model.ListRoles = fun _connString -> task {
