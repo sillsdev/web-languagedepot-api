@@ -118,7 +118,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, UrlChanged parts ->
         let page, cmd = Nav.parseUrl parts
         let nextModel = { currentModel with Page = page }
-        nextModel, Cmd.batch [ cmd; Cmd.ofMsg (RootPageMsg RootPage.Msg.RefreshCounts) ]
+        nextModel, cmd
     // Sub pages
     | { RootModel = rootModel }, RootPageMsg rootMsg ->
         let nextRootModel, nextRootCmds = rootModel |> RootPage.update rootMsg
