@@ -401,10 +401,10 @@ let upsertUser (connString : string) (login : string) (updatedUser : Api.CreateU
             return! updateUser connString login updatedUser
     }
     // This won't work, because the Redmine data model doesn't have "login" as a unique key constraint (?!?)
-    // let xql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
+    // let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
     //           "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW()) " +
     //           "ON DUPLICATE KEY UPDATE firstname = @firstname, lastname = @lastname, hashedPassword = @hashedPassword, salt = @salt, status = @status, updated_on = NOW()"
-    // createUserImpl connString updatedUser xql
+    // createUserImpl connString updatedUser sql
 
 // TODO: Do manual SQL statements from here on down (we've done up to here so far)
 
@@ -415,34 +415,39 @@ let projectsAndRolesQueryAsyncReminder (connString : string) =
         return result
     }
 
-let projectsAndRolesBaseQuery =
-    "SELECT projects.identifier AS identifier, roles.name AS role" +
-    " FROM members" +
-    " JOIN projects ON members.project_id = projects.id" +
-    " JOIN member_roles ON member_roles.member_id = members.id" +
-    " JOIN roles ON roles.id = member_roles.role_id" +
-    " JOIN users on members.user_id = users.id"
-let projectsAndRolesGroupByClause = " GROUP BY users.login"
-
 let projectsAndRolesByUserImpl (connString : string) username = task {
-    let whereClause = " WHERE users.login = @username"
-    let xql = projectsAndRolesBaseQuery + whereClause + projectsAndRolesGroupByClause
+    let sql =
+        "SELECT DISTINCT projects.identifier AS identifier, roles.name AS role" +
+        " FROM members" +
+        " JOIN projects ON members.project_id = projects.id" +
+        " JOIN member_roles ON member_roles.member_id = members.id" +
+        " JOIN roles ON roles.id = member_roles.role_id" +
+        " JOIN users on members.user_id = users.id" +
+        " WHERE users.login = @username"
     let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("username", username) |> ignore
     let convertRow (reader : MySqlDataReader) =
         reader.GetString("identifier"), reader.GetString("role")
-    let! result = fetchDataWithParams connString xql setParams convertRow
+    let! result = fetchDataWithParams connString sql setParams convertRow
     return result
 }
 // TODO: Figure out how to "pass through" the result from json_objectagg
 
 let getProjectDetails (connString : string) (projectCodes : string[]) = task {
-    let whereClause = " WHERE projects.identifier IN @projectCodes"
-    let sql = projectWithMembersBaseQuery + whereClause + projectsWithMembersGroupByClause
-    let setParams (cmd : MySqlCommand) =
-        cmd.Parameters.AddWithValue("projectCodes", projectCodes) |> ignore
-    let! result = fetchDataWithParams connString sql setParams convertProjectRow
-    return result
+    // Unfortunately we can't do " WHERE projects.identifier IN @projectCodes" as MySqlConnector doesn't support string arrays as parameters
+    // So we have to get clever, using each projectCode as its own variable name AND its own value, and constructing a WHERE clause that looks
+    // like "WHERE projects.identifier = @projectCode1 OR projects.identifier = @projectCode2" with each variable having a value that matches its name
+    // Also, the hyphen character isn't allowed in an identifier in MySQL
+    if projectCodes |> Array.isEmpty
+    then return Array.empty
+    else
+        let whereClause = projectCodes |> Array.map (fun code -> sprintf "projects.identifier = @%s" (code.Replace("-", "_hyphen_"))) |> String.concat " OR "
+        let sql = projectWithMembersBaseQuery + " WHERE " + whereClause + projectsWithMembersGroupByClause
+        let setParams (cmd : MySqlCommand) =
+            for code in projectCodes do
+                cmd.Parameters.AddWithValue(code.Replace("-", "_hyphen_"), code) |> ignore
+        let! result = fetchDataWithParams connString sql setParams convertProjectRow
+        return result
 }
 
 let projectsAndRolesByUser (connString : string) username = task {

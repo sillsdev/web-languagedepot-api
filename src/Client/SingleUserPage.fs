@@ -21,20 +21,20 @@ type Msg =
     | UserNotFound
     | LogUserResult of Dto.UserDetails
     | RoleListFetchFailed of exn
-    | RoleListUpdated of JsonResult<Dto.RoleDetails list>
+    | RoleListUpdated of JsonResult<(int * string) []>
     | NewUserPageNav of string
     | AddProject of string
     | DelProject of string
     | LogResult of Result<string,string>
     | GetProjectsForUser
     | GetProjectsByRole of string
-    | ProjectsListRetrieved of JsonResult<(Dto.ProjectDetails * RoleType) list>
+    | ProjectsListRetrieved of JsonResult<(Dto.ProjectDetails * string) []>
     | LogException of System.Exception
 
-type Model = { RoleList : Dto.RoleDetails list; ProjectList : (Dto.ProjectDetails * RoleType) list; CurrentlyViewedUser : SharedUser option; }
+type Model = { RoleList : (int * string) []; ProjectList : (Dto.ProjectDetails * string) []; CurrentlyViewedUser : SharedUser option; }
 
 let init() =
-    { RoleList = []; ProjectList = []; CurrentlyViewedUser = None },
+    { RoleList = [||]; ProjectList = [||]; CurrentlyViewedUser = None },
     Cmd.OfPromise.either Fetch.get "/api/roles" RoleListUpdated RoleListFetchFailed
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
@@ -45,7 +45,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
             let tryAgain () = promise {
                 do! Promise.sleep 3000
                 // Compiler needs type hint here since it's not on same line as Cmd.OfPromise.either
-                return! Fetch.get<JsonResult<Dto.RoleDetails list>> "/api/roles" }
+                return! Fetch.get<JsonResult<(int * string)[]>> "/api/roles" }
             currentModel, Cmd.OfPromise.either tryAgain () RoleListUpdated RoleListFetchFailed
         else
             currentModel, Notifications.notifyException e
@@ -120,8 +120,8 @@ let RoleSelector =
         let selected = Hooks.useState "Contributor"
         // TODO: Find out why React is making "Manager" selected by default, despite the line above
         Select.select
-            [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
-            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.name); Key (role.id.ToString()) ] [ str (role.name) ] ]
+            [ Select.IsLoading (props.model.RoleList |> Array.isEmpty) ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (snd role); Key ((fst role).ToString()) ] [ str (snd role) ] ]
               Button.a
                 [ Button.Size IsSmall
                   Button.Color IsPrimary
