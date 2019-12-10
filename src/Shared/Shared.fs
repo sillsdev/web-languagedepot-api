@@ -92,20 +92,12 @@ module Dto =
 
     // type MemberList = (string * RoleType) list
 
-    type ProjectDetailsInternal = {
-        code : string
-        name : string
-        description : string
-        // ``type`` : ProjectType  // TODO: Decide if we want this one or not
-        membership : System.Collections.Generic.IDictionary<string,string>  // Keys will be usernames and values will be role names
-    }
-
     type ProjectDetails = {
         code : string
         name : string
         description : string
         // ``type`` : ProjectType  // TODO: Decide if we want this one or not
-        membership : System.Collections.Generic.IDictionary<string,string>  // Keys will be usernames and values will be role names. Only supplied if we asked for it in the request API, otherwise it's empty.
+        membership : Map<string,string>  // Keys are usernames, values are role names. Only supplied if we asked for it in the request API, otherwise it's empty.
     }
 
     type ProjectList = ProjectDetails[]  // Depending on the situation, this will sometimes include MemberLists and sometimes it won't (e.g., list all projects vs. list one's I'm a member of)
@@ -126,7 +118,7 @@ module Api =
         code : string
         name : string
         description : string option
-        initialMembers : System.Collections.Generic.Dictionary<string,string>
+        initialMembers : Map<string,string>
     }
 
     type ArchiveProject = {

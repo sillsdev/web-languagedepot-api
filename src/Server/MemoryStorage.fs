@@ -41,7 +41,7 @@ let blankProjectRecord projectCode : Dto.ProjectDetails = {
     code = projectCode
     name = ""
     description = ""
-    membership = Dictionary<string,string>() }
+    membership = Map.empty }
 
 (* Not needed now that the API design is username/projectCode-centric
 let counter init =
@@ -81,14 +81,10 @@ let projectCodeReplacementLock = obj()
 let replaceUsername oldUsername newUsername =
     let mutable replacements = []
     let replaceUsernameInList lst = lst |> List.map (fun ((name, role) as pair) -> if name = oldUsername then (newUsername, role) else pair)
-    let mkNewMembers (oldMembers : IDictionary<string,string>) : IDictionary<string,string> =
-        match oldMembers.TryGetValue oldUsername with
-        | false, _ -> oldMembers
-        | true, role ->
-            let newMembers = Dictionary<string,string>(oldMembers)
-            newMembers.Remove oldUsername |> ignore
-            newMembers.[newUsername] <- role
-            newMembers :> IDictionary<string,string>
+    let mkNewMembers (oldMembers : Map<string,string>) : Map<string,string> =
+        match oldMembers |> Map.tryFind oldUsername with
+        | None -> oldMembers
+        | Some role -> oldMembers |> Map.remove oldUsername |> Map.add newUsername role
     let mkNewProject _projectCode (oldProject : Dto.ProjectDetails) =
         { oldProject with membership = mkNewMembers oldProject.membership }
     for item in projectStorage do

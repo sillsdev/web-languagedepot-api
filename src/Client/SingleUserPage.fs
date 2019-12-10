@@ -121,7 +121,7 @@ let RoleSelector =
         // TODO: Find out why React is making "Manager" selected by default, despite the line above
         Select.select
             [ Select.IsLoading (props.model.RoleList |> List.isEmpty) ]
-            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.``type``.ToString()); Key (role.``type``.ToString()) ] [ str (role.name) ] ]
+            [ select [ OnChange (fun ev -> selected.update ev.Value) ] [ for role in props.model.RoleList -> option [ Value (role.name); Key (role.id.ToString()) ] [ str (role.name) ] ]
               Button.a
                 [ Button.Size IsSmall
                   Button.Color IsPrimary

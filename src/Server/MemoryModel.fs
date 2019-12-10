@@ -41,14 +41,14 @@ let listRoles : Model.ListRoles = fun _connString -> task {
 }
 
 let isMemberOf (proj : Dto.ProjectDetails) username =
-    proj.membership.ContainsKey username
+    proj.membership |> Map.containsKey username
 
 let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun _connString username -> task {
     let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
-        match proj.membership.TryGetValue username with
-        | false, _ -> None
-        | true, role -> Some (proj, role)
-        )
+        let maybeRole = proj.membership |> Map.tryFind username
+        match maybeRole with
+        | None -> None
+        | Some role -> Some (proj,role))
     return Array.ofSeq projectsAndRoles
 }
 
@@ -182,10 +182,8 @@ let addMembership = Model.AddMembership (fun _connString username projectCode (r
         match MemoryStorage.projectStorage.TryGetValue projectCode with
         | false, _ -> return false
         | true, projectDetails ->
-            // Before updating membership, make a copy since C#'s Dictionary mutates and we don't want that
             let update (details : Dto.ProjectDetails) =
-                let newMemberList = Dictionary<string,string>(details.membership)
-                newMemberList.[username] <- roleName
+                let newMemberList = details.membership |> Map.add username roleName
                 { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
@@ -200,10 +198,8 @@ let removeMembership = Model.RemoveMembership (fun _connString (username : strin
         match MemoryStorage.projectStorage.TryGetValue projectCode with
         | false, _ -> return false
         | true, projectDetails ->
-            // Before updating membership, make a copy since C#'s Dictionary mutates and we don't want that
             let update (details : Dto.ProjectDetails) =
-                let newMemberList = Dictionary<string,string>(details.membership)
-                newMemberList.Remove username |> ignore
+                let newMemberList = details.membership |> Map.remove username
                 { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),

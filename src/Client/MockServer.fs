@@ -11,7 +11,7 @@ let getAllUsers() = async {
 }
 
 let getUser username = async {
-    return SampleData.Users |> List.tryFind (fun user -> user.username = username) |> success
+    return SampleData.Users |> Array.tryFind (fun user -> user.username = username) |> success
 }
 
 // TODO: Continue writing this

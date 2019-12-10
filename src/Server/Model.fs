@@ -98,7 +98,11 @@ let doScalarQueryWithParams<'result> (connString : string) (sql : string) (setPa
 let doScalarQuery<'result> connString sql =
     doScalarQueryWithParams<'result> connString sql ignore
 
-let doCountQueryWithParams connString sql setParams = doScalarQueryWithParams<int> connString sql setParams
+let doCountQueryWithParams connString sql setParams = task {
+    let! count = doScalarQueryWithParams<int64> connString sql setParams
+    if count > int64 Int32.MaxValue then return Int32.MaxValue else return Convert.ToInt32 count
+}
+
 let doCountQuery connString sql = doCountQueryWithParams connString sql ignore
 
 let doNonQueryWithParams (connString : string) (sql : string) (setParams : MySqlCommand -> unit) = task {
@@ -162,17 +166,19 @@ let searchUsersExact (connString : string) (searchTerm : string) =
         return result
     }
 
-let toDict (s : string) =
-    Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string,string>>(s)
+let decode (s : string) =
+    match Thoth.Json.Net.Decode.Auto.fromString s with
+    | Ok m -> m
+    | Error e -> failwithf "Decoding error: %s" e  // TODO: Handle this more gracefully, returning the error all the way to the client
 
 let convertProjectRow (reader : MySqlDataReader) = {
         Dto.ProjectDetails.code = reader.GetString("identifier")
         Dto.ProjectDetails.name = reader.GetString("name")
         Dto.ProjectDetails.description = reader.GetString("description")
-        Dto.ProjectDetails.membership = reader.GetString("user_roles") |> toDict  // TODO: Handle case where we don't want the complete membership list
+        Dto.ProjectDetails.membership = reader.GetString("user_roles") |> decode  // TODO: Handle case where we don't want the complete membership list
     }
 
-let baseProjectQuery = "SELECT identifier, name, description, \"{}\" FROM projects"
+let baseProjectQuery = "SELECT identifier, name, description, \"{}\" AS user_roles FROM projects"
 
 // TODO: Either we set a global MySQL setting, or we run the following before our projects query. Choosing the global setting for now since it's simpler.
 // let projectsPreQuery = "SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))"
