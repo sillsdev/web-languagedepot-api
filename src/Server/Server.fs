@@ -52,9 +52,8 @@ let webApp = router {
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
-    deletef "/api/project/%s/user/%s/withRole/%s" Controller.removeUserFromOneRoleInProject
-    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "contributor"
-    deletef "/api/project/%s/user/%s" Controller.removeUserFromAllRolesInProject
+    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
+    deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)

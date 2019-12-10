@@ -88,16 +88,16 @@ module Dto =
         language : string // (interface language for this user) - is this useful to the frontend? ... yeah, because when you log in, the front end wants to know who logged in and what language to give you
     }
 
-    type UserList = UserDetails list
+    type UserList = UserDetails[]
 
-    type MemberList = (string * RoleType) list
+    // type MemberList = (string * RoleType) list
 
     type ProjectDetailsInternal = {
         code : string
         name : string
         description : string
         // ``type`` : ProjectType  // TODO: Decide if we want this one or not
-        membership : System.Collections.Generic.Dictionary<string,string>  // Keys will be usernames and values will be role names
+        membership : System.Collections.Generic.IDictionary<string,string>  // Keys will be usernames and values will be role names
     }
 
     type ProjectDetails = {
@@ -105,27 +105,15 @@ module Dto =
         name : string
         description : string
         // ``type`` : ProjectType  // TODO: Decide if we want this one or not
-        membership : MemberList option  // Because we'll sometimes want the membership list, and sometimes not. Only supplied if we asked for it in the request API, otherwise it's None/omitted
+        membership : System.Collections.Generic.IDictionary<string,string>  // Keys will be usernames and values will be role names. Only supplied if we asked for it in the request API, otherwise it's empty.
     }
 
-    type ProjectList = ProjectDetails list  // Depending on the situation, this will sometimes include MemberLists and sometimes it won't (e.g., list all projects vs. list one's I'm a member of)
+    type ProjectList = ProjectDetails[]  // Depending on the situation, this will sometimes include MemberLists and sometimes it won't (e.g., list all projects vs. list one's I'm a member of)
 
     type RoleDetails = {
+        id : int
         name : string
-        ``type`` : RoleType
     }
-
-    let standardRoles : RoleDetails list = [
-        { name = "Manager"
-          ``type`` = Manager }
-        { name = "Contributor"
-          ``type`` = Contributor }
-        { name = "LanguageDepotProgrammer"
-          ``type`` = Programmer }
-        { name = "Observer"
-          ``type`` = Observer }
-    ]
-    // Hard-coded so we don't have to hit MySQL for something that hasn't changed in years.
 
 module Api =
     type LoginCredentials = {
@@ -138,7 +126,7 @@ module Api =
         code : string
         name : string
         description : string option
-        initialMembers : Dto.MemberList option
+        initialMembers : System.Collections.Generic.Dictionary<string,string>
     }
 
     type ArchiveProject = {

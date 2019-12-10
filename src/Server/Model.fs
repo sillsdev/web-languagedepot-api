@@ -3,6 +3,7 @@ module Model
 open System
 open System.Linq
 open System.Threading.Tasks
+open System.Collections.Generic
 open FSharp.Data.Sql
 open Shared
 open MySql.Data.MySqlClient
@@ -25,54 +26,18 @@ type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
                            UseOptionTypes = true>
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
-type Dto.ProjectDetails with
-    static member FromSql (sqlProject : sql.dataContext.``languagedepot.projectsEntity``) = {
-        Dto.ProjectDetails.code = sqlProject.Identifier |> Option.defaultWith (fun _ -> sqlProject.Name.ToLowerInvariant().Replace(" ", "_"))
-        Dto.ProjectDetails.name = sqlProject.Name
-        Dto.ProjectDetails.description = sqlProject.Description |> Option.defaultValue ""
-        Dto.ProjectDetails.membership = None
-    }
-    static member FromSqlWithRoles (sqlProjectAndRoles : (sql.dataContext.``languagedepot.projectsEntity`` * string * int * string) list) =
-        match sqlProjectAndRoles |> List.tryHead with
-        | None -> None
-        | Some (sqlProject, _, _, _) ->
-            let memberships = sqlProjectAndRoles |> List.choose (fun (_, username, roleId, roleName) ->
-                if String.IsNullOrEmpty username || roleId = 0 || String.IsNullOrEmpty roleName
-                then None
-                else
-                    match RoleType.TryOfString roleName with
-                    | Some role -> Some (username, role)
-                    | None -> None)
-            { Dto.ProjectDetails.FromSql sqlProject with membership = Some memberships } |> Some
 
-type Dto.UserDetails with
-    static member FromSql ((login, firstname, lastname, language, email) : (string * string * string * string option * string option)) =
-        {
-            Dto.UserDetails.username = login
-            Dto.UserDetails.firstName = firstname
-            Dto.UserDetails.lastName = lastname
-            Dto.UserDetails.email = email
-            Dto.UserDetails.language = language |> Option.defaultValue "en"
-        }
-
-type Dto.RoleDetails with
-    static member FromSql (sqlRole : sql.dataContext.``languagedepot.rolesEntity``) = {
-        Dto.RoleDetails.name = sqlRole.Name
-        Dto.RoleDetails.``type`` = RoleType.OfString sqlRole.Name
-    }
-    static member TypeFromSql (sqlRole : sql.dataContext.``languagedepot.rolesEntity``) = RoleType.OfString sqlRole.Name
-
-type ListUsers = string -> int option -> int option -> Task<Dto.UserDetails list>
+type ListUsers = string -> int option -> int option -> Task<Dto.UserDetails []>
 type ListProjects = string -> Task<Dto.ProjectList>
 // These three CountFoo types all look the same, so we have to use a single-case DU to distinguish them
 type CountUsers = CountUsers of (string -> Task<int>)
 type CountProjects = CountProjects of (string -> Task<int>)
 type CountRealProjects = CountRealProjects of (string -> Task<int>)
-type ListRoles = string -> Task<Dto.RoleDetails list>
-type ProjectsByUser = string -> string -> Task<Dto.ProjectDetails list>
-type ProjectsByUserRole = string -> string -> RoleType -> Task<Dto.ProjectDetails list>
-type ProjectsAndRolesByUser = string -> string -> Task<(Dto.ProjectDetails * RoleType list) list>
-type ProjectsAndRolesByUserRole = string -> string -> RoleType -> Task<(Dto.ProjectDetails * RoleType list) list>
+type ListRoles = string -> Task<(int * string)[]>
+type ProjectsByUser = string -> string -> Task<Dto.ProjectDetails []>
+type ProjectsByUserRole = string -> string -> string -> Task<Dto.ProjectDetails []>
+type ProjectsAndRolesByUser = string -> string -> Task<(Dto.ProjectDetails * string) []>
+type ProjectsAndRolesByUserRole = string -> string -> string -> Task<(Dto.ProjectDetails * string) []>
 // Ditto for these two FooExists types: need a DU
 type UserExists = UserExists of (string -> string -> Task<bool>)
 type ProjectExists = ProjectExists of (string -> string -> Task<bool>)
@@ -86,9 +51,8 @@ type CreateUser = string -> Api.CreateUser -> Task<int>
 type UpsertUser = string -> string -> Api.CreateUser -> Task<int>
 type ChangePassword = string -> string -> Api.ChangePassword -> Task<bool>
 type VerifyLoginCredentials = string -> Api.LoginCredentials -> Task<bool>
-type AddMembership = AddMembership of (string -> string -> string -> RoleType -> Task<bool>)
-type RemoveMembership = RemoveMembership of (string -> string -> string -> RoleType -> Task<bool>)
-type RemoveUserFromAllRolesInProject = RemoveUserFromAllRolesInProject of (string -> string -> string -> Task<bool>)
+type AddMembership = AddMembership of (string -> string -> string -> string -> Task<bool>)
+type RemoveMembership = RemoveMembership of (string -> string -> string -> Task<bool>)
 type ArchiveProject = string -> string -> Task<bool>
 
 open FSharp.Control.Tasks.V2
@@ -168,7 +132,7 @@ let manualUsersQuery (connString : string) (limit : int option) (offset : int op
     task {
         let sql = baseUsersQuery
         let! result = fetchData connString sql convertUserRow
-        return result |> List.ofArray
+        return result
     }
 
 let getUser (connString : string) username =
@@ -188,24 +152,24 @@ let searchUsersLoose (connString : string) (searchTerm : string) =
         let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("searchTerm", escapedSearchTerm) |> ignore
         let! result = fetchDataWithParams connString sql setParams convertUserRow
-        return result |> List.ofArray
+        return result
     }
 
 let searchUsersExact (connString : string) (searchTerm : string) =
     task {
         let sql = baseUsersQuery + " WHERE login = @searchTerm OR firstname = @searchTerm OR lastname = @searchTerm OR address = @searchTerm"
         let! result = fetchDataWithParams connString sql (fun cmd -> cmd.Parameters.AddWithValue("searchTerm", searchTerm) |> ignore) convertUserRow
-        return result |> List.ofArray
+        return result
     }
 
 let toDict (s : string) =
-    Newtonsoft.Json.JsonConvert.DeserializeObject<System.Collections.Generic.Dictionary<string,string>>(s)
+    Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string,string>>(s)
 
 let convertProjectRow (reader : MySqlDataReader) = {
-        Dto.ProjectDetailsInternal.code = reader.GetString("identifier")
-        Dto.ProjectDetailsInternal.name = reader.GetString("name")
-        Dto.ProjectDetailsInternal.description = reader.GetString("description")
-        Dto.ProjectDetailsInternal.membership = reader.GetString("user_roles") |> toDict  // TODO: Handle case where we don't want the complete membership list
+        Dto.ProjectDetails.code = reader.GetString("identifier")
+        Dto.ProjectDetails.name = reader.GetString("name")
+        Dto.ProjectDetails.description = reader.GetString("description")
+        Dto.ProjectDetails.membership = reader.GetString("user_roles") |> toDict  // TODO: Handle case where we don't want the complete membership list
     }
 
 let baseProjectQuery = "SELECT identifier, name, description, \"{}\" FROM projects"
@@ -229,14 +193,14 @@ let projectsQueryAsync (connString : string) =
         let setParams (cmd : MySqlCommand) =
             ()
         let! result = fetchDataWithParams connString sql setParams convertProjectRow
-        return result |> List.ofArray
+        return result
     }
 
 let projectsAndRolesQueryAsync (connString : string) =
     task {
         let sql = projectWithMembersBaseQuery + projectsWithMembersGroupByClause
         let! result = fetchData connString sql convertProjectRow
-        return result |> List.ofArray
+        return result
     }
 
 let projectsCountAsync (connString : string) =
@@ -298,7 +262,7 @@ let getProject (connString : string) projectCode =
         let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
         let! result = fetchDataWithParams connString sql setParams convertProjectRow
-        return result |> List.ofArray
+        return result
     }
 
 let getProjectWithRoles (connString : string) projectCode =
@@ -308,7 +272,7 @@ let getProjectWithRoles (connString : string) projectCode =
         let setParams (cmd : MySqlCommand) =
             cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
         let! result = fetchDataWithParams connString sql setParams convertProjectRow
-        return result |> List.ofArray
+        if result.Length = 0 then return None else return Some result.[0]
     }
 
 let createProject (connString : string) (project : Api.CreateProject) =
@@ -444,7 +408,7 @@ let projectsAndRolesQueryAsyncReminder (connString : string) =
     task {
         let sql = projectWithMembersBaseQuery + projectsWithMembersGroupByClause
         let! result = fetchData connString sql convertProjectRow
-        return result |> List.ofArray
+        return result
     }
 
 let projectsAndRolesBaseQuery =
@@ -464,37 +428,43 @@ let projectsAndRolesByUserImpl (connString : string) username = task {
     let convertRow (reader : MySqlDataReader) =
         reader.GetString("identifier"), reader.GetString("role")
     let! result = fetchDataWithParams connString xql setParams convertRow
-    return result |> List.ofArray
+    return result
 }
 // TODO: Figure out how to "pass through" the result from json_objectagg
 
-let getProjectDetails (conn : MySqlConnection) (projectCode : string) = task {
-    let sql = baseProjectQuery + "WHERE identifier = @projectCode"
-    use cmd = new MySqlCommand(sql, conn)
-    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-    use! reader = cmd.ExecuteReaderAsync()
-    let! result = reader :?> MySqlDataReader |> getSqlResult convertProjectRow
+let getProjectDetails (connString : string) (projectCodes : string[]) = task {
+    let whereClause = " WHERE projects.identifier IN @projectCodes"
+    let sql = projectWithMembersBaseQuery + whereClause + projectsWithMembersGroupByClause
+    let setParams (cmd : MySqlCommand) =
+        cmd.Parameters.AddWithValue("projectCodes", projectCodes) |> ignore
+    let! result = fetchDataWithParams connString sql setParams convertProjectRow
     return result
 }
 
 let projectsAndRolesByUser (connString : string) username = task {
     let! projectsAndRoles = projectsAndRolesByUserImpl connString username
-    return projectsAndRoles
+    let projectCodes, roles = projectsAndRoles |> Array.unzip
+    let! projects = getProjectDetails connString projectCodes
+    return Array.zip projects roles
 }
 
 let projectsAndRolesByUserRole connString username (roleName : string) = task {
     let! projectsAndRoles = projectsAndRolesByUserImpl connString username
-    return projectsAndRoles |> List.filter (fun (proj, role) -> role = roleName)
+    let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
+    let! projects = getProjectDetails connString projectCodes
+    return Array.zip projects roles
 }
 
 let projectsByUserRole connString username (roleName : string) = task {
     let! projectsAndRoles = projectsAndRolesByUserImpl connString username
-    return projectsAndRoles |> List.filter (fun (proj, role) -> role = roleName) |> List.map fst
+    let projectCodes, _ = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
+    return! getProjectDetails connString projectCodes
 }
 
 let projectsByUser connString username = task {
     let! projectsAndRoles = projectsAndRolesByUserImpl connString username
-    return projectsAndRoles |> List.map fst
+    let projectCodes, _ = projectsAndRoles |> Array.unzip
+    return! getProjectDetails connString projectCodes
 }
 
 let roleNames (connString : string) =
@@ -567,7 +537,7 @@ let removeMembership (connString : string) (username : string) (projectCode : st
         cmd.Parameters.AddWithValue("memberRowIds", memberRowIds) |> ignore
         let! _ = cmd.ExecuteNonQueryAsync()
         do! transaction.CommitAsync()
-        return ()
+        return true
     }
 
 let addMembership (connString : string) (username : string) (projectCode : string) (roleName : string) =
@@ -594,7 +564,7 @@ let addMembership (connString : string) (username : string) (projectCode : strin
         if roleId < 0 || userId < 0 || projId < 0 then
             // Can't do anything with invalid data
             do! transaction.RollbackAsync()
-            return ()
+            return false
         else
             // First, check whether user is already a member
             let sql =
@@ -615,7 +585,7 @@ let addMembership (connString : string) (username : string) (projectCode : strin
                 cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
                 let! _ = cmd.ExecuteNonQueryAsync()
                 do! transaction.CommitAsync()
-                return ()
+                return true
             else
                 // Add new members *and* member_roles entries
                 let sql =
@@ -627,21 +597,22 @@ let addMembership (connString : string) (username : string) (projectCode : strin
                 let! affectedRows = cmd.ExecuteNonQueryAsync()
                 if affectedRows <= 0 then
                     do! transaction.RollbackAsync()
-                    return ()
-                let memberId = cmd.LastInsertedId
-                let sql =
-                    "INSERT INTO member_roles (member_id, role_id) " +
-                    "VALUES (@memberId, @roleId)"
-                use cmd = new MySqlCommand(sql, conn, transaction)
-                cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
-                cmd.Parameters.AddWithValue("roleId", roleId) |> ignore
-                let! affectedRows = cmd.ExecuteNonQueryAsync()
-                if affectedRows <= 0 then
-                    do! transaction.RollbackAsync()
-                    return ()
+                    return false
                 else
-                    do! transaction.CommitAsync()
-                    return ()
+                    let memberId = cmd.LastInsertedId
+                    let sql =
+                        "INSERT INTO member_roles (member_id, role_id) " +
+                        "VALUES (@memberId, @roleId)"
+                    use cmd = new MySqlCommand(sql, conn, transaction)
+                    cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
+                    cmd.Parameters.AddWithValue("roleId", roleId) |> ignore
+                    let! affectedRows = cmd.ExecuteNonQueryAsync()
+                    if affectedRows <= 0 then
+                        do! transaction.RollbackAsync()
+                        return false
+                    else
+                        do! transaction.CommitAsync()
+                        return true
     }
 
 let archiveProject (connString : string) (projectCode : string) =
@@ -725,8 +696,6 @@ module ModelRegistration =
             .AddSingleton<AddMembership>(AddMembership addMembership)
             .RemoveAll<RemoveMembership>()
             .AddSingleton<RemoveMembership>(RemoveMembership removeMembership)
-            .RemoveAll<RemoveUserFromAllRolesInProject>()
-            .AddSingleton<RemoveUserFromAllRolesInProject>(RemoveUserFromAllRolesInProject (removeUserFromAllRolesInProject))
             .RemoveAll<ArchiveProject>()
             .AddSingleton<ArchiveProject>(archiveProject)
         |> ignore

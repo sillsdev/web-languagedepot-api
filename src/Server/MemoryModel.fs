@@ -2,6 +2,7 @@ module MemoryModel
 
 open Shared
 open FSharp.Control.Tasks.V2
+open System.Collections.Generic
 
 // Uses MemoryStorage to provide API calls
 
@@ -12,11 +13,11 @@ let listUsers : Model.ListUsers = fun _connString limit offset -> task {
     let offsetFn = match offset with
                    | Some offset -> Seq.skip offset
                    | None -> id
-    return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> List.ofSeq
+    return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> Array.ofSeq
 }
 
 let listProjects : Model.ListProjects = fun _connString -> task {
-    return MemoryStorage.projectStorage.Values |> List.ofSeq
+    return MemoryStorage.projectStorage.Values |> Array.ofSeq
 }
 
 let countUsers = Model.CountUsers (fun _connString -> task {
@@ -36,39 +37,34 @@ let countRealProjects = Model.CountRealProjects (fun _connString -> task {
 })
 
 let listRoles : Model.ListRoles = fun _connString -> task {
-    return Dto.standardRoles
+    return SampleData.StandardRoles |> Array.map (fun role -> role.id, role.name)
 }
 
 let isMemberOf (proj : Dto.ProjectDetails) username =
-    match proj.membership with
-    | None -> false
-    | Some members ->
-        members |> Seq.map fst |> Seq.contains username
+    proj.membership.ContainsKey username
 
 let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun _connString username -> task {
     let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
-        match proj.membership with
-        | None -> None
-        | Some members ->
-            let roles = members |> List.filter (fst >> ((=) username)) |> List.map snd
-            if List.isEmpty roles then None else Some (proj, roles)
+        match proj.membership.TryGetValue username with
+        | false, _ -> None
+        | true, role -> Some (proj, role)
         )
-    return List.ofSeq projectsAndRoles
+    return Array.ofSeq projectsAndRoles
 }
 
 let projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole = fun _connString username roleType -> task {
     let! projectsAndRoles = projectsAndRolesByUser _connString username
-    return (projectsAndRoles |> List.filter (fun (proj, roles) -> roles |> List.contains roleType))
+    return (projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleType))
 }
 
 let projectsByUser : Model.ProjectsByUser = fun _connString username -> task {
     let! projectsAndRoles = projectsAndRolesByUser _connString username
-    return projectsAndRoles |> List.map fst
+    return projectsAndRoles |> Array.map fst
 }
 
 let projectsByUserRole : Model.ProjectsByUserRole = fun _connString username roleType -> task {
     let! projectsAndRoles = projectsAndRolesByUserRole _connString username roleType
-    return projectsAndRoles |> List.map fst
+    return projectsAndRoles |> Array.map fst
 }
 
 let userExists = Model.UserExists (fun _connString username -> task {
@@ -91,7 +87,7 @@ let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> tas
             user.firstName = searchText ||
             user.lastName = searchText ||
             user.email |> Option.contains searchText)
-        |> List.ofSeq
+        |> Array.ofSeq
 })
 
 let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> task {
@@ -102,7 +98,7 @@ let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> tas
             user.firstName.Contains(searchText) ||
             user.lastName.Contains(searchText) ||
             (user.email |> Option.defaultValue "").Contains(searchText))
-        |> List.ofSeq
+        |> Array.ofSeq
 })
 
 let getUser : Model.GetUser = fun _connString username -> task {
@@ -179,37 +175,36 @@ let addOrRemoveInList isAdd item lst =
     else
         lst |> List.filter (fun listItem -> listItem <> item)
 
-let addOrRemoveMembership isAdd _connString username projectCode (roleType : RoleType) = task {
+let addMembership = Model.AddMembership (fun _connString username projectCode (roleName : string) -> task {
     match MemoryStorage.userStorage.TryGetValue username with
     | false, _ -> return false
     | true, _ ->  // We don't need user details, we just want to make sure the user exists
         match MemoryStorage.projectStorage.TryGetValue projectCode with
         | false, _ -> return false
         | true, projectDetails ->
+            // Before updating membership, make a copy since C#'s Dictionary mutates and we don't want that
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultValue []
-                let newMemberList = memberList |> addOrRemoveInList isAdd (username, roleType)
-                { details with membership = Some newMemberList }
+                let newMemberList = Dictionary<string,string>(details.membership)
+                newMemberList.[username] <- roleName
+                { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
                 (fun _ oldDetails -> update oldDetails)) |> ignore
             return true
-}
+})
 
-let addMembership = Model.AddMembership (addOrRemoveMembership true)
-let removeMembership = Model.RemoveMembership (addOrRemoveMembership false)
-
-let removeUserFromAllRolesInProject = Model.RemoveUserFromAllRolesInProject (fun _connString (username : string) (projectCode : string) -> task {
+let removeMembership = Model.RemoveMembership (fun _connString (username : string) (projectCode : string) -> task {
     match MemoryStorage.userStorage.TryGetValue username with
     | false, _ -> return false
     | true, _ ->  // We don't need user details, we just want to make sure the user exists
         match MemoryStorage.projectStorage.TryGetValue projectCode with
         | false, _ -> return false
         | true, projectDetails ->
+            // Before updating membership, make a copy since C#'s Dictionary mutates and we don't want that
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultValue []
-                let newMemberList = memberList |> List.filter (fst >> ((<>) username))
-                { details with membership = Some newMemberList }
+                let newMemberList = Dictionary<string,string>(details.membership)
+                newMemberList.Remove username |> ignore
+                { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
                 (fun _ oldDetails -> update oldDetails)) |> ignore
@@ -273,8 +268,6 @@ module ModelRegistration =
             .AddSingleton<Model.AddMembership>(addMembership)
             .RemoveAll<Model.RemoveMembership>()
             .AddSingleton<Model.RemoveMembership>(removeMembership)
-            .RemoveAll<Model.RemoveUserFromAllRolesInProject>()
-            .AddSingleton<Model.RemoveUserFromAllRolesInProject>(removeUserFromAllRolesInProject)
             .RemoveAll<Model.ArchiveProject>()
             .AddSingleton<Model.ArchiveProject>(archiveProject)
         |> ignore

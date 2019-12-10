@@ -88,7 +88,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | LogUserResult users ->
         for user in users do
-            printfn "Username %s, first name %s, last name %s, email(s) %A" user.username user.firstName user.lastName user.emailAddresses
+            printfn "Username %s, first name %s, last name %s, email(s) %A" user.username user.firstName user.lastName user.email
         currentModel, Cmd.none
     | LogException exn ->
         let cmd = Notifications.notifyError exn.Message
