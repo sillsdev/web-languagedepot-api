@@ -14,7 +14,6 @@ module Settings =
         User : string
     } with
         member this.SetDefaultValues() =
-          printfn "Setting default values for %A" this
           { Hostname = this.Hostname |> defaultValue "default hostname"
             Database = this.Database |> defaultValue "default database"
             DatabasePrivate = this.DatabasePrivate |> defaultValue "default private database"
