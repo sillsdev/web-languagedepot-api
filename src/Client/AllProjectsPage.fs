@@ -31,7 +31,7 @@ type Msg =
 type Model = { FoundProjects : Dto.ProjectList; IsAdmin : bool }  // TODO: Handle case where we also have roles
 
 let init() =
-    { FoundProjects = []; IsAdmin = false }, Cmd.none
+    { FoundProjects = [||]; IsAdmin = false }, Cmd.none
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -60,12 +60,12 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | ProjectsAndRolesFound result ->
         unpackJsonResult currentModel result (fun projects ->
             // For some reason, List.map isn't working right so we use Seq.map here
-            let nextModel = { currentModel with FoundProjects = projects |> Seq.map (fun (project, roles) -> project) |> List.ofSeq }
-            nextModel, Cmd.ofMsg (LogProjectResult (projects |> Seq.map (fun (project, roles) -> project) |> List.ofSeq)))
+            let nextModel = { currentModel with FoundProjects = projects |> Seq.map (fun (project, roles) -> project) |> Array.ofSeq }
+            nextModel, Cmd.ofMsg (LogProjectResult (projects |> Seq.map (fun (project, roles) -> project) |> Array.ofSeq)))
     | SingleProjectFound result ->
         unpackJsonResult currentModel result (fun project ->
-            let nextModel = { currentModel with FoundProjects = [project] }
-            nextModel, Cmd.ofMsg (LogProjectResult [project]))
+            let nextModel = { currentModel with FoundProjects = [|project|] }
+            nextModel, Cmd.ofMsg (LogProjectResult [|project|]))
     | ProjectNotFound ->
         currentModel, Cmd.none
     | LogProjectResult projects ->

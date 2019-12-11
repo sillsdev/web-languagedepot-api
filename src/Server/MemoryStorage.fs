@@ -30,18 +30,18 @@ let storeNewPassword username cleartextPassword =
         (fun _ -> let salt = createSalt (Guid.NewGuid()) in { salt = salt; hashedPassword = hashPassword salt cleartextPassword }),
         (fun _ oldPassword -> { oldPassword with hashedPassword = hashPassword oldPassword.salt cleartextPassword })) |> ignore
 
-let blankUserRecord : Dto.UserDetails = {
-    username = ""
+let blankUserRecord username : Dto.UserDetails = {
+    username = username
     firstName = ""
     lastName = ""
     email = None
     language = "" }
 
-let blankProjectRecord : Dto.ProjectDetails = {
-    code = ""
+let blankProjectRecord projectCode : Dto.ProjectDetails = {
+    code = projectCode
     name = ""
     description = ""
-    membership = None }
+    membership = Map.empty }
 
 (* Not needed now that the API design is username/projectCode-centric
 let counter init =
@@ -58,8 +58,7 @@ let membershipIdCounter = counter 0
 let memberRoleIdCounter = counter 0
 *)
 
-// TODO: Move this list to the unit test setup
-let roles = Dto.standardRoles
+let roles = SampleData.StandardRoles
 
 type KeyReplacementError =
     | TargetKeyAlreadyExists
@@ -82,20 +81,16 @@ let projectCodeReplacementLock = obj()
 let replaceUsername oldUsername newUsername =
     let mutable replacements = []
     let replaceUsernameInList lst = lst |> List.map (fun ((name, role) as pair) -> if name = oldUsername then (newUsername, role) else pair)
-    let mkNewMembers (oldMembers : Dto.MemberList) : Dto.MemberList =
-        oldMembers |> replaceUsernameInList
+    let mkNewMembers (oldMembers : Map<string,string>) : Map<string,string> =
+        match oldMembers |> Map.tryFind oldUsername with
+        | None -> oldMembers
+        | Some role -> oldMembers |> Map.remove oldUsername |> Map.add newUsername role
     let mkNewProject _projectCode (oldProject : Dto.ProjectDetails) =
-        match oldProject.membership with
-        | None -> oldProject
-        | Some members ->
-            { oldProject with membership = Some (mkNewMembers members) }
+        { oldProject with membership = mkNewMembers oldProject.membership }
     for item in projectStorage do
         let projectCode, project = item.Key, item.Value
-        match project.membership with
-        | None -> ()
-        | Some members ->
-            if members |> List.exists (fst >> ((=) oldUsername)) then
-                replacements <- (projectCode, project) :: replacements
+        if project.membership.ContainsKey oldUsername then
+            replacements <- (projectCode, project) :: replacements
     // Check for overlapping username as late as possible; this won't eliminate race conditions, but it will minimize them as much as we can
     if not <| isValidUsername newUsername then
         Error InvalidTargetKey

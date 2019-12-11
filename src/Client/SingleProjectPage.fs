@@ -29,8 +29,8 @@ type Msg =
     | GotFormResult of JsonResult<int>
     | HandleFetchError of exn
     | EditMembership of string * Dto.ProjectDetails
-    | RemoveMembership of string * Dto.ProjectDetails * RoleType
-    | ShowAddUserDialog of Dto.ProjectDetails * RoleType
+    | RemoveMembership of string * Dto.ProjectDetails * string
+    | ShowAddUserDialog of Dto.ProjectDetails * string
     | LogResultAndReload of string * JsonResult<string>
 
 type Model = { CurrentlyViewedProject : Dto.ProjectDetails option; ProjectList : Dto.ProjectList; FormState : FormBuilder.Types.State; ConfirmationModalVisible : bool; ConfirmationModalCmd : Cmd<Msg> }
@@ -75,7 +75,7 @@ let (formState, formConfig) =
 
 let init() =
     let formState, formCmds = Form.init formConfig formState
-    { CurrentlyViewedProject = None; ProjectList = []; FormState = formState; ConfirmationModalVisible = false; ConfirmationModalCmd = Cmd.none }, Cmd.map OnFormMsg formCmds
+    { CurrentlyViewedProject = None; ProjectList = [||]; FormState = formState; ConfirmationModalVisible = false; ConfirmationModalCmd = Cmd.none }, Cmd.map OnFormMsg formCmds
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -107,7 +107,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         | Error msg ->
             currentModel, Notifications.notifyError msg
     | ClearProjects ->
-        let nextModel = { currentModel with ProjectList = [] }
+        let nextModel = { currentModel with ProjectList = [||] }
         nextModel, Cmd.none
     | ShowConfirmationModal cmd ->
         let nextModel = { currentModel with ConfirmationModalVisible = true; ConfirmationModalCmd = cmd }
@@ -154,8 +154,8 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | RemoveMembership (name,project,role) ->
         let isLastManager =
-            role.ToString() = Manager.ToString() &&
-            project.membership |> Option.defaultValue [] |> Seq.filter (fun m -> (snd m).ToString() = Manager.ToString()) |> Seq.length = 1
+            role = "Manager" &&
+            project.membership |> Seq.filter (fun kv -> kv.Value = "Manager") |> Seq.length = 1
         let url = sprintf "/api/project/%s/user/%s/withRole/%s" project.code name (role.ToString())
         let cmd = Cmd.OfPromise.either (fun data -> Fetch.delete(url, data)) () (fun result -> LogResultAndReload(project.code,result)) HandleFetchError
         currentModel, if isLastManager then Cmd.ofMsg (ShowConfirmationModal cmd) else cmd
@@ -180,49 +180,42 @@ let confirmationModal visible submit =
                   Button.button [ Button.OnClick (submit false); Button.Color IsSuccess ]
                     [ str "Make no change" ] ] ] ]
 
-let membershipViewInline (membership : Dto.MemberList option) =
-    match membership with
-    | None -> str " (member list not provided)"
-    | Some members ->
-        if Seq.isEmpty members then
-            str (sprintf " (no members in %A)" members)
-        else
-            let toStr title (role : RoleType) (lst : Dto.MemberList) =
-                let filteredList = lst |> Seq.filter (snd >> (fun itemRole -> itemRole.ToString() = role.ToString()))
-                if Seq.isEmpty filteredList then "" else title + ": " + String.concat "," (filteredList |> Seq.map fst) + ";"
-            // TODO: Investigate why List.isEmpty and List.filter both seem to be returning *incorrect* results!
-            str ((toStr "Managers" Manager members +
-                  toStr "Contributors" Contributor members +
-                  toStr "Observers" Observer members +
-                  toStr "Programmers" Programmer members).TrimEnd(';'))
+let membershipViewInline (membership : Map<string,string>) =
+    if Seq.isEmpty membership then
+        str (sprintf " (no members in %A)" membership)
+    else
+        membership |> Seq.map (fun kv -> sprintf "%s: %s" kv.Key kv.Value) |> String.concat "," |> str
 
 let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) =
-    match project.membership with
-    | None -> []
-    | Some members ->
-        let section title (role : RoleType) (lst : Dto.MemberList) =
-            [
-                h2 [ ] [ str title ]
-                for name, itemRole in lst do
-                    // TODO: Investigate why the itemRole.ToNumericId() in all these pairs is *always* coming out as 3 (manager) no matter what the role actually is.
-                    // For now, we'll use ToString instead of ToNumericId; it's not meaningfully slower since the strings are short, and it works.
-                    if itemRole.ToString() = role.ToString() then yield! [
-                        str name
-                        str "\u00a0"
-                        a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (EditMembership (name, project)))] [ Fa.span [ Fa.Solid.Edit ] [ ] ]
-                        str "\u00a0"
-                        a [ Style [Color "red"]; OnClick (fun _ -> dispatch (RemoveMembership (name, project, itemRole)))] [ Fa.span [ Fa.Solid.Times ] [ ] ]
-                        br []
-                    ]
-                    // Can't just compare itemRole to role because in Javascript they end up being different types, for reasons I don't yet understand
-                a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (ShowAddUserDialog (project, role))) ] [ Fa.span [ Fa.Solid.Plus; Fa.Props [ Style [Color "green"] ] ] [ ]; str (" Add " + role.ToString()) ]
-            ]
-        [
-            yield! section "Managers" Manager members
-            yield! section "Contributors" Contributor members
-            yield! section "Observers" Observer members
-            yield! section "Programmers" Programmer members
-        ]
+    // TODO: Implement with appropriate Edit/Remove buttons
+    // For now, just replicate inline view
+    membershipViewInline project.membership
+    // match project.membership with
+    // | None -> []
+    // | Some members ->
+    //     let section title (role : RoleType) (lst : Dto.MemberList) =
+    //         [
+    //             h2 [ ] [ str title ]
+    //             for name, itemRole in lst do
+    //                 // TODO: Investigate why the itemRole.ToNumericId() in all these pairs is *always* coming out as 3 (manager) no matter what the role actually is.
+    //                 // For now, we'll use ToString instead of ToNumericId; it's not meaningfully slower since the strings are short, and it works.
+    //                 if itemRole.ToString() = role.ToString() then yield! [
+    //                     str name
+    //                     str "\u00a0"
+    //                     a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (EditMembership (name, project)))] [ Fa.span [ Fa.Solid.Edit ] [ ] ]
+    //                     str "\u00a0"
+    //                     a [ Style [Color "red"]; OnClick (fun _ -> dispatch (RemoveMembership (name, project, itemRole)))] [ Fa.span [ Fa.Solid.Times ] [ ] ]
+    //                     br []
+    //                 ]
+    //                 // Can't just compare itemRole to role because in Javascript they end up being different types, for reasons I don't yet understand
+    //             a [ Style [Color "inherit"]; OnClick (fun _ -> dispatch (ShowAddUserDialog (project, role))) ] [ Fa.span [ Fa.Solid.Plus; Fa.Props [ Style [Color "green"] ] ] [ ]; str (" Add " + role.ToString()) ]
+    //         ]
+    //     [
+    //         yield! section "Managers" Manager members
+    //         yield! section "Contributors" Contributor members
+    //         yield! section "Observers" Observer members
+    //         yield! section "Programmers" Programmer members
+    //     ]
 
 let projectDetailsView (dispatch : Msg -> unit) (project : Dto.ProjectDetails option) =
     div [ ] [
@@ -231,7 +224,7 @@ let projectDetailsView (dispatch : Msg -> unit) (project : Dto.ProjectDetails op
         | Some project ->
             h2 [ ] [ str project.name; str (sprintf " (%s)" project.code); membershipViewInline project.membership ]
             p [ ] [ str project.description ]
-            yield! membershipViewBlock dispatch project
+            membershipViewBlock dispatch project
     ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
@@ -246,7 +239,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             ActionsArea = (formActions model.FormState dispatch)
             Loader = Form.DefaultLoader }
         br [ ]
-        (if model.ProjectList |> List.isEmpty then
+        (if model.ProjectList |> Array.isEmpty then
             Button.button
                 [ Button.Props [ OnClick (fun _ -> dispatch ListAllProjects) ]
                   Button.Color IsPrimary

@@ -25,7 +25,7 @@ let jsonResult (result : Result<'a, string>) : HttpHandler =
     | Ok data -> jsonSuccess data
     | Error msg -> jsonError msg
 
-let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
     let cfg = ctx |> getSettings<MySqlSettings>
     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
@@ -33,14 +33,14 @@ let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Async<'a>) (
     return! jsonSuccess result next ctx
 }
 
-let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Async<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     try
         return! withServiceFunc isPublic impl next ctx
     with e ->
         return! jsonError e.Message next ctx
 }
 
-let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> Async<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
+let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
     let cfg = ctx |> getSettings<MySqlSettings>
     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
@@ -51,7 +51,7 @@ let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> As
     | None -> return! RequestErrors.notFound (jsonError msg) next ctx
 }
 
-let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Async<'a>) =
+let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Task<'a>) =
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
         let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
         let cfg = ctx |> getSettings<MySqlSettings>
@@ -141,18 +141,15 @@ let projectsAndRolesByUser username (loginCredentials : Api.LoginCredentials) : 
         (fun connString (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser connString username)
 
 let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
-    match RoleType.TryOfString roleName with
-    | None -> jsonError (sprintf "Unrecognized role name %s" roleName)
-    | Some roleType ->
-        withLoggedInServiceFunc true loginCredentials
-            (fun connString (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole connString username roleType)
+    withLoggedInServiceFunc true loginCredentials
+        (fun connString (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole connString username roleName)
 
-let addUserToProjectWithRoleType (projectCode, username, roleType) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
     let cfg = ctx |> getSettings<MySqlSettings>
     // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Add a private version of this to the server routing list
     let connString = cfg.ConnString
-    let! success = addMember connString username projectCode roleType
+    let! success = addMember connString username projectCode roleName
     let result =
         if success then
             Ok (sprintf "Added %s to %s" username projectCode)
@@ -161,38 +158,14 @@ let addUserToProjectWithRoleType (projectCode, username, roleType) : HttpHandler
     return! jsonResult result next ctx
 }
 
-let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    match RoleType.TryOfString roleName with
-    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName) next ctx
-    | Some roleType ->
-        return! addUserToProjectWithRoleType (projectCode,username,roleType) next ctx
-}
+let addUserToProject (projectCode, username) = addUserToProjectWithRole (projectCode,username,"Contributer")
 
-let addUserToProject (projectCode, username) = addUserToProjectWithRoleType (projectCode,username,Contributor)
-
-let removeUserFromOneRoleInProject (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let (Model.RemoveMembership removeMember) = ctx.GetService<Model.RemoveMembership>()
-    match RoleType.TryOfString roleName with
-    | None -> return! jsonError (sprintf "Unrecognized role name %s" roleName) next ctx
-    | Some roleType ->
-        let cfg = ctx |> getSettings<MySqlSettings>
-        // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Add a private version of this to the server routing list
-        let connString = cfg.ConnString
-        let! success = removeMember connString username projectCode roleType  // TODO: Add the "removeUserFromAllRolesInProject" function (or whatever I want to call it) mentioned in a TODO in Model.fs
-        let result =
-            if success then
-                Ok (sprintf "Removed %s from role %s in %s" username roleName projectCode)
-            else
-                Error (sprintf "Failed to remove %s from role %s in %s" username roleName projectCode)
-        return! jsonResult result next ctx
-}
-
-let removeUserFromAllRolesInProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let (Model.RemoveUserFromAllRolesInProject removeUserFromAllRolesInProject) = ctx.GetService<Model.RemoveUserFromAllRolesInProject>()
+let removeUserFromProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    let (Model.RemoveMembership removeUserFromProject) = ctx.GetService<Model.RemoveMembership>()
     let cfg = ctx |> getSettings<MySqlSettings>
     // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Add a private version of this to the server routing list
     let connString = cfg.ConnString
-    let! success = removeUserFromAllRolesInProject connString username projectCode
+    let! success = removeUserFromProject connString username projectCode
     let result =
         if success then
             Ok (sprintf "Removed %s from %s" username projectCode)
@@ -285,21 +258,21 @@ let createProject (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFun
 
 let countUsers : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountUsers countUsers) -> async {
+        (fun connString (Model.CountUsers countUsers) -> task {
                 do! Async.Sleep 500 // Simulate server load
                 return! countUsers connString
         })
 
 let countProjects : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountProjects countProjects) -> async {
+        (fun connString (Model.CountProjects countProjects) -> task {
                 do! Async.Sleep 750 // Simulate server load
                 return! countProjects connString
         })
 
 let countRealProjects : HttpHandler =
     withServiceFunc true
-        (fun connString (Model.CountRealProjects countRealProjects) -> async {
+        (fun connString (Model.CountRealProjects countRealProjects) -> task {
                 do! Async.Sleep 1000 // Simulate server load
                 return! countRealProjects connString
         })

@@ -13,6 +13,7 @@ open Giraffe.HttpStatusCodeHandlers
 open Saturn
 open Shared
 open Shared.Settings
+open Thoth.Json.Net
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -52,9 +53,8 @@ let webApp = router {
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
-    deletef "/api/project/%s/user/%s/withRole/%s" Controller.removeUserFromOneRoleInProject
-    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "contributor"
-    deletef "/api/project/%s/user/%s" Controller.removeUserFromAllRolesInProject
+    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
+    deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
@@ -84,13 +84,17 @@ let hostConfig (builder : IWebHostBuilder) =
         .ConfigureAppConfiguration(setupAppConfig)
         .ConfigureServices(registerMySqlServices)
 
+let extraJsonCoders =
+    Extra.empty
+    |> Extra.withInt64
+
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
     disable_diagnostics  // Don't create site.map file
     error_handler errorHandler
-    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer())
+    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
     use_gzip
     host_config hostConfig
     use_config buildConfig // TODO: Get rid of this

@@ -1168,7 +1168,6 @@ INSERT INTO `projects` (`id`, `name`, `description`, `homepage`, `is_public`, `p
 (5, 'LD API Test AdaptIT', 'LD API Test AdaptIT project', '', 1, NULL, '2014-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-adapt', 1, 9, 10, 0, NULL, NULL),
 (6, 'LD API Test Training', 'LD API Test Training project', '', 1, NULL, '2015-09-21 02:44:47', '2017-02-24 02:44:47', 'test-ld-training', 1, 11, 12, 0, NULL, NULL),
 (7, 'LD API UTF8 Eñcoding', 'LD API Test UTF8 Eñcoding project', '', 1, NULL, '2016-08-10 07:30:45', '2017-03-01 08:10:20', 'test-ld-ütf8', 1, 13, 14, 0, NULL, NULL),
-(8, 'Missing project', NULL, NULL, 0, NULL, NULL, NULL, NULL, 1, NULL, NULL, 0, NULL, NULL),
 (9,'Thai Food Dictionary','A picture dictionary of Thai food.','',1,NULL,'2009-10-12 03:41:53','2019-10-04 13:22:14','tha-food',1,17,18,0,NULL,NULL),
 (1289,'Sherwood TestSena3 03','','',1,NULL,'2016-08-25 07:58:11','2019-10-04 13:22:22','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),
 (1894,'test-ws-1-flex','','',1,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),

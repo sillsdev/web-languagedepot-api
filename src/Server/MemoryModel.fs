@@ -1,88 +1,85 @@
 module MemoryModel
 
 open Shared
+open FSharp.Control.Tasks.V2
+open System.Collections.Generic
 
 // Uses MemoryStorage to provide API calls
 
-let listUsers : Model.ListUsers = fun _connString limit offset -> async {
+let listUsers : Model.ListUsers = fun _connString limit offset -> task {
     let limitFn = match limit with
                   | Some limit -> Seq.take limit
                   | None -> id
     let offsetFn = match offset with
                    | Some offset -> Seq.skip offset
                    | None -> id
-    return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> List.ofSeq
+    return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> Array.ofSeq
 }
 
-let listProjects : Model.ListProjects = fun _connString -> async {
-    return MemoryStorage.projectStorage.Values |> List.ofSeq
+let listProjects : Model.ListProjects = fun _connString -> task {
+    return MemoryStorage.projectStorage.Values |> Array.ofSeq
 }
 
-let countUsers = Model.CountUsers (fun _connString -> async {
-    return MemoryStorage.userStorage.Count
+let countUsers = Model.CountUsers (fun _connString -> task {
+    return int64 MemoryStorage.userStorage.Count
 })
 
-let countProjects = Model.CountProjects (fun _connString -> async {
-    return MemoryStorage.projectStorage.Count
+let countProjects = Model.CountProjects (fun _connString -> task {
+    return int64 MemoryStorage.projectStorage.Count
 })
 
 let isRealProject (proj : Dto.ProjectDetails) =
     let projType = GuessProjectType.guessType proj.code proj.name proj.description
     projType <> Test && not (proj.code.StartsWith "test")
 
-let countRealProjects = Model.CountRealProjects (fun _connString -> async {
-    return MemoryStorage.projectStorage.Values |> Seq.filter isRealProject |> Seq.length
+let countRealProjects = Model.CountRealProjects (fun _connString -> task {
+    return MemoryStorage.projectStorage.Values |> Seq.filter isRealProject |> Seq.length |> int64
 })
 
-let listRoles : Model.ListRoles = fun _connString -> async {
-    return Dto.standardRoles
+let listRoles : Model.ListRoles = fun _connString -> task {
+    return SampleData.StandardRoles |> Array.map (fun role -> role.id, role.name)
 }
 
 let isMemberOf (proj : Dto.ProjectDetails) username =
-    match proj.membership with
-    | None -> false
-    | Some members ->
-        members |> Seq.map fst |> Seq.contains username
+    proj.membership |> Map.containsKey username
 
-let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun _connString username -> async {
+let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun _connString username -> task {
     let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
-        match proj.membership with
+        let maybeRole = proj.membership |> Map.tryFind username
+        match maybeRole with
         | None -> None
-        | Some members ->
-            let roles = members |> List.filter (fst >> ((=) username)) |> List.map snd
-            if List.isEmpty roles then None else Some (proj, roles)
-        )
-    return List.ofSeq projectsAndRoles
+        | Some role -> Some (proj,role))
+    return Array.ofSeq projectsAndRoles
 }
 
-let projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole = fun _connString username roleType -> async {
+let projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole = fun _connString username roleType -> task {
     let! projectsAndRoles = projectsAndRolesByUser _connString username
-    return (projectsAndRoles |> List.filter (fun (proj, roles) -> roles |> List.contains roleType))
+    return (projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleType))
 }
 
-let projectsByUser : Model.ProjectsByUser = fun _connString username -> async {
+let projectsByUser : Model.ProjectsByUser = fun _connString username -> task {
     let! projectsAndRoles = projectsAndRolesByUser _connString username
-    return projectsAndRoles |> List.map fst
+    return projectsAndRoles |> Array.map fst
 }
 
-let projectsByUserRole : Model.ProjectsByUserRole = fun _connString username roleType -> async {
+let projectsByUserRole : Model.ProjectsByUserRole = fun _connString username roleType -> task {
     let! projectsAndRoles = projectsAndRolesByUserRole _connString username roleType
-    return projectsAndRoles |> List.map fst
+    return projectsAndRoles |> Array.map fst
 }
 
-let userExists = Model.UserExists (fun _connString username -> async {
+let userExists = Model.UserExists (fun _connString username -> task {
     return MemoryStorage.userStorage.ContainsKey username
 })
 
-let projectExists = Model.ProjectExists (fun _connString code -> async {
+let projectExists = Model.ProjectExists (fun _connString code -> task {
     return MemoryStorage.projectStorage.ContainsKey code
 })
 
-let isAdmin = Model.IsAdmin (fun _connString username -> async {
+let isAdmin = Model.IsAdmin (fun _connString username -> task {
     return username = "admin"
 })
 
-let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> async {
+let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> task {
     return
         MemoryStorage.userStorage.Values
         |> Seq.filter (fun user ->
@@ -90,10 +87,10 @@ let searchUsersExact = Model.SearchUsersExact (fun _connString searchText -> asy
             user.firstName = searchText ||
             user.lastName = searchText ||
             user.email |> Option.contains searchText)
-        |> List.ofSeq
+        |> Array.ofSeq
 })
 
-let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> async {
+let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> task {
     return
         MemoryStorage.userStorage.Values
         |> Seq.filter (fun user ->
@@ -101,24 +98,24 @@ let searchUsersLoose = Model.SearchUsersLoose (fun _connString searchText -> asy
             user.firstName.Contains(searchText) ||
             user.lastName.Contains(searchText) ||
             (user.email |> Option.defaultValue "").Contains(searchText))
-        |> List.ofSeq
+        |> Array.ofSeq
 })
 
-let getUser : Model.GetUser = fun _connString username -> async {
+let getUser : Model.GetUser = fun _connString username -> task {
     return
         match MemoryStorage.userStorage.TryGetValue username with
         | false, _ -> None
         | true, user -> Some user
 }
 
-let getProject : Model.GetProject = fun _connString projectCode -> async {
+let getProject : Model.GetProject = fun _connString projectCode -> task {
     return
         match MemoryStorage.projectStorage.TryGetValue projectCode with
         | false, _ -> None
         | true, project -> Some project
 }
 
-let createProject : Model.CreateProject = fun _connString createProjectApiData -> async {
+let createProject : Model.CreateProject = fun _connString createProjectApiData -> task {
     let proj : Dto.ProjectDetails = {
         code = createProjectApiData.code
         name = createProjectApiData.name
@@ -137,13 +134,13 @@ let mkUserDetailsFromApiData (createUserApiData : Api.CreateUser) : Dto.UserDeta
     language = createUserApiData.language |> Option.defaultValue "en"
 }
 
-let createUser : Model.CreateUser = fun _connString createUserApiData -> async {
+let createUser : Model.CreateUser = fun _connString createUserApiData -> task {
     let user = mkUserDetailsFromApiData createUserApiData
     let added = MemoryStorage.userStorage.TryAdd(user.username,user)
     return if added then 1 else 0
 }
 
-let rec upsertUser : Model.UpsertUser = fun _connString username createUserApiData -> async {
+let rec upsertUser : Model.UpsertUser = fun _connString username createUserApiData -> task {
     if username = createUserApiData.username then
         let newUser = mkUserDetailsFromApiData createUserApiData
         MemoryStorage.userStorage.AddOrUpdate(username, newUser, fun _ _ -> newUser) |> ignore
@@ -156,13 +153,13 @@ let rec upsertUser : Model.UpsertUser = fun _connString username createUserApiDa
             return! upsertUser _connString createUserApiData.username createUserApiData
 }
 
-let changePassword : Model.ChangePassword = fun _connString username changePasswordApiData -> async {
+let changePassword : Model.ChangePassword = fun _connString username changePasswordApiData -> task {
     let cleartext = changePasswordApiData.password
     MemoryStorage.storeNewPassword username changePasswordApiData.password
     return true
 }
 
-let verifyLoginCredentials : Model.VerifyLoginCredentials = fun _connString loginCredentials -> async {
+let verifyLoginCredentials : Model.VerifyLoginCredentials = fun _connString loginCredentials -> task {
     // Skip verifying login credentials until I update the sample data to have "x" as the default password everywhere
     return true
     // match MemoryStorage.passwordStorage.TryGetValue loginCredentials.username with
@@ -178,7 +175,7 @@ let addOrRemoveInList isAdd item lst =
     else
         lst |> List.filter (fun listItem -> listItem <> item)
 
-let addOrRemoveMembership isAdd _connString username projectCode (roleType : RoleType) = async {
+let addMembership = Model.AddMembership (fun _connString username projectCode (roleName : string) -> task {
     match MemoryStorage.userStorage.TryGetValue username with
     | false, _ -> return false
     | true, _ ->  // We don't need user details, we just want to make sure the user exists
@@ -186,19 +183,15 @@ let addOrRemoveMembership isAdd _connString username projectCode (roleType : Rol
         | false, _ -> return false
         | true, projectDetails ->
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultValue []
-                let newMemberList = memberList |> addOrRemoveInList isAdd (username, roleType)
-                { details with membership = Some newMemberList }
+                let newMemberList = details.membership |> Map.add username roleName
+                { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
                 (fun _ oldDetails -> update oldDetails)) |> ignore
             return true
-}
+})
 
-let addMembership = Model.AddMembership (addOrRemoveMembership true)
-let removeMembership = Model.RemoveMembership (addOrRemoveMembership false)
-
-let removeUserFromAllRolesInProject = Model.RemoveUserFromAllRolesInProject (fun _connString (username : string) (projectCode : string) -> async {
+let removeMembership = Model.RemoveMembership (fun _connString (username : string) (projectCode : string) -> task {
     match MemoryStorage.userStorage.TryGetValue username with
     | false, _ -> return false
     | true, _ ->  // We don't need user details, we just want to make sure the user exists
@@ -206,9 +199,8 @@ let removeUserFromAllRolesInProject = Model.RemoveUserFromAllRolesInProject (fun
         | false, _ -> return false
         | true, projectDetails ->
             let update (details : Dto.ProjectDetails) =
-                let memberList = details.membership |> Option.defaultValue []
-                let newMemberList = memberList |> List.filter (fst >> ((<>) username))
-                { details with membership = Some newMemberList }
+                let newMemberList = details.membership |> Map.remove username
+                { details with membership = newMemberList }
             MemoryStorage.projectStorage.AddOrUpdate(username,
                 (fun _ -> update projectDetails),
                 (fun _ oldDetails -> update oldDetails)) |> ignore
@@ -272,8 +264,6 @@ module ModelRegistration =
             .AddSingleton<Model.AddMembership>(addMembership)
             .RemoveAll<Model.RemoveMembership>()
             .AddSingleton<Model.RemoveMembership>(removeMembership)
-            .RemoveAll<Model.RemoveUserFromAllRolesInProject>()
-            .AddSingleton<Model.RemoveUserFromAllRolesInProject>(removeUserFromAllRolesInProject)
             .RemoveAll<Model.ArchiveProject>()
             .AddSingleton<Model.ArchiveProject>(archiveProject)
         |> ignore

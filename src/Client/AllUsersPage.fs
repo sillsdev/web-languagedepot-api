@@ -34,7 +34,7 @@ type Msg =
 type Model = { FoundUsers : Dto.UserList; SearchResults : Dto.UserList; UsersPerPage : int; UserCount : int; CurrentPage : int; IsAdmin : bool }
 
 let init() =
-    { FoundUsers = []; SearchResults = []; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false },
+    { FoundUsers = [||]; SearchResults = [||]; UsersPerPage = 25; UserCount = 0; CurrentPage = 1; IsAdmin = false },
     Cmd.OfPromise.perform Fetch.get "/api/count/users" UserCountLoaded
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
@@ -88,7 +88,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         currentModel, Cmd.none
     | LogUserResult users ->
         for user in users do
-            printfn "Username %s, first name %s, last name %s, email(s) %A" user.username user.firstName user.lastName user.emailAddresses
+            printfn "Username %s, first name %s, last name %s, email(s) %A" user.username user.firstName user.lastName user.email
         currentModel, Cmd.none
     | LogException exn ->
         let cmd = Notifications.notifyError exn.Message
