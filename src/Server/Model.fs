@@ -534,8 +534,9 @@ let removeMembership (connString : string) (username : string) (projectCode : st
         use cmd = new MySqlCommand(sql, conn, transaction)
         cmd.Parameters.AddWithValue("username", username) |> ignore
         cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-        use! reader = cmd.ExecuteReaderAsync()
+        let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
         let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
+        do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
         // Also have to delete from member_roles table
         let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
         let sql = "DELETE FROM member_roles WHERE " + whereClause
