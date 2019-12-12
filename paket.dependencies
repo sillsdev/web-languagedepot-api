@@ -5,8 +5,9 @@ group Server
 
     nuget FSharp.Core
     nuget Saturn
+    # For some reason, Microsoft.AspNetCore.Authentication.JwtBearer 3.1 is packaged for netcoreapp3.1 only
+    nuget Microsoft.AspNetCore.Authentication.JwtBearer >= 3.0 < 3.1
     nuget Thoth.Json.Giraffe
-    nuget SQLProvider
     nuget BCrypt.Net-Next
 
 group Sql
@@ -14,12 +15,6 @@ group Sql
     framework: netcoreapp3.0
     storage: packages
     nuget MySqlConnector
-    // MySqlConnector needs explicit transitive dependencies since it's loaded at runtime via reflection
-    nuget System.Buffers
-    nuget System.Runtime.InteropServices.RuntimeInformation
-    nuget System.Threading.Tasks.Extensions
-    nuget System.Memory
-    nuget System.Runtime.CompilerServices.Unsafe
 
 group Client
     source https://api.nuget.org/v3/index.json

@@ -2,7 +2,6 @@ group Server
     FSharp.Core
     Saturn
     Thoth.Json.Giraffe
-    SQLProvider
     BCrypt.Net-Next
 
 group Sql

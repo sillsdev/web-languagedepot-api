@@ -4,26 +4,8 @@ open System
 open System.Linq
 open System.Threading.Tasks
 open System.Collections.Generic
-open FSharp.Data.Sql
 open Shared
 open MySql.Data.MySqlClient
-
-[<Literal>]
-let sampleConnString = "Server=localhost;Database=testldapi;User=rmunn"
-
-[<Literal>]
-let resolutionPath = __SOURCE_DIRECTORY__
-
-[<Literal>]
-let schemaPath = __SOURCE_DIRECTORY__ + "/languagedepot.schema"
-
-type sql = SqlDataProvider<Common.DatabaseProviderTypes.MYSQL,
-                           sampleConnString,
-                        //    Owner = "languagedepot",
-                           ContextSchemaPath = schemaPath,
-                           ResolutionPath = resolutionPath,
-                           CaseSensitivityChange = Common.CaseSensitivityChange.ORIGINAL,
-                           UseOptionTypes = true>
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 
@@ -650,13 +632,6 @@ let archiveProject (connString : string) (projectCode : string) =
             return false
     }
 
-// NOTE: If you change the database schema, you must UNCOMMENT the next two lines and then
-// reload Visual Studio or VS Code. (Yes, just reload your *editor*). This will cause the
-// updated schema to be saved to the location defined in schemaPath.)
-
-// let ctx = sql.GetDataContext sampleConnString
-// ctx.SaveContextSchema()
-
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
     open Microsoft.Extensions.DependencyInjection.Extensions
@@ -715,4 +690,3 @@ module ModelRegistration =
             .RemoveAll<ArchiveProject>()
             .AddSingleton<ArchiveProject>(archiveProject)
         |> ignore
-        FSharp.Data.Sql.Common.QueryEvents.SqlQueryEvent |> Event.add (printfn "Executing SQL: %O")
