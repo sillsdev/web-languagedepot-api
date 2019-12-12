@@ -239,7 +239,7 @@ let changePassword login (updateData : Api.ChangePassword) =
         (fun connString (changePassword : Model.ChangePassword) -> changePassword connString login updateData)
 
 // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
-let verifyPassword username (loginCredentials : Api.LoginCredentials) =
+let verifyPassword (loginCredentials : Api.LoginCredentials) =
     withServiceFunc true
         (fun connString (verifyLoginInfo : Model.VerifyLoginCredentials) -> verifyLoginInfo connString loginCredentials)
 

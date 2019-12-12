@@ -61,7 +61,7 @@ let webApp = router {
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
     putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
-    postf "/api/users/%s/verify-password" (fun login -> bindJson<Api.LoginCredentials> (Controller.verifyPassword login))
+    post "/api/verify-password" (bindJson<Api.LoginCredentials> Controller.verifyPassword)
     post "/api/project" (bindJson<Api.CreateProject> Controller.createProject)
     get "/api/count/users" Controller.countUsers
     get "/api/count/projects" Controller.countProjects
