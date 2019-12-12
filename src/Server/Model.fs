@@ -441,11 +441,11 @@ let getProjectDetails (connString : string) (projectCodes : string[]) = task {
     if projectCodes |> Array.isEmpty
     then return Array.empty
     else
-        let whereClause = projectCodes |> Array.map (fun code -> sprintf "projects.identifier = @%s" (code.Replace("-", "_hyphen_"))) |> String.concat " OR "
+        let whereClause = projectCodes |> Array.mapi (fun idx _ -> sprintf "projects.identifier = @var%d" idx) |> String.concat " OR "
         let sql = projectWithMembersBaseQuery + " WHERE " + whereClause + projectsWithMembersGroupByClause
         let setParams (cmd : MySqlCommand) =
-            for code in projectCodes do
-                cmd.Parameters.AddWithValue(code.Replace("-", "_hyphen_"), code) |> ignore
+            for idx, code in projectCodes |> Seq.indexed do
+                cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
         let! result = fetchDataWithParams connString sql setParams convertProjectRow
         return result
 }
