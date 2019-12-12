@@ -277,11 +277,6 @@ let countRealProjects : HttpHandler =
                 return! countRealProjects connString
         })
 
-let getMySqlSettings : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let cfg = ctx |> getSettings<MySqlSettings>
-    return! json cfg next ctx
-}
-
 let archiveProject projectCode : HttpHandler =
     withServiceFunc true
         (fun connString (archiveProject : Model.ArchiveProject) -> archiveProject connString projectCode)

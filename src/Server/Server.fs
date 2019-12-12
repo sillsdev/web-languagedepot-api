@@ -65,7 +65,6 @@ let webApp = router {
     get "/api/count/users" Controller.countUsers
     get "/api/count/projects" Controller.countProjects
     get "/api/count/non-test-projects" Controller.countRealProjects
-    get "/api/config" Controller.getMySqlSettings
     deletef "/api/project/%s" Controller.archiveProject
     deletef "/api/project/private/%s" Controller.archivePrivateProject
     // Rejected API: POST /api/project/{projId}/add-user/{username}
