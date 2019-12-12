@@ -582,7 +582,7 @@ let addMembership (connString : string) (username : string) (projectCode : strin
         else
             // First, check whether user is already a member
             let sql =
-                "SELECT id FROM members" +
+                "SELECT members.id FROM members" +
                 " JOIN users ON users.id = members.user_id" +
                 " JOIN projects ON projects.id = members.project_id" +
                 " WHERE users.login = @username AND projects.identifier = @projectCode"
