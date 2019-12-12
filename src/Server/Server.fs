@@ -49,13 +49,14 @@ let webApp = router {
     // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
-    getf "/api/users/%s/projects" Controller.projectsAndRolesByUser
-    getf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> Controller.projectsAndRolesByUserRole username roleName)
+    postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
+    postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
     postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
     deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
+    postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
     putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))

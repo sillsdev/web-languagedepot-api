@@ -136,12 +136,12 @@ let userExists projectCode : HttpHandler =
     withServiceFunc true
         (fun connString (Model.UserExists userExists) -> userExists connString projectCode)
 
-let projectsAndRolesByUser username : HttpHandler =
-    withServiceFunc true
+let projectsAndRolesByUser username (loginCredentials : Api.LoginCredentials) : HttpHandler =
+    withLoggedInServiceFunc true loginCredentials
         (fun connString (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser connString username)
 
-let projectsAndRolesByUserRole username roleName : HttpHandler =
-    withServiceFunc true
+let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
+    withLoggedInServiceFunc true loginCredentials
         (fun connString (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole connString username roleName)
 
 let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
