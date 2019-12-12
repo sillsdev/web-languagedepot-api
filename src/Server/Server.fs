@@ -50,6 +50,7 @@ let webApp = router {
     getf "/api/project/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
+    postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
