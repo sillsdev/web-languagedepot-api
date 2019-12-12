@@ -441,7 +441,7 @@ let getProjectDetails (connString : string) (projectCodes : string[]) = task {
     if projectCodes |> Array.isEmpty
     then return Array.empty
     else
-        let whereClause = projectCodes |> Array.mapi (fun idx _ -> sprintf "projects.identifier = @var%d" idx) |> String.concat " OR "
+        let whereClause = projectCodes |> Seq.mapi (fun idx _ -> sprintf "projects.identifier = @var%d" idx) |> String.concat " OR "
         let sql = projectWithMembersBaseQuery + " WHERE " + whereClause + projectsWithMembersGroupByClause
         let setParams (cmd : MySqlCommand) =
             for idx, code in projectCodes |> Seq.indexed do
@@ -537,13 +537,17 @@ let removeMembership (connString : string) (username : string) (projectCode : st
         use! reader = cmd.ExecuteReaderAsync()
         let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
         // Also have to delete from member_roles table
-        let sql = "DELETE FROM member_roles WHERE member_id IN @memberRowIds"
+        let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
+        let sql = "DELETE FROM member_roles WHERE " + whereClause
         use cmd = new MySqlCommand(sql, conn, transaction)
-        cmd.Parameters.AddWithValue("memberRowIds", memberRowIds) |> ignore
+        for idx, code in memberRowIds |> Seq.indexed do
+            cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
         let! _ = cmd.ExecuteNonQueryAsync()
-        let sql = "DELETE FROM members WHERE id IN @memberRowIds"
+        let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
+        let sql = "DELETE FROM members WHERE " + whereClause
         use cmd = new MySqlCommand(sql, conn, transaction)
-        cmd.Parameters.AddWithValue("memberRowIds", memberRowIds) |> ignore
+        for idx, code in memberRowIds |> Seq.indexed do
+            cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
         let! _ = cmd.ExecuteNonQueryAsync()
         do! transaction.CommitAsync()
         return true
