@@ -127,6 +127,8 @@
       - ldapi-server.service
       - ldapi-server-configwatcher.service
       - ldapi-server-configwatcher.path
+      - ldapi-server-restartwatcher.service
+      - ldapi-server-restartwatcher.path
     register: servicefile
     notify: Enable and start LD API server
   - name: Reload systemd service files
@@ -153,3 +155,4 @@
     with_items:
       - ldapi-server
       - ldapi-server-configwatcher.path
+      - ldapi-server-restartwatcher.path

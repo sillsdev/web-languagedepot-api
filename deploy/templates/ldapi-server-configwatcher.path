@@ -3,3 +3,6 @@ Description=Restart LD API on config change
 
 [Path]
 PathChanged=/etc/ldapi-server/ldapi-server.ini
+
+[Install]
+WantedBy=multi-user.target

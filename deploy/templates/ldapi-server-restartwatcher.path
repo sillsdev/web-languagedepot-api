@@ -1,0 +1,8 @@
+[Unit]
+Description=Restart LD API on trigger file creation
+
+[Path]
+PathExists={{ server_dest }}/restart-server-now
+
+[Install]
+WantedBy=multi-user.target

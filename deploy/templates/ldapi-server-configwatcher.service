@@ -5,6 +5,3 @@ After=ldapi-server.service
 [Service]
 Type=oneshot
 ExecStart=/bin/systemctl restart ldapi-server
-
-[Install]
-WantedBy=multi-user.target

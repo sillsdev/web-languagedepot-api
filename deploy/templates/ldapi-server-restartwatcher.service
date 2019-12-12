@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart LD API when restart trigger file is created
+After=ldapi-server.service
+
+[Service]
+Type=oneshot
+# First delete the file so the trigger will only fire once
+ExecStart=/bin/rm {{ server_dest }}/restart-server-now
+ExecStart=/bin/systemctl restart ldapi-server

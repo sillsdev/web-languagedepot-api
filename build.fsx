@@ -127,9 +127,20 @@ let buildDocker tag =
     let args = sprintf "build -t %s ." tag
     runToolSimple "docker" args __SOURCE_DIRECTORY__
 
-let deploy dest =
+let deploy restartFilename dest =
+    match restartFilename with
+    | None -> ()
+    | Some fname -> File.delete fname  // Ensure we won't upload it by accident
     let args = sprintf "-vzr --exclude=secrets.json --exclude=ldapi-server.ini server/Server/ %s" dest
     runToolSimple "rsync" args deployDir
+    // If the rsync fails, an exception will be thrown so the next part won't execute
+    Trace.tracefn "Upload to %s succeeded, triggering server restart" dest
+    match restartFilename with
+    | None -> ()
+    | Some fname ->
+        File.create fname
+        let args = sprintf "-v %s %s" fname dest
+        runToolSimple "rsync" args deployDir
 
 let vagrant() =
     runToolSimple "vagrant" "up" deployDir
@@ -151,7 +162,7 @@ let dockerFullName = sprintf "%s/%s" dockerUser dockerImageName
 
 Target.create "DeployLive" (fun _ ->
     if false then  // Don't run until deployment user on live server is ready
-        deploy "deploy@admin.languagedepot.org"
+        deploy None "deploy@admin.languagedepot.org"
     ()
 )
 
@@ -171,7 +182,8 @@ Usage:
   Deploy [options]
 
 Options:
-  --upload-destination=<dest>  Upload destination for rsync command (user@host:/path)
+  --upload-destination=<dest>       Upload destination for rsync command (user@host:/path)
+  --create-restart-file=<filename>  Optionally create a restart file after rsync completes
 
 The deployment target may be specified either at the command line or via a TeamCity
 system parameter named `system.upload.destination`. Valid values are:
@@ -207,17 +219,19 @@ system parameter named `system.upload.destination`. Valid values are:
     let target = parsedArgs |> DocoptResult.tryGetArgument "--upload-destination"
     Trace.tracefn "Deployment target: %A" target
 
+    let restartFilename = parsedArgs |> DocoptResult.tryGetArgument "--create-restart-file" |> Option.map (fun filename -> bundleDir @@ filename)
+
     match target with
     | Some "testing" -> failwith "Please run \"DeployTesting\" target instead"
     // | "staging" -> "deploy@admin.qa.languagedepot.org:upload_areas/ldapi"  // TODO: Activate once deploy user is ready on staging server
-    | Some "staging" -> deploy "rmunn@admin.qa.languagedepot.org:/usr/lib/"
+    | Some "staging" -> deploy restartFilename "rmunn@admin.qa.languagedepot.org:/usr/lib/"
     | Some "live" -> failwith "Don't run \"Deploy live\" until live server is actually ready"
-    | Some dest -> deploy dest
+    | Some dest -> deploy restartFilename dest
     | None ->
         if BuildServer.buildServer = TeamCity then
             match TeamCity.BuildParameters.System |> Map.tryFind "upload.destination" with
             | None -> failwith "No deployment target specified; specify it either on the command line or in TeamCity system parameters"
-            | Some dest -> deploy dest
+            | Some dest -> deploy restartFilename dest
         else
             Trace.traceErrorfn "Invalid deployment target: %A" target
             failwith "Please specify valid deployment target"
