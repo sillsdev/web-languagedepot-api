@@ -589,8 +589,9 @@ let addMembership (connString : string) (username : string) (projectCode : strin
             use cmd = new MySqlCommand(sql, conn, transaction)
             cmd.Parameters.AddWithValue("username", username) |> ignore
             cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            use! reader = cmd.ExecuteReaderAsync()
+            let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
             let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
+            do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
             if memberRowIds.Length > 0 then
                 // Already a member; just update the membership role that user already has
                 let sql = "UPDATE member_roles SET role_id = @roleId WHERE member_id = @memberId"
