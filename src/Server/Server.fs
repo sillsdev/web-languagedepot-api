@@ -15,6 +15,9 @@ open Shared
 open Shared.Settings
 open Thoth.Json.Net
 
+let [<Literal>] SecretApiToken = "not-a-secret"
+let [<Literal>] BearerToken = "Bearer " + SecretApiToken
+
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
 let publicPath = Path.GetFullPath "../Client/public"
@@ -34,6 +37,8 @@ let port =
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
 let webApp = router {
+    pipe_through (requireHeader "Authorization" BearerToken)
+    // TODO: That returns a 404 NOT FOUND when no bearer token. I want it to return 403 UNAUTHORIZED instead.
     get "/api/project/private" Controller.getAllPrivateProjects
     getf "/api/project/private/%s" Controller.getPrivateProject
     get "/api/project" Controller.getAllPublicProjects

@@ -15,7 +15,52 @@ open Fake.IO.FileSystemOperators
 open Fake.Runtime
 open Fake.BuildServer
 
-Target.initEnvironment()
+let args = Target.getArguments() |> Option.defaultValue [||]
+let argUsage = """
+Deploy script.
+
+Usage:
+  Deploy [options]
+
+Options:
+  --upload-destination=<dest>       Upload destination for rsync command (user@host:/path)
+  --create-restart-file=<filename>  Optionally create a restart file after rsync completes
+  --secret-api-token=<token>        Secret API token (should not have any punctuation other than -_./~+)
+
+The deployment target may be specified either at the command line or via a TeamCity
+system parameter named `system.upload.destination`. Valid values are:
+  testing - Deploy to local Vagrant VM for testing
+  staging - Deploy to QA server
+  live - Deploy to live server
+  foo@bar.baz: - Deploy to the foo@bar.baz: location
+
+The secret API token should be specified as a TeamCity system parameter
+named `system.secret.api.token`. Only specify it as a command-line option
+if you are running a development build yourself.
+"""
+let parser = Docopt(argUsage)
+let parsedArgs = parser.Parse(args)
+
+let optionNameToTeamCityName (optionName : string) =
+    let start = if optionName.StartsWith "--" then 2 else 0
+    optionName.Substring(start).Replace('-','.')
+    // No `system.` at front since FAKE adds that for you
+
+let getArg optionName =
+    parsedArgs
+    |> DocoptResult.tryGetArgument optionName
+    |> Option.orElseWith (fun () ->
+        if BuildServer.buildServer = TeamCity then
+            let varName = optionNameToTeamCityName optionName
+            TeamCity.BuildParameters.System |> Map.tryFind varName
+        else
+            None
+        )
+
+let getRequiredArg optionName =
+    match getArg optionName with
+    | None -> failwith <| sprintf "Option %s is required; please specify it either on command line or in TeamCity variable 'system.%s'" optionName (optionNameToTeamCityName optionName)
+    | Some value -> value
 
 let serverPath = Path.getFullName "./src/Server"
 let clientPath = Path.getFullName "./src/Client"
@@ -81,6 +126,27 @@ Target.create "InstallClient" (fun _ ->
     // printfn "Yarn version:"
     // runToolSimple yarnTool "--version" __SOURCE_DIRECTORY__
     // runToolSimple yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
+)
+
+Target.create "SetApiToken" (fun _ ->
+    match getArg "--secret-api-token" with
+    | None -> ()
+    | Some apiToken ->
+        Shell.regexReplaceInFileWithEncoding
+            "let \\[<Literal>\\] SecretApiToken = \"[^\"]*\""
+            (sprintf "let [<Literal>] SecretApiToken = \"%s\"" apiToken)
+            (System.Text.UTF8Encoding(false))
+            (serverPath @@ "Server.fs")
+        // And ensure it will always be reset after the build finishes, even if the build fails
+        Target.activateFinal "ResetApiToken"
+)
+
+Target.createFinal "ResetApiToken" (fun _ ->
+    Shell.regexReplaceInFileWithEncoding
+        "let \\[<Literal>\\] SecretApiToken = \"[^\"]*\""
+        "let [<Literal>] SecretApiToken = \"not-a-secret\""
+        (System.Text.UTF8Encoding(false))
+        (serverPath @@ "Server.fs")
 )
 
 Target.create "Build" (fun _ ->
@@ -174,67 +240,18 @@ Target.create "DeployTest" (fun _ ->
     vagrant ()
 )
 
-Target.create "Deploy" (fun p ->
-    let argUsage = """
-Deploy script.
-
-Usage:
-  Deploy [options]
-
-Options:
-  --upload-destination=<dest>       Upload destination for rsync command (user@host:/path)
-  --create-restart-file=<filename>  Optionally create a restart file after rsync completes
-
-The deployment target may be specified either at the command line or via a TeamCity
-system parameter named `system.upload.destination`. Valid values are:
-  testing - Deploy to local Vagrant VM for testing
-  staging - Deploy to QA server
-  live - Deploy to live server
-  foo@bar.baz: - Deploy to the foo@bar.baz: location
-"""
-
-    let parser = Docopt(argUsage)
-    let parsedArgs = parser.Parse(Array.ofList p.Context.Arguments)
-
-    // Trace.tracefn "Parsed args look like: %A" parsedArgs
-
-    // Other ways to check parsed args for flags include:
-    // if parsedArgs |> DocoptResult.hasFlag "-v" then
-    //     Trace.tracefn "Would be verbose"
-    // Note that if "-v, --verbose" is listed in the options, then hasFlag "-v" will
-    // be true whether user passed "-v" or "--verbose"
-
-    // if parsedArgs |> DocoptResult.hasFlag "--version" then
-    //     Trace.tracefn "Would show version"
-    //     exit 0
-
-    // Help is not handled automatically in case you want "-h" to mean something else,
-    // but it's simple to check for and handle yourself.
-    // if parsedArgs |> DocoptResult.hasFlag "-h" then
-    //     Trace.tracefn "Help requested"
-    //     Trace.log argUsage
-    //     Trace.tracefn "Exiting"
-    //     exit 0
-
-    let target = parsedArgs |> DocoptResult.tryGetArgument "--upload-destination"
+Target.create "Deploy" (fun _ ->
+    let target = getRequiredArg "--upload-destination"
     Trace.tracefn "Deployment target: %A" target
 
-    let restartFilename = parsedArgs |> DocoptResult.tryGetArgument "--create-restart-file" |> Option.map (fun filename -> bundleDir @@ filename)
+    let restartFilename = getArg "--create-restart-file" |> Option.map (fun filename -> bundleDir @@ filename)
 
     match target with
-    | Some "testing" -> failwith "Please run \"DeployTesting\" target instead"
+    | "testing" -> failwith "Please run \"DeployTesting\" target instead"
     // | "staging" -> "deploy@admin.qa.languagedepot.org:upload_areas/ldapi"  // TODO: Activate once deploy user is ready on staging server
-    | Some "staging" -> deploy restartFilename "rmunn@admin.qa.languagedepot.org:/usr/lib/"
-    | Some "live" -> failwith "Don't run \"Deploy live\" until live server is actually ready"
-    | Some dest -> deploy restartFilename dest
-    | None ->
-        if BuildServer.buildServer = TeamCity then
-            match TeamCity.BuildParameters.System |> Map.tryFind "upload.destination" with
-            | None -> failwith "No deployment target specified; specify it either on the command line or in TeamCity system parameters"
-            | Some dest -> deploy restartFilename dest
-        else
-            Trace.traceErrorfn "Invalid deployment target: %A" target
-            failwith "Please specify valid deployment target"
+    | "staging" -> deploy restartFilename "rmunn@admin.qa.languagedepot.org:/usr/lib/"
+    | "live" -> failwith "Don't run \"Deploy live\" until live server is actually ready"
+    | dest -> deploy restartFilename dest
 )
 
 // NOTE: Before this will work, you must run "sudo mysql" and do something like:
@@ -256,6 +273,7 @@ open Fake.Core.TargetOperators
 
 "Clean"
     // ==> "InstallClient"
+    ==> "SetApiToken"
     ==> "BuildServerOnly"
     ==> "Bundle"
     ==> "DeployTest"
