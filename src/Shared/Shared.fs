@@ -1,12 +1,8 @@
 namespace Shared
 
-type JsonSuccess<'a> = {
+type JsonResult<'a> = {
     ok : bool
     data : 'a
-}
-
-type JsonError = {
-    ok : bool
     message : string
 }
 

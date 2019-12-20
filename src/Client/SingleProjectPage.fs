@@ -96,7 +96,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | SingleProjectRetrieved projectResult ->
         match toResult projectResult with
         | Ok project ->
-            printfn "%A" project
             { currentModel with CurrentlyViewedProject = Some project }, Cmd.none
         | Error msg ->
             currentModel, Notifications.notifyError msg
@@ -181,15 +180,19 @@ let confirmationModal visible submit =
                     [ str "Make no change" ] ] ] ]
 
 let membershipViewInline (membership : Map<string,string>) =
-    if Seq.isEmpty membership then
-        str (sprintf " (no members in %A)" membership)
-    else
-        membership |> Seq.map (fun kv -> sprintf "%s: %s" kv.Key kv.Value) |> String.concat "," |> str
+    if membership |> Map.isEmpty then str "(no members)" else
+    membership |> Map.toSeq |> Seq.map (fun (name, role) -> sprintf "%s: %s" name role) |> String.concat "," |> str
 
 let membershipViewBlock (dispatch : Msg -> unit) (project : Dto.ProjectDetails) =
     // TODO: Implement with appropriate Edit/Remove buttons
-    // For now, just replicate inline view
-    membershipViewInline project.membership
+    if project.membership.IsEmpty then []
+    else
+        let byRoles = project.membership |> Map.toSeq |> Seq.groupBy snd |> Seq.map (fun (role, usersAndRoles) -> role, (Seq.map fst usersAndRoles |> List.ofSeq))
+        [
+            for role, users in byRoles do
+                yield h2 [ ] [ str role ]
+                yield! users |> List.map str
+        ]
     // match project.membership with
     // | None -> []
     // | Some members ->
@@ -224,7 +227,7 @@ let projectDetailsView (dispatch : Msg -> unit) (project : Dto.ProjectDetails op
         | Some project ->
             h2 [ ] [ str project.name; str (sprintf " (%s)" project.code); membershipViewInline project.membership ]
             p [ ] [ str project.description ]
-            membershipViewBlock dispatch project
+            yield! membershipViewBlock dispatch project
     ]
 
 let view (model : Model) (dispatch : Msg -> unit) =

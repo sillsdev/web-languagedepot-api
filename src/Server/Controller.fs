@@ -18,8 +18,8 @@ open Shared.Settings
 
 // TODO: Define these two return types in Shared.fs
 // TODO: Then switch all client code to expect the success/error return type
-let jsonError (msg : string) : HttpHandler = json { ok = false; message = msg }
-let jsonSuccess data : HttpHandler = json { ok = true; data = data }
+let jsonError<'a> (msg : string) : HttpHandler = json { ok = false; data = Unchecked.defaultof<'a>; message = msg }
+let jsonSuccess data : HttpHandler = json { ok = true; data = data; message = "" }
 let jsonResult (result : Result<'a, string>) : HttpHandler =
     match result with
     | Ok data -> jsonSuccess data

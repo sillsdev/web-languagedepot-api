@@ -2,21 +2,15 @@ module JsonHelpers
 
 open Fable.Core
 open Shared
+open Browser
 
-[<Erase>]
-type JsonResult<'a> =
-    | Success of JsonSuccess<'a>
-    | Failure of JsonError
-
-let success data = Success { ok = true; data = data }
-let failure msg = Failure { ok = false; message = msg }
+let success data = { ok = true; data = data; message = "" }
+let failure failData msg = { ok = false; data = failData; message = msg }
 
 let toResult (jsonResult : JsonResult<'a>) =
     match jsonResult with
-    | Success { ok = true; data = data } -> Ok data
-    | Success _ -> Error (sprintf "Invalid JsonResult: Success case should have ok = true. JsonResult was %A" jsonResult)
-    | Failure { ok = false; message = msg } -> Error msg
-    | Failure _ -> Error (sprintf "Invalid JsonResult: Success case should have ok = true. JsonResult was %A" jsonResult)
+    | { ok = true; data = data } -> Ok data
+    | { ok = false; message = msg } -> Error msg
 
 let unpackJsonResult currentModel jsonResult fn =
         match toResult jsonResult with
