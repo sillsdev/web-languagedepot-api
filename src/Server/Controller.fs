@@ -140,6 +140,12 @@ let projectsAndRolesByUser username (loginCredentials : Api.LoginCredentials) : 
     withLoggedInServiceFunc true loginCredentials
         (fun connString (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser connString username)
 
+let legacyProjectsAndRolesByUser username (legacyLoginCredentials : Api.LegacyLoginCredentials) : HttpHandler =
+    let loginCredentials : Api.LoginCredentials =
+        { username = username
+          password = legacyLoginCredentials.password }
+    projectsAndRolesByUser username loginCredentials
+
 let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
     withLoggedInServiceFunc true loginCredentials
         (fun connString (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole connString username roleName)

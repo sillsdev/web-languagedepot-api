@@ -109,6 +109,10 @@ module Api =
         password : string
     }
 
+    type LegacyLoginCredentials = {
+        password : string
+    }
+
     type CreateProject = {
         login : LoginCredentials // TODO : Use "username" rather than "login" for login field in Redmine's users table
         code : string
