@@ -33,6 +33,14 @@ let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Task<'a>) (n
     return! jsonSuccess result next ctx
 }
 
+let withServiceFuncNoSuccessWrap (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+    let serviceFunction = ctx.GetService<'service>()
+    let cfg = ctx |> getSettings<MySqlSettings>
+    let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
+    let! result = impl connString serviceFunction
+    return! json result next ctx
+}
+
 let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     try
         return! withServiceFunc isPublic impl next ctx
@@ -59,6 +67,18 @@ let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCrede
         let! goodLogin = verifyLoginCredentials connString loginCredentials
         if goodLogin then
             return! withServiceFunc isPublic impl next ctx
+        else
+            return! RequestErrors.forbidden (jsonError "Login failed") next ctx
+    }
+
+let withLoggedInServiceFuncNoSuccessWrap (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Task<'a>) =
+    fun (next : HttpFunc) (ctx : HttpContext) -> task {
+        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
+        let cfg = ctx |> getSettings<MySqlSettings>
+        let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
+        let! goodLogin = verifyLoginCredentials connString loginCredentials
+        if goodLogin then
+            return! withServiceFuncNoSuccessWrap isPublic impl next ctx
         else
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
@@ -144,7 +164,8 @@ let legacyProjectsAndRolesByUser username (legacyLoginCredentials : Api.LegacyLo
     let loginCredentials : Api.LoginCredentials =
         { username = username
           password = legacyLoginCredentials.password }
-    projectsAndRolesByUser username loginCredentials
+    withLoggedInServiceFuncNoSuccessWrap true loginCredentials
+        (fun connString (legacyProjectsAndRolesByUser : Model.LegacyProjectsAndRolesByUser) -> legacyProjectsAndRolesByUser connString username)
 
 let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
     withLoggedInServiceFunc true loginCredentials
