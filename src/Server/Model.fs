@@ -19,6 +19,7 @@ type ListRoles = string -> Task<(int * string)[]>
 type ProjectsByUser = string -> string -> Task<Dto.ProjectDetails []>
 type ProjectsByUserRole = string -> string -> string -> Task<Dto.ProjectDetails []>
 type ProjectsAndRolesByUser = string -> string -> Task<(Dto.ProjectDetails * string) []>
+type LegacyProjectsAndRolesByUser = string -> string -> Task<Dto.LegacyProjectListResponse>
 type ProjectsAndRolesByUserRole = string -> string -> string -> Task<(Dto.ProjectDetails * string) []>
 // Ditto for these two FooExists types: need a DU
 type UserExists = UserExists of (string -> string -> Task<bool>)
@@ -439,6 +440,30 @@ let projectsAndRolesByUser (connString : string) username = task {
     return Array.zip projects roles
 }
 
+let legacyProjectsAndRolesByUser (connString : string) username = task {
+    let! projectsAndRoles = projectsAndRolesByUserImpl connString username
+    let projectCodes, roles = projectsAndRoles |> Array.unzip
+    let! projects = getProjectDetails connString projectCodes
+    let legacyProjects = (projects, roles) ||> Array.zip |> Array.map (fun (proj,role) ->
+        let result : Dto.LegacyProjectDetails = {
+            identifier = proj.code
+            name = proj.name
+            repository = "http://public.languagedepot.org"
+            role = role
+            repoClarification = ""
+            isLinked = false  // TODO: We don't use this one, but should send real value anyway
+        }
+        result
+    )
+    let result : Dto.LegacyProjectListResponse = {
+        hasValidCredentials = true
+        projects = legacyProjects
+        errorMessage = ""
+        error = null
+    }
+    return result
+}
+
 let projectsAndRolesByUserRole connString username (roleName : string) = task {
     let! projectsAndRoles = projectsAndRolesByUserImpl connString username
     let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
@@ -681,6 +706,8 @@ module ModelRegistration =
             .AddSingleton<ProjectsAndRolesByUserRole>(projectsAndRolesByUserRole)
             .RemoveAll<ProjectsAndRolesByUser>()
             .AddSingleton<ProjectsAndRolesByUser>(projectsAndRolesByUser)
+            .RemoveAll<LegacyProjectsAndRolesByUser>()
+            .AddSingleton<LegacyProjectsAndRolesByUser>(legacyProjectsAndRolesByUser)
             .RemoveAll<VerifyLoginCredentials>()
             .AddSingleton<VerifyLoginCredentials>(verifyLoginInfo)
             .RemoveAll<AddMembership>()

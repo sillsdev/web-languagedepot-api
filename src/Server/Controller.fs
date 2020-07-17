@@ -144,7 +144,8 @@ let legacyProjectsAndRolesByUser username (legacyLoginCredentials : Api.LegacyLo
     let loginCredentials : Api.LoginCredentials =
         { username = username
           password = legacyLoginCredentials.password }
-    projectsAndRolesByUser username loginCredentials
+    withLoggedInServiceFunc true loginCredentials
+        (fun connString (legacyProjectsAndRolesByUser : Model.LegacyProjectsAndRolesByUser) -> legacyProjectsAndRolesByUser connString username)
 
 let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
     withLoggedInServiceFunc true loginCredentials

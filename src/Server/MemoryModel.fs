@@ -52,6 +52,34 @@ let projectsAndRolesByUser : Model.ProjectsAndRolesByUser = fun _connString user
     return Array.ofSeq projectsAndRoles
 }
 
+let legacyProjectsAndRolesByUser : Model.LegacyProjectsAndRolesByUser = fun _connString username -> task {
+    let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
+        let maybeRole = proj.membership |> Map.tryFind username
+        match maybeRole with
+        | None -> None
+        | Some role -> Some (proj,role))
+    let legacyProjectDetails =
+        projectsAndRoles
+        |> Seq.map (fun (proj,role) ->
+            let result : Dto.LegacyProjectDetails = {
+                identifier = proj.code
+                name = proj.name
+                repository = "http://public.languagedepot.org"
+                role = role
+                repoClarification = ""
+                isLinked = false  // TODO: We don't use this one, but should send real value anyway
+            }
+            result
+        )
+        |> Array.ofSeq
+    return {
+        hasValidCredentials = true
+        projects = legacyProjectDetails
+        errorMessage = ""
+        error = null
+    }
+}
+
 let projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole = fun _connString username roleType -> task {
     let! projectsAndRoles = projectsAndRolesByUser _connString username
     return (projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleType))
