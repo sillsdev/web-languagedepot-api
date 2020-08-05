@@ -1,47 +1,63 @@
-<mat-toolbar color="primary">
-  <mat-toolbar-row>
-    <button mat-icon-button>
-      <!-- <mat-icon (click)="sidenav.toggle()">menu</mat-icon> -->
-    </button>
-    <h1>LD API</h1>
-    <span class="menu-spacer"></span>
-    <div>
-      <a mat-button [routerLink]="'/users'"> Users </a>
-      <a mat-button [routerLink]="'/create-user'"> Create User </a>
-      <a mat-button [routerLink]="'/projects'"> Projects </a>
-      <a mat-button [routerLink]="'/create-project'"> Create Project </a>
+<div class="app-root">
+  <mat-toolbar class="grid-header" color="primary">
+    <mat-toolbar-row>
+      <button mat-icon-button>
+        <!-- <mat-icon (click)="sidenav.toggle()">menu</mat-icon> -->
+      </button>
+      <h1>LD API</h1>
+      <span class="menu-spacer"></span>
+      <div>
+        <a mat-button [routerLink]="'/users'"> Users </a>
+        <a mat-button [routerLink]="'/create-user'"> Create User </a>
+        <a mat-button [routerLink]="'/projects'"> Projects </a>
+        <a mat-button [routerLink]="'/create-project'"> Create Project </a>
 
+      </div>
+    </mat-toolbar-row>
+  </mat-toolbar>
+  <div class="grid-nav">
+    <ul>
+      <li>One</li>
+      <li>Two</li>
+    </ul>
+  </div>
+  <div class="grid-content">
+    <div class="buttons">
+      <button mat-button (click)="hello()">Hello</button>
+      <button mat-button (click)="fail()">Fail</button>
+      <button mat-button (click)="roles()">Roles</button>
     </div>
-  </mat-toolbar-row>
-</mat-toolbar>
-<app-ldapi-dashboard></app-ldapi-dashboard>
-<div class="toolbar" role="banner">
+
+    <!-- TODO: Make this next div into a component that includes the table and paginator together -->
+    <div class="something-goes-here">
+      <mat-paginator class="left-flex"
+                    [length]="dataSource?.data?.length"
+                    [pageSize]="3"
+                    [pageSizeOptions]="[1,2,3,5,7,10]"
+                    (page)="pageEvent = $event"
+
+      >
+      </mat-paginator>
+      <table mat-table [dataSource]="dataSource">
+        <ng-container matColumnDef="number">
+          <th mat-header-cell *matHeaderCellDef>Number</th>
+          <td mat-cell *matCellDef="let role">{{role.id}}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Role</th>
+          <td mat-cell *matCellDef="let role">{{role.name}}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['number', 'name']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['number', 'name'];"></tr>
+      </table>
+    </div>
+
+    <app-ldapi-dashboard></app-ldapi-dashboard>
+  </div>
+
+
+
+  <router-outlet></router-outlet>
 </div>
-
-<div class="content" role="main">
-  <button mat-button (click)="hello()">Hello</button>
-  <button mat-button (click)="fail()">Fail</button>
-  <button mat-button (click)="roles()">Roles</button>
-</div>
-
-<div class="content" role="main">
-  <mat-paginator class="left-flex"
-                 [length]="numbersData?.length"
-                 [pageSize]="3"
-                 [pageSizeOptions]="[1,2,3,5,7,10]"
-                 (page)="pageEvent = $event"
-
-  >
-  </mat-paginator>
-  <table mat-table [dataSource]="dataSource">
-    <ng-container matColumnDef="number">
-      <th mat-header-cell *matHeaderCellDef>Number</th>
-      <td mat-cell *matCellDef="let element">{{element}}</td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="['number']"></tr>
-    <tr mat-row *matRowDef="let row; columns: ['number'];"></tr>
-  </table>
-</div>
-
-<router-outlet></router-outlet>
