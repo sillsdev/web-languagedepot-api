@@ -89,7 +89,9 @@ let platformTool tool winTool =
 let nodeTool = platformTool "node" "node.exe"
 let npmTool = platformTool "npm" "npm.cmd"
 let npxTool = platformTool "npx" "npx.cmd"
-let ngTool = platformTool "ng" "ng.cmd"
+let ngTool =
+    let basename = if Environment.isUnix then "ng" else "ng.cmd"
+    clientPath </> "node_modules" </> "@angular" </> "cli" </> "bin" </> basename
 // let yarnTool = platformTool "yarn" "yarn.cmd"
 
 let runTool cmd arguments workingDir =
@@ -131,7 +133,7 @@ Target.create "InstallClient" (fun _ ->
     runToolSimple nodeTool "--version" __SOURCE_DIRECTORY__
     printfn "Npm version:"
     runToolSimple npmTool "--version"  __SOURCE_DIRECTORY__
-    runToolSimple npmTool "install" __SOURCE_DIRECTORY__
+    runToolSimple npmTool "install" clientPath
 )
 
 Target.create "SetApiToken" (fun _ ->
