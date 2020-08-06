@@ -16,17 +16,15 @@ export class AppComponent implements OnInit {
   title = 'SafeNg';
 
   pageEvent: PageEvent;
-  dataSource: MatTableDataSource<string[]>;
+  dataSource: MatTableDataSource<IdAndName>;
   @ViewChild(MatPaginator, {static: true}) paginator: MatPaginator;
 
   columnDescription: ColumnDescription;
 
   constructor(private readonly jsonApi: JsonApiService ) {
     this.dataSource = new MatTableDataSource();
-    this.columnDescription = {
-      0: 'Num',
-      1: 'Role'
-    };
+    // this.columnDescription = [ 'Num', 'Role' ];
+    this.columnDescription = { id: 'Num', name: 'Role' };
   }
   ngOnInit(): void {
     this.dataSource.paginator = this.paginator;
@@ -49,6 +47,7 @@ export class AppComponent implements OnInit {
     result
       .pipe(
         retry(3),
+        map(res => res.map(item => { return { id: item[0], name: item[1] } as IdAndName; }) )
         )
       .subscribe(res => { console.log("Got", res); this.dataSource.data = res; });
   }

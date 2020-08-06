@@ -30,10 +30,9 @@ export class DataTableComponent<T> implements OnInit {
   pageSizeOptions: number[];
 
   @Input()
-  columnDescription: ColumnDescription;
+  columns: string[] | ColumnDescription;
 
-  colDescs = new Array<InternalColumnDescription>();
-  columns = new Array<string>();
+  columnKeys: string[];
 
   constructor() { }
 
@@ -44,12 +43,11 @@ export class DataTableComponent<T> implements OnInit {
     // this.pageSizeOptions ??= [5, 10, 20, 50, 100];  // Not available until Typescript 4.0
     this.pageSize = this.pageSize ?? 10;
     this.pageSizeOptions = this.pageSizeOptions ?? [5, 10, 20, 50, 100];
-    // tslint:disable-next-line: forin
-    for (const key in this.columnDescription) {
-      const value = this.columnDescription[key];
-      this.colDescs.push({key, value});
-      this.columns.push(key);
-    }
+    // if (this.columns == null) {
+    //   throw new Error('"columns" attribute is required');
+    // }
+    this.columns = this.columns ?? [];
+    this.columnKeys = Object.keys(this.columns);
   }
 
 }
