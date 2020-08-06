@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild, Input } from '@angular/core';
-import { MatPaginator, PageEvent } from '@angular/material/paginator';
+import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 
 export interface ColumnDescription {
@@ -19,7 +19,6 @@ interface InternalColumnDescription {
 export class DataTableComponent<T> implements OnInit {
   @ViewChild(MatPaginator, {static: true})
   paginator: MatPaginator;
-  pageEvent: PageEvent;
 
   @Input()
   dataSource: MatTableDataSource<T>;
