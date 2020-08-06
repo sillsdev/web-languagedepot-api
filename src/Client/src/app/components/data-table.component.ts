@@ -24,6 +24,12 @@ export class DataTableComponent<T> implements OnInit {
   dataSource: MatTableDataSource<T>;
 
   @Input()
+  pageSize: number;
+
+  @Input()
+  pageSizeOptions: number[];
+
+  @Input()
   columnDescription: ColumnDescription;
 
   colDescs = new Array<InternalColumnDescription>();
@@ -34,6 +40,10 @@ export class DataTableComponent<T> implements OnInit {
   ngOnInit(): void {
     console.log('Initializing DataTable');
     this.dataSource.paginator = this.paginator;
+    // this.pageSize ??= 10;  // Not available until Typescript 4.0
+    // this.pageSizeOptions ??= [5, 10, 20, 50, 100];  // Not available until Typescript 4.0
+    this.pageSize = this.pageSize ?? 10;
+    this.pageSizeOptions = this.pageSizeOptions ?? [5, 10, 20, 50, 100];
     // tslint:disable-next-line: forin
     for (const key in this.columnDescription) {
       const value = this.columnDescription[key];

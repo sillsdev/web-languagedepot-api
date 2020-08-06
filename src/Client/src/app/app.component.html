@@ -28,7 +28,11 @@
       <button mat-button (click)="roles()">Roles</button>
     </div>
 
-    <app-data-table [dataSource]="dataSource" [columnDescription]="columnDescription"></app-data-table>
+    <app-data-table [dataSource]="dataSource"
+                    [columnDescription]="columnDescription"
+                    [pageSize]="3"
+                    [pageSizeOptions]="[1,2,3,5,7,10]"
+    ></app-data-table>
 
     <app-ldapi-dashboard></app-ldapi-dashboard>
   </div>
