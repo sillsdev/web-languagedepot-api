@@ -8,18 +8,20 @@ import { NgModule } from '@angular/core';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { LdapiDashboardComponent } from './ldapi-dashboard/ldapi-dashboard.component';
+import { LdapiDashboardComponent } from './components/ldapi-dashboard.component';
 import { MatGridListModule } from '@angular/material/grid-list';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { LayoutModule } from '@angular/cdk/layout';
+import { DataTableComponent } from './components/data-table.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    LdapiDashboardComponent
+    LdapiDashboardComponent,
+    DataTableComponent
   ],
   imports: [
     BrowserModule,

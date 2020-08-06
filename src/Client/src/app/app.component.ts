@@ -5,6 +5,8 @@ import { retry, map } from 'rxjs/operators';
 import { PageEvent, MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 
+import { ColumnDescription } from './components/data-table.component';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -17,8 +19,14 @@ export class AppComponent implements OnInit {
   dataSource: MatTableDataSource<IdAndName>;
   @ViewChild(MatPaginator, {static: true}) paginator: MatPaginator;
 
+  columnDescription: ColumnDescription;
+
   constructor(private readonly jsonApi: JsonApiService ) {
     this.dataSource = new MatTableDataSource();
+    this.columnDescription = {
+      id: 'Number',
+      name: 'Role'
+    };
   }
   ngOnInit(): void {
     this.dataSource.paginator = this.paginator;
