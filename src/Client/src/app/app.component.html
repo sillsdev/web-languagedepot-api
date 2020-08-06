@@ -23,18 +23,43 @@
   </div>
   <div class="grid-content">
     <div class="buttons">
-      <button mat-button (click)="hello()">Hello</button>
-      <button mat-button (click)="fail()">Fail</button>
+      <button mat-button (click)="users()">Users</button>
+      <button mat-button (click)="projects()">Projects</button>
       <button mat-button (click)="roles()">Roles</button>
     </div>
 
-    <app-data-table [dataSource]="dataSource"
-                    [columns]="columnDescription"
-                    [pageSize]="3"
-                    [pageSizeOptions]="[1,2,3,5,7,10]"
-    ></app-data-table>
+    <ng-container [ngSwitch]="active">
+      <app-data-table *ngSwitchCase="'Users'"
+                      [dataSource]="dataSource"
+                      [columns]="{
+                        firstName: 'First Name',
+                        lastName: 'Last Name',
+                        email: 'Email',
+                        username: 'Username',
+                        language: 'Lang Tag'
+                      }"
+                      [pageSize]="3"
+                      [pageSizeOptions]="[1,2,3,5,7,10]"
+      ></app-data-table>
 
-    <app-ldapi-dashboard></app-ldapi-dashboard>
+      <app-data-table *ngSwitchCase="'Projects'"
+                      [dataSource]="dataSource"
+                      [columns]="{
+                        code: 'Project Code',
+                        description: 'Description',
+                        name: 'Project Name'
+                      }"
+                      [pageSize]="3"
+                      [pageSizeOptions]="[1,2,3,5,7,10]"
+      ></app-data-table>
+
+      <app-data-table *ngSwitchCase="'Roles'"
+                      [dataSource]="dataSource"
+                      [columns]="['Num','Role']"
+                      [pageSize]="3"
+                      [pageSizeOptions]="[1,2,3,5,7,10]"
+      ></app-data-table>
+    </ng-container>
   </div>
 
 
