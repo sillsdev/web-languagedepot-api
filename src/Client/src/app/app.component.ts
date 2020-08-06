@@ -16,7 +16,7 @@ export class AppComponent implements OnInit {
   title = 'SafeNg';
 
   pageEvent: PageEvent;
-  dataSource: MatTableDataSource<IdAndName>;
+  dataSource: MatTableDataSource<string[]>;
   @ViewChild(MatPaginator, {static: true}) paginator: MatPaginator;
 
   columnDescription: ColumnDescription;
@@ -24,8 +24,8 @@ export class AppComponent implements OnInit {
   constructor(private readonly jsonApi: JsonApiService ) {
     this.dataSource = new MatTableDataSource();
     this.columnDescription = {
-      id: 'Number',
-      name: 'Role'
+      0: 'Num',
+      1: 'Role'
     };
   }
   ngOnInit(): void {
@@ -45,11 +45,10 @@ export class AppComponent implements OnInit {
     });
   }
   roles(): void {
-    const result = this.jsonApi.call<string[]>('/api/roles');
+    const result = this.jsonApi.call<string[][]>('/api/roles');
     result
       .pipe(
         retry(3),
-        map(res => res.map(item => { return { id: item[0], name: item[1] } as IdAndName; }) )
         )
       .subscribe(res => { console.log("Got", res); this.dataSource.data = res; });
   }
