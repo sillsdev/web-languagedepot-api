@@ -28,9 +28,15 @@
               "src/assets"
             ],
             "styles": [
+              // TODO: Remove this once we've gotten rid of all @angular/material components
               "./node_modules/@angular/material/prebuilt-themes/deeppurple-amber.css",
               "src/styles.scss"
             ],
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "node_modules/"
+              ]
+            },
             "scripts": []
           },
           "configurations": {

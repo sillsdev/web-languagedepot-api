@@ -1,1 +1,22 @@
-/* You can add global styles to this file, and also import other style files */
+// https://trimox.github.io/angular-mdc-web/#/angular-mdc-web/getting-started
+@use './styles/body';
+
+@use '@material/theme' with (
+  $primary: #6200ee,
+  $secondary: #faab1a,
+  $background: #fff,
+);
+
+// MDC Typography
+@use '@material/typography/mdc-typography';
+
+// MDC Button
+@use './styles/button';
+
+// MDC Data Table
+@use '@material/data-table/mdc-data-table';
+// TODO: Investigate why "@use '@material/data-table' isn't working"
+@use '@material/data-table/_index';
+
+// Angular MDC
+@use '@angular-mdc/theme/material';

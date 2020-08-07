@@ -1,14 +1,10 @@
-import { Component, OnInit, ViewChild, Input } from '@angular/core';
+import { Component, OnInit, ViewChild, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
+import { Observable } from 'rxjs';
 
 export interface ColumnDescription {
   [key: string]: string;
-}
-
-interface InternalColumnDescription {
-  key: string;
-  value: string;
 }
 
 @Component({
@@ -16,12 +12,14 @@ interface InternalColumnDescription {
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.scss']
 })
-export class DataTableComponent<T> implements OnInit {
+export class DataTableComponent<T> implements OnInit, OnChanges {
   @ViewChild(MatPaginator, {static: true})
   paginator: MatPaginator;
 
   @Input()
   dataSource: MatTableDataSource<T>;
+
+  data: Observable<T[]>;
 
   @Input()
   pageSize: number;
@@ -30,24 +28,31 @@ export class DataTableComponent<T> implements OnInit {
   pageSizeOptions: number[];
 
   @Input()
-  columns: string[] | ColumnDescription;
+  columns: ColumnDescription;
 
-  columnKeys: string[];
+  columnKeys: string[] = [];
+  columnNames: string[] = [];
 
   constructor() { }
 
   ngOnInit(): void {
-    console.log('Initializing DataTable');
     this.dataSource.paginator = this.paginator;
-    // this.pageSize ??= 10;  // Not available until Typescript 4.0
-    // this.pageSizeOptions ??= [5, 10, 20, 50, 100];  // Not available until Typescript 4.0
+    this.data = this.dataSource.connect();
+    // this.pageSize ??= 10;  // Not available until Typescript 4.0, ditto for pageSizeOptions and columns
     this.pageSize = this.pageSize ?? 10;
     this.pageSizeOptions = this.pageSizeOptions ?? [5, 10, 20, 50, 100];
-    // if (this.columns == null) {
-    //   throw new Error('"columns" attribute is required');
-    // }
-    this.columns = this.columns ?? [];
-    this.columnKeys = Object.keys(this.columns);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes.columns) {
+      this.columnKeys = Object.keys(this.columns ?? {});
+      this.columnNames = Object.values(this.columns ?? {});
+    }
+    if (changes.dataSource) {
+      changes.dataSource.previousValue?.disconnect();
+      this.dataSource.paginator = this.paginator;
+      this.data = this.dataSource.connect();
+    }
   }
 
 }

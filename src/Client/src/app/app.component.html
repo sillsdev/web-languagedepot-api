@@ -28,38 +28,11 @@
       <button mat-button (click)="roles()">Roles</button>
     </div>
 
-    <ng-container [ngSwitch]="active">
-      <app-data-table *ngSwitchCase="'Users'"
-                      [dataSource]="dataSource"
-                      [columns]="{
-                        firstName: 'First Name',
-                        lastName: 'Last Name',
-                        email: 'Email',
-                        username: 'Username',
-                        language: 'Lang Tag'
-                      }"
-                      [pageSize]="3"
-                      [pageSizeOptions]="[1,2,3,5,7,10]"
-      ></app-data-table>
-
-      <app-data-table *ngSwitchCase="'Projects'"
-                      [dataSource]="dataSource"
-                      [columns]="{
-                        code: 'Project Code',
-                        description: 'Description',
-                        name: 'Project Name'
-                      }"
-                      [pageSize]="3"
-                      [pageSizeOptions]="[1,2,3,5,7,10]"
-      ></app-data-table>
-
-      <app-data-table *ngSwitchCase="'Roles'"
-                      [dataSource]="dataSource"
-                      [columns]="['Num','Role']"
-                      [pageSize]="3"
-                      [pageSizeOptions]="[1,2,3,5,7,10]"
-      ></app-data-table>
-    </ng-container>
+    <app-data-table [dataSource]="dataSource"
+                    [columns]="columns"
+                    [pageSize]="3"
+                    [pageSizeOptions]="[1,2,3,5,7,10]"
+    ></app-data-table>
   </div>
 
 

@@ -9,13 +9,18 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LdapiDashboardComponent } from './components/ldapi-dashboard.component';
+import { LayoutModule } from '@angular/cdk/layout';
+import { DataTableComponent } from './components/data-table.component';
+
+// Angular MDC (use this for future dev work)
+import { MDCDataTableModule } from '@angular-mdc/web/data-table';
+
+// Angular Material (phase this out unless MDC doesn't have something we need)
 import { MatGridListModule } from '@angular/material/grid-list';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { LayoutModule } from '@angular/cdk/layout';
-import { DataTableComponent } from './components/data-table.component';
 
 @NgModule({
   declarations: [
@@ -36,6 +41,7 @@ import { DataTableComponent } from './components/data-table.component';
     MatMenuModule,
     MatIconModule,
     MatToolbarModule,
+    MDCDataTableModule,
     LayoutModule
   ],
   providers: [],

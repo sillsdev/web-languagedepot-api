@@ -1,11 +1,9 @@
 import { Component, ViewChild, OnInit } from '@angular/core';
-import { IdAndName } from './models/id-and-name.model';
 import { JsonApiService } from './services/json-api.service';
 import { retry, map } from 'rxjs/operators';
 import { PageEvent, MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 
-import { ColumnDescription } from './components/data-table.component';
 import { Observable } from 'rxjs';
 
 type Table = 'Users' | 'Projects' | 'Roles';
@@ -24,6 +22,8 @@ export class AppComponent implements OnInit {
 
   active: Table = 'Roles';
 
+  columns: any;
+
   constructor(private readonly jsonApi: JsonApiService ) {
     this.dataSource = new MatTableDataSource();
   }
@@ -41,14 +41,27 @@ export class AppComponent implements OnInit {
 
   users(): void {
     const result = this.jsonApi.call<object[]>('/api/users');
+    this.columns = {
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      email: 'Email',
+      username: 'Username',
+      language: 'Lang Tag'
+    };
     this.populateData(result, 'Users');
   }
   projects(): void {
     const result = this.jsonApi.call<object[]>('/api/project');
+    this.columns = {
+      code: 'Project Code',
+      description: 'Description',
+      name: 'Project Name'
+    };
     this.populateData(result, 'Projects');
   }
   roles(): void {
     const result = this.jsonApi.call<string[][]>('/api/roles');
+    this.columns = ['Num', 'Role'];
     this.populateData(result, 'Roles');
   }
 }
