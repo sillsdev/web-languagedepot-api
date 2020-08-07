@@ -1,0 +1,12 @@
+<h2>Single-user view</h2>
+<div>
+  Username: {{(user | async)?.username}} <br/>
+  <!-- Note that if we do .username instead of ?.username, we get a TypeError because (user | async)
+       is null at one point before it gets filled in by the returned value from the API call. -->
+  Name: {{(user | async)?.firstName}} {{(user | async)?.lastName}} <br/>
+  Email: {{(user | async)?.email}}
+  <!-- Note that this is the wrong approach, since it fires off a new HTTP API request every time
+       I do (user | async) in a different location. I need to make `user` a Subject, or else have
+       a subscription to the users.getUser() result that puts its result into `this.user`. Then I
+       can get rid of these asyncs and I'll only subscribe to the Observable once. -->
+</div>

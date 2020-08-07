@@ -21,12 +21,22 @@ import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { SingleUserComponent } from './single-user/single-user.component';
+import { UsersComponent } from './users/users.component';
+import { SingleProjectComponent } from './single-project/single-project.component';
+import { ProjectsComponent } from './projects/projects.component';
+import { JsonApiService } from './services/json-api.service';
+import { UsersService } from './services/users.service';
 
 @NgModule({
   declarations: [
     AppComponent,
     LdapiDashboardComponent,
-    DataTableComponent
+    DataTableComponent,
+    SingleUserComponent,
+    UsersComponent,
+    SingleProjectComponent,
+    ProjectsComponent
   ],
   imports: [
     BrowserModule,
