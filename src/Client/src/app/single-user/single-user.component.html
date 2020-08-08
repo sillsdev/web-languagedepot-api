@@ -5,8 +5,10 @@
        is null at one point before it gets filled in by the returned value from the API call. -->
   Name: {{(user | async)?.firstName}} {{(user | async)?.lastName}} <br/>
   Email: {{(user | async)?.email}}
-  <!-- Note that this is the wrong approach, since it fires off a new HTTP API request every time
-       I do (user | async) in a different location. I need to make `user` a Subject, or else have
-       a subscription to the users.getUser() result that puts its result into `this.user`. Then I
-       can get rid of these asyncs and I'll only subscribe to the Observable once. -->
+  <!-- Note that this is the wrong approach when this.user is an Observable<User>, since it fires
+       off a new HTTP API request every time we do (user | async) in a different location. But now
+       that this.user is a Subject, this works and only fires off an API request once. Or else we
+       could use the approach from single-project.component.ts, where we have a subscription to the
+       projects.getProject() result that puts its result into `this.project`. There these asyncs
+       are not necessary, and we still only subscribe to the Observable once. -->
 </div>

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { UsersService } from '../services/users.service';
-import { Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
 
 @Component({
@@ -11,15 +11,15 @@ import { map, switchMap, tap } from 'rxjs/operators';
   styleUrls: ['./single-user.component.scss']
 })
 export class SingleUserComponent implements OnInit {
-  user: Observable<User>;
+  user = new BehaviorSubject<User>(null);
 
   constructor(private route: ActivatedRoute, private users: UsersService) { }
 
   ngOnInit(): void {
-    this.user = this.route.paramMap.pipe(
+    this.route.paramMap.pipe(
       map(params => params.get('id')),
       // switchMap(this.users.getUser),  // WRONG! "this.jsonApi is undefined" because "this" is a SwitchMapSubscriber instance
       switchMap(username => this.users.getUser(username)),  // RIGHT! This makes "this" be a UsersService instance
-    );
+    ).subscribe(user => this.user.next(user), error => this.user.error(error), () => this.user.complete());
   }
 }
