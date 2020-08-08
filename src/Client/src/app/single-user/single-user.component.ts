@@ -20,6 +20,6 @@ export class SingleUserComponent implements OnInit {
       map(params => params.get('id')),
       // switchMap(this.users.getUser),  // WRONG! "this.jsonApi is undefined" because "this" is a SwitchMapSubscriber instance
       switchMap(username => this.users.getUser(username)),  // RIGHT! This makes "this" be a UsersService instance
-    ).subscribe(user => this.user.next(user), error => this.user.error(error), () => this.user.complete());
+    ).subscribe(this.user);
   }
 }
