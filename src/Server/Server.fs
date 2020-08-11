@@ -6,6 +6,9 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Authentication.JwtBearer
+open System.Security.Claims
 open Microsoft.Extensions.Hosting
 open FSharp.Control.Tasks.V2
 open Giraffe
@@ -14,9 +17,16 @@ open Saturn
 open Shared
 open Shared.Settings
 open Thoth.Json.Net
+open Microsoft.IdentityModel.Tokens
 
 // let [<Literal>] SecretApiToken = "not-a-secret"
 // let [<Literal>] BearerToken = "Bearer " + SecretApiToken
+
+// TODO: Create an API endpoint that looks this up in the database
+let adminEmails = [
+    "robin_munn@sil.org"
+    // "robin.munn@gmail.com"
+]
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -36,9 +46,25 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
+let isAdmin emailAddress =
+    // TODO: Turn this into an API call
+    adminEmails |> List.contains emailAddress
+
+let requireAdmin : HttpHandler =
+    authorizeUser
+        (fun principal ->
+            match principal.FindFirst ClaimTypes.Email with
+            | null -> false
+            | claim -> isAdmin claim.Value
+        )
+        (setStatusCode 403 >=> Controller.jsonError "Unauthorized")
+        // TODO: Decide whether to return a more detailed explanation for unauthorized API requests
+        // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
+
 let webApp = router {
     // pipe_through (requireHeader "Authorization" BearerToken)
     // TODO: That returns a 404 NOT FOUND when no bearer token. I want it to return 403 UNAUTHORIZED instead.
+    pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     get "/api/project/private" Controller.getAllPrivateProjects
     getf "/api/project/private/%s" Controller.getPrivateProject
     get "/api/project" Controller.getAllPublicProjects
@@ -91,6 +117,16 @@ let hostConfig (builder : IWebHostBuilder) =
         .ConfigureAppConfiguration(setupAppConfig)
         .ConfigureServices(registerMySqlServices)
 
+let jwtConfig (options : JwtBearerOptions) =
+    let tvp =
+        TokenValidationParameters(
+            ValidateActor = true
+        )
+    options.Audience <- "https://admin.languagedepot.org"
+    options.Authority <- "https://dev-rmunn-ldapi.us.auth0.com"  // TODO: Move into config file
+    options.RequireHttpsMetadata <- false  // FIXME: ONLY do this during development!
+    options.TokenValidationParameters <- tvp
+
 let extraJsonCoders =
     Extra.empty
     |> Extra.withInt64
@@ -105,6 +141,7 @@ let app = application {
     use_gzip
     webhost_config hostConfig
     use_config buildConfig // TODO: Get rid of this
+    use_jwt_authentication_with_config jwtConfig
 }
 
 run app

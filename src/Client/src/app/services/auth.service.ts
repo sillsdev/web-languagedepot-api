@@ -1,6 +1,6 @@
 import { environment } from '../../environments/environment';
 import { Injectable } from '@angular/core';
-import createAuth0Client, { Auth0Client } from '@auth0/auth0-spa-js';
+import createAuth0Client, { Auth0Client, GetTokenSilentlyOptions, GetUserOptions } from '@auth0/auth0-spa-js';
 import { Observable, of, from, throwError, BehaviorSubject, combineLatest } from 'rxjs';
 import { shareReplay, catchError, concatMap, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
@@ -42,6 +42,12 @@ export class AuthService {
     concatMap((client: Auth0Client) => from(client.handleRedirectCallback()))
   );
 
+  getTokenSilently$(options?: GetTokenSilentlyOptions): Observable<string> {
+    return this.auth0$.pipe(
+      concatMap((client: Auth0Client) => from(client.getTokenSilently(options)))
+    );
+  }
+
   constructor(private router: Router, private location: LocationService) {
     // On initial load, check authentication state with authorization server
     // Set up local auth streams if user is already authenticated
@@ -52,7 +58,7 @@ export class AuthService {
 
   // When calling, options can be passed if desired
   // https://auth0.github.io/auth0-spa-js/classes/auth0client.html#getuser
-  getUser$(options?): Observable<any> {
+  getUser$(options?: GetUserOptions): Observable<any> {
     return this.auth0$.pipe(
       concatMap((client: Auth0Client) => from(client.getUser(options))),
       tap(user => this.userProfileSubject$.next(user)),

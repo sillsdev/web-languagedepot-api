@@ -5,6 +5,8 @@ import { SingleUserComponent } from './single-user/single-user.component';
 import { ProjectsComponent } from './projects/projects.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
 import { AdminGuard } from './admin.guard';
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { TokenInterceptor } from './token.interceptor';
 
 const routes: Routes = [
   { path: 'admin',
@@ -20,6 +22,7 @@ const routes: Routes = [
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
+  providers: [{ provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true }]
 })
 export class AppRoutingModule { }
