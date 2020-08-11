@@ -46,20 +46,23 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-let isAdmin emailAddress =
-    // TODO: Turn this into an API call
-    adminEmails |> List.contains emailAddress
+let isAdmin emailAddress = task {
+    // Simulated API call, so it's a Task<bool> rather than a simple bool
+    return adminEmails |> List.contains emailAddress
+}
 
-let requireAdmin : HttpHandler =
-    authorizeUser
-        (fun principal ->
-            match principal.FindFirst ClaimTypes.Email with
-            | null -> false
-            | claim -> isAdmin claim.Value
-        )
-        (setStatusCode 403 >=> Controller.jsonError "Unauthorized")
+let requireAdmin : HttpHandler = fun next ctx -> task {
+    let! isAdmin =
+        match ctx.User.FindFirst ClaimTypes.Email with
+        | null -> task { return false }
+        | claim -> isAdmin claim.Value
+    if isAdmin then
+        return! next ctx
+    else
+        return! (setStatusCode 403 >=> Controller.jsonError "Unauthorized") next ctx
         // TODO: Decide whether to return a more detailed explanation for unauthorized API requests
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
+}
 
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
