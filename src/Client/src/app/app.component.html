@@ -27,6 +27,9 @@
       <button mat-button (click)="projects()">Projects</button>
       <button mat-button (click)="roles()">Roles</button>
     </div>
+    <div class="login-buttons">
+      Login here: <app-login></app-login>
+    </div>
 
     <app-data-table [dataSource]="dataSource"
                     [columns]="columns"
@@ -34,6 +37,6 @@
                     [pageSizeOptions]="[1,2,3,5,7,10]"
     ></app-data-table>
 
-    <router-outlet></router-outlet>
+    <!-- <router-outlet></router-outlet> -->
   </div>
 </div>

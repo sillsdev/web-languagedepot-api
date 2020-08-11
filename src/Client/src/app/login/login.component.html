@@ -1,0 +1,9 @@
+<div id="loginDiv">
+  You are now logged <ng-container *ngIf="loggedIn$ | async; else loggedOut">IN.
+  <button mat-button (click)="logout()">Logout</button></ng-container><ng-template #loggedOut>OUT.
+  <button mat-button (click)="login()">Login</button></ng-template>
+  <div *ngIf="userProfile$ | async as profile">
+    <!-- <code>{{ profile | json }}</code> -->
+    <img [src]="profile.picture" height="96" width="96" /> {{profile.name}} &lt;{{profile.email}}&gt;
+  </div>
+</div>

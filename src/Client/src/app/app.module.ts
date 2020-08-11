@@ -25,8 +25,7 @@ import { SingleUserComponent } from './single-user/single-user.component';
 import { UsersComponent } from './users/users.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
 import { ProjectsComponent } from './projects/projects.component';
-import { JsonApiService } from './services/json-api.service';
-import { UsersService } from './services/users.service';
+import { LoginComponent } from './login/login.component';
 
 @NgModule({
   declarations: [
@@ -36,7 +35,8 @@ import { UsersService } from './services/users.service';
     SingleUserComponent,
     UsersComponent,
     SingleProjectComponent,
-    ProjectsComponent
+    ProjectsComponent,
+    LoginComponent
   ],
   imports: [
     BrowserModule,
