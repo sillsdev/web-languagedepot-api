@@ -61,9 +61,7 @@ let requireAdmin : HttpHandler =
         // TODO: Decide whether to return a more detailed explanation for unauthorized API requests
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
 
-let webApp = router {
-    // pipe_through (requireHeader "Authorization" BearerToken)
-    // TODO: That returns a 404 NOT FOUND when no bearer token. I want it to return 403 UNAUTHORIZED instead.
+let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     get "/api/project/private" Controller.getAllPrivateProjects
     getf "/api/project/private/%s" Controller.getPrivateProject
@@ -82,15 +80,12 @@ let webApp = router {
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
-    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
     postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
     deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
     putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
@@ -101,8 +96,16 @@ let webApp = router {
     get "/api/count/non-test-projects" Controller.countRealProjects
     deletef "/api/project/%s" Controller.archiveProject
     deletef "/api/project/private/%s" Controller.archivePrivateProject
+}
+
+let publicWebApp = router {
+    // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
+    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
+    get "/api/roles" Controller.getAllRoles
     // Rejected API: POST /api/project/{projId}/add-user/{username}
 }
+
+let webApp = choose [ publicWebApp; securedApp ]
 
 let setupAppConfig (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
     configBuilder.AddIniFile("/etc/ldapi-server/ldapi-server.ini", optional=true, reloadOnChange=false) |> ignore
