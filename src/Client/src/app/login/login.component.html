@@ -1,9 +1,28 @@
 <div id="loginDiv">
-  You are now logged <ng-container *ngIf="loggedIn$ | async; else loggedOut">IN.
-  <button mat-button (click)="logout()">Logout</button></ng-container><ng-template #loggedOut>OUT.
-  <button mat-button (click)="login()">Login</button></ng-template>
-  <div *ngIf="userProfile$ | async as profile">
-    <!-- <code>{{ profile | json }}</code> -->
-    <img [src]="profile.picture" height="96" width="96" /> {{profile.name}} &lt;{{profile.email}}&gt;
+  <div *ngIf="userProfile$ | async as profile; else loginBtn">
+    <div #loginMenu mdcMenuSurfaceAnchor>
+      <a (click)="toggleMenu()">
+        <img [src]="profile.picture" height="32" width="32" /><mdc-icon>{{menuIcon}}</mdc-icon>
+      </a>
+      <mdc-menu [anchorElement]="loginMenu"
+                [anchorCorner]="bottomStart"
+                [anchorMargin]="{top: 32}"
+                [open]="menuOpen">  <!-- TODO: Why is the anchorMargin necessary here? -->
+        <mdc-list>
+          <mdc-list-item>
+            {{profile.name}}
+          </mdc-list-item>
+          <mdc-list-item>
+            {{profile.email}}
+          </mdc-list-item>
+          <mdc-list-item>
+            <button mat-button (click)="logout()">Logout</button>
+          </mdc-list-item>
+        </mdc-list>
+      </mdc-menu>
+    </div>
   </div>
+  <ng-template #loginBtn>
+    <button mat-button (click)="login()">Login</button>
+  </ng-template>
 </div>

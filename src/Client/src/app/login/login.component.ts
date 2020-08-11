@@ -8,10 +8,10 @@ import { tap } from 'rxjs/operators';
   styleUrls: ['./login.component.scss']
 })
 export class LoginComponent implements OnInit {
-  // userProfile$ = this.auth.userProfile$;
-  // loggedIn$ = this.auth.loggedIn$;
-  userProfile$ = this.auth.userProfile$.pipe(tap(res => { console.log('user profile pipe got', res); }));
-  loggedIn$ = this.auth.loggedIn$.pipe(tap(res => { console.log('login service pipe got', res); }));
+  userProfile$ = this.auth.userProfile$;
+  loggedIn$ = this.auth.loggedIn$;
+
+  menuOpen = false;
 
   constructor(readonly auth: AuthService) { }
 
@@ -26,6 +26,22 @@ export class LoginComponent implements OnInit {
 
   logout(): void {
     this.auth.logout();
+  }
+
+  toggleMenu(): void {
+    this.menuOpen = !this.menuOpen;
+  }
+
+  openMenu(): void {
+    this.menuOpen = true;
+  }
+
+  closeMenu(): void {
+    this.menuOpen = false;
+  }
+
+  get menuIcon(): string {
+    return this.menuOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down';
   }
 
 }

@@ -15,7 +15,6 @@ const routes: Routes = [
       { path: 'projects/:id', component: SingleProjectComponent },
     ]
   },
-  { path: '', component: AppComponent }
 ];
 
 @NgModule({

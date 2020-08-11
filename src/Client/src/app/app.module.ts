@@ -14,6 +14,9 @@ import { DataTableComponent } from './components/data-table.component';
 
 // Angular MDC (use this for future dev work)
 import { MDCDataTableModule } from '@angular-mdc/web/data-table';
+import { MdcIconModule } from '@angular-mdc/web/icon';
+import { MdcMenuModule } from '@angular-mdc/web/menu';
+import { MdcTopAppBarModule } from '@angular-mdc/web/top-app-bar';
 
 // Angular Material (phase this out unless MDC doesn't have something we need)
 import { MatGridListModule } from '@angular/material/grid-list';
@@ -52,6 +55,9 @@ import { LoginComponent } from './login/login.component';
     MatIconModule,
     MatToolbarModule,
     MDCDataTableModule,
+    MdcMenuModule,
+    MdcIconModule,
+    MdcTopAppBarModule,
     LayoutModule
   ],
   providers: [],
