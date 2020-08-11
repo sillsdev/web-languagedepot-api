@@ -4,7 +4,7 @@ import { UsersComponent } from './users/users.component';
 import { SingleUserComponent } from './single-user/single-user.component';
 import { ProjectsComponent } from './projects/projects.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
-import { AppComponent } from './app.component';
+import { AdminGuard } from './admin.guard';
 
 const routes: Routes = [
   { path: 'admin',
@@ -13,7 +13,8 @@ const routes: Routes = [
       { path: 'users/:id', component: SingleUserComponent },
       { path: 'projects', component: ProjectsComponent },
       { path: 'projects/:id', component: SingleProjectComponent },
-    ]
+    ],
+    canActivate: [AdminGuard],
   },
 ];
 
