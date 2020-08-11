@@ -46,16 +46,11 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-let isAdmin emailAddress = task {
-    // Simulated API call, so it's a Task<bool> rather than a simple bool
-    return adminEmails |> List.contains emailAddress
-}
-
 let requireAdmin : HttpHandler = fun next ctx -> task {
     let! isAdmin =
         match ctx.User.FindFirst ClaimTypes.Email with
         | null -> task { return false }
-        | claim -> isAdmin claim.Value
+        | claim -> Controller.emailIsAdmin ctx claim.Value
     if isAdmin then
         return! next ctx
     else

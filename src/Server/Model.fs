@@ -38,6 +38,8 @@ type AddMembership = AddMembership of (string -> string -> string -> string -> T
 type RemoveMembership = RemoveMembership of (string -> string -> string -> Task<bool>)
 type ArchiveProject = string -> string -> Task<bool>
 
+type EmailIsAdmin = EmailIsAdmin of (string -> string -> Task<bool>)
+
 open FSharp.Control.Tasks.V2
 
 let getSqlResult (convertRow : MySqlDataReader -> 'result) (reader : MySqlDataReader) = task {
@@ -649,6 +651,15 @@ let archiveProject (connString : string) (projectCode : string) =
             return false
     }
 
+let emailIsAdmin (connString : string) email =
+    task {
+        let sql = "SELECT COUNT(u.login) FROM email_addresses AS e JOIN users AS u ON e.user_id = u.id WHERE u.admin=1 AND e.address = @email"
+        let setParams (cmd : MySqlCommand) =
+            cmd.Parameters.AddWithValue("email", email) |> ignore
+        let! count = doCountQueryWithParams connString sql setParams
+        return (count > 0L)
+    }
+
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
     open Microsoft.Extensions.DependencyInjection.Extensions
@@ -708,4 +719,6 @@ module ModelRegistration =
             .AddSingleton<RemoveMembership>(RemoveMembership removeMembership)
             .RemoveAll<ArchiveProject>()
             .AddSingleton<ArchiveProject>(archiveProject)
+            .RemoveAll<EmailIsAdmin>()
+            .AddSingleton<EmailIsAdmin>(EmailIsAdmin (emailIsAdmin))
         |> ignore
