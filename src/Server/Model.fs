@@ -5,7 +5,7 @@ open System.Linq
 open System.Threading.Tasks
 open System.Collections.Generic
 open Shared
-open MySql.Data.MySqlClient
+open MySqlConnector
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 

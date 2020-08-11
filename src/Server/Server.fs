@@ -103,7 +103,7 @@ let app = application {
     error_handler errorHandler
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
     use_gzip
-    host_config hostConfig
+    webhost_config hostConfig
     use_config buildConfig // TODO: Get rid of this
 }
 
