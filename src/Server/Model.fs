@@ -83,46 +83,51 @@ let convertUserRow (reader : MySqlDataReader) =
 
 let baseUsersQuery = "SELECT login, firstname, lastname, language, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id"
 
-// TODO: Extract an abstract base class (or an interface) with the various queries we need
+type IModel =
+    abstract listUsers : int option -> int option -> Task<Dto.UserDetails []>
+    abstract listProjects : unit -> Task<Dto.ProjectList>
+    abstract listRoles : unit -> Task<(int * string)[]>
+    abstract listProjectsAndRoles : unit -> Task<Dto.ProjectDetails []>
+
+    abstract searchUsersExact : string -> Task<Dto.UserList>
+    abstract searchUsersLoose : string -> Task<Dto.UserList>
+
+    abstract getUser : string -> Task<Dto.UserDetails option>
+    abstract getProject : string -> Task<Dto.ProjectDetails option>
+    abstract getProjectWithRoles : string -> Task<Dto.ProjectDetails option>
+
+    abstract countUsers : unit -> Task<int64>
+    abstract countProjects : unit -> Task<int64>
+    abstract countRealProjects : unit -> Task<int64>
+
+    abstract userExists : string -> Task<bool>
+    abstract projectExists : string -> Task<bool>
+
+    abstract createProject : Api.CreateProject -> Task<int>
+    abstract createUser : Api.CreateUser -> Task<int>
+
+    abstract upsertUser : string -> Api.CreateUser -> Task<int>
+    abstract changePassword : string -> Api.ChangePassword -> Task<bool>
+    abstract updateUser : string -> Api.CreateUser -> Task<int>
+
+    abstract addMembership : string -> string -> string -> Task<bool>
+    abstract removeMembership : string -> string -> Task<bool>
+
+    abstract projectsByUser : string -> Task<Dto.ProjectDetails []>
+    abstract projectsByUserRole : string -> string -> Task<Dto.ProjectDetails []>
+    abstract projectsAndRolesByUser : string -> Task<(Dto.ProjectDetails * string) []>
+    abstract projectsAndRolesByUserRole : string -> string -> Task<(Dto.ProjectDetails * string) []>
+    abstract legacyProjectsAndRolesByUser : string -> Task<Dto.LegacyProjectDetails[]>
+
+    abstract isAdmin : string -> Task<bool>
+    abstract emailIsAdmin : string -> Task<bool>
+    abstract verifyLoginInfo : Api.LoginCredentials -> Task<bool>
+    abstract archiveProject : string -> Task<bool>
+
+
 type MySqlModel(config : IConfiguration, isPublic : bool) =
     let settings = SettingsHelper.getSettingsValue<Settings.MySqlSettings> config
     let connString = if isPublic then settings.ConnString else settings.ConnStringPrivate
-
-    member this.listUsers (limit : int option) (offset : int option) =
-        task {
-            let sql = baseUsersQuery
-            let withLimit = match limit with | None -> "" | Some n -> sprintf " LIMIT %d" n
-            let withOffset = match offset with | None -> "" | Some n -> sprintf " OFFSET %d" n
-            let! result = fetchData connString (sql + withLimit + withOffset) convertUserRow
-            return result
-        }
-
-    member this.getUser username =
-        task {
-            let sql = baseUsersQuery + " WHERE login = @username"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("username", username) |> ignore
-            let! result = fetchDataWithParams connString sql setParams convertUserRow
-            return result |> Array.tryHead
-        }
-
-    member this.searchUsersLoose (searchTerm : string) =
-        task {
-            let sql = baseUsersQuery + " WHERE login LIKE @searchTerm OR firstname LIKE @searchTerm OR lastname LIKE @searchTerm OR address LIKE @searchTerm"
-            let escapedSearchTerm = "%" + searchTerm.Replace(@"\", @"\\").Replace("%", @"\%") + "%"
-            // TODO: Test whether that works, or whether we need to write something like "LIKE %@searchTerm%" instead
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("searchTerm", escapedSearchTerm) |> ignore
-            let! result = fetchDataWithParams connString sql setParams convertUserRow
-            return result
-        }
-
-    member this.searchUsersExact (searchTerm : string) =
-        task {
-            let sql = baseUsersQuery + " WHERE login = @searchTerm OR firstname = @searchTerm OR lastname = @searchTerm OR address = @searchTerm"
-            let! result = fetchDataWithParams connString sql (fun cmd -> cmd.Parameters.AddWithValue("searchTerm", searchTerm) |> ignore) convertUserRow
-            return result
-        }
 
     member this.decode (s : string) =
         match Thoth.Json.Net.Decode.Auto.fromString s with
@@ -150,113 +155,6 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
         " JOIN users on members.user_id = users.id"
     // MySQL wants WHERE clause before GROUP BY clause, so we add GROUP BY as a separate step
     member this.projectsWithMembersGroupByClause = " GROUP BY projects.identifier"
-
-    member this.projectsQueryAsync() =
-        task {
-            let sql = this.baseProjectQuery
-            let setParams (cmd : MySqlCommand) =
-                ()
-            let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
-            return result
-        }
-
-    member this.projectsAndRolesQueryAsync() =
-        task {
-            let sql = this.projectWithMembersBaseQuery + this.projectsWithMembersGroupByClause
-            let! result = fetchData connString sql this.convertProjectRow
-            return result
-        }
-
-    member this.projectsCountAsync() =
-        task {
-            let sql = "SELECT COUNT(*) FROM projects"
-            return! doCountQuery connString sql
-        }
-
-    member this.realProjectsCountAsync() =
-        task {
-            let sql = this.baseProjectQuery
-            let! result = fetchData connString sql this.convertProjectRow
-            return
-                result
-                |> Seq.map (fun project -> project, GuessProjectType.guessType project.code project.name project.description)
-                |> Seq.filter (fun (project, projectType) -> projectType <> Test && not (project.code.StartsWith "test"))
-                |> Seq.length
-                |> int64
-        }
-
-    member this.usersCountAsync() =
-        task {
-            let sql = "SELECT COUNT(*) FROM users"
-            return! doCountQuery connString sql
-        }
-
-    // TODO: Implement userExists, then use it later on below in upsertUser
-
-    member this.userExists username =
-        task {
-            let sql = "SELECT COUNT(*) FROM users WHERE login = @username"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("username", username) |> ignore
-            let! count = doCountQueryWithParams connString sql setParams
-            return (count > 0L)
-        }
-
-    member this.projectExists projectCode =
-        task {
-            let sql = "SELECT COUNT(*) FROM projects WHERE identifier = @projectCode"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            let! count = doCountQueryWithParams connString sql setParams
-            return (count > 0L)
-        }
-
-    member this.isAdmin username =
-        task {
-            let sql = "SELECT is_admin FROM users WHERE login = @username"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("username", username) |> ignore
-            let convertRow (reader : MySqlDataReader) = reader.GetBoolean(0)
-            let! results = fetchDataWithParams connString sql setParams convertRow
-            if results.Length > 0 then return results.[0] else return false
-        }
-
-    member this.getProject projectCode =
-        task {
-            let sql = this.baseProjectQuery + " WHERE projects.identifier = @projectCode"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
-            return result |> Array.tryHead
-        }
-
-    member this.getProjectWithRoles projectCode =
-        task {
-            let whereClause = " WHERE projects.identifier = @projectCode"
-            let sql = this.projectWithMembersBaseQuery + whereClause + this.projectsWithMembersGroupByClause
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
-            if result.Length = 0 then return None else return Some result.[0]
-        }
-
-    member this.createProject (project : Api.CreateProject) =
-        task {
-            let sqlTxt = "INSERT INTO projects (name, description, identifier, status, created_on, updated_on) VALUES (@name, @description, @identifier, @status, NOW(), NOW())"
-            use conn = new MySqlConnection(connString)
-            do! conn.OpenAsync()
-            use cmd = new MySqlCommand(sqlTxt, conn)
-            cmd.Parameters.AddWithValue("name", project.name) |> ignore
-            cmd.Parameters.AddWithValue("description", project.description) |> ignore
-            cmd.Parameters.AddWithValue("identifier", project.code) |> ignore
-            cmd.Parameters.AddWithValue("status", ProjectStatus.Active) |> ignore
-            let! result = cmd.ExecuteNonQueryAsync()
-            if result = 0 then return -1
-            elif result < 0 then return result
-            else
-                let newId = int cmd.LastInsertedId
-                return newId
-        }
 
     member this.createUserImpl (user : Api.CreateUser) (sql : string) =
         // TODO: Just make everything here a task{} instead of async{}; it'll be simpler
@@ -300,76 +198,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                         return newUserId
         }
 
-    member this.createUser (user : Api.CreateUser) =
-        let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
-                  "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW())"
-        this.createUserImpl user sql
-
-    member this.updateUser (login : string) (updatedUser : Api.CreateUser) =
-        task {
-            // Everyone may change their own data, but only admins may change some else's data
-            let sql = "SELECT is_admin, login FROM users WHERE login = @login"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("login", updatedUser.login.username) |> ignore
-                // TODO: Once we move "is this allowed?" logic into controller, verify password as well
-            let! result = fetchDataWithParams connString sql setParams (fun row -> row.GetBoolean("is_admin"), row.GetString("login"))
-            if result.Length = 0 then
-                // TODO: Edit to return a Result<unit, errorDU> so we can indicate why this may fail (e.g., "Invalid login" or whatever). In this case, login user not found
-                // That errorDU should live in ErrorCodes.fs
-                return ()
-            let isAdmin, loggedInUser = result.[0]
-            // TODO: Move "is this allowed?" logic into the controller, not here
-            // TODO: Once we move "is this allowed?" logic into controller, verify password as well
-            let allowed = isAdmin || loggedInUser = updatedUser.username
-            if not allowed then
-                // Return error indicating 403 forbidden
-                return 0
-            else
-                let! salt =
-                    let sql = "SELECT salt FROM users where login = @username"
-                    let setParams (cmd : MySqlCommand) =
-                        cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
-                    doScalarQueryWithParams connString sql setParams
-                let isPasswordChange = not (String.IsNullOrEmpty updatedUser.password)
-                let hashedPassword = if isPasswordChange then PasswordHashing.hashPassword salt updatedUser.password else ""
-                let sql =
-                    if isPasswordChange then
-                        "UPDATE users SET login = @username, hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
-                        " WHERE login = @loggedInUser"
-                    else
-                        "UPDATE users SET login = @username, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
-                        " WHERE login = @loggedInUser"
-                let setParams (cmd : MySqlCommand) =
-                    cmd.Parameters.AddWithValue("login", updatedUser.username) |> ignore
-                    if isPasswordChange then
-                        cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
-                    cmd.Parameters.AddWithValue("mustChangePassword", updatedUser.mustChangePassword) |> ignore
-                    cmd.Parameters.AddWithValue("firstName", updatedUser.firstName) |> ignore
-                    cmd.Parameters.AddWithValue("lastName", updatedUser.lastName) |> ignore
-                    cmd.Parameters.AddWithValue("language", updatedUser.language |> Option.defaultValue "en") |> ignore
-                    cmd.Parameters.AddWithValue("loggedInUser", loggedInUser) |> ignore
-                let! changedRows = doNonQueryWithParams connString sql setParams
-                // TODO: Detect changeRows being 0 and return an error code
-                return changedRows
-        }
-
-    member this.upsertUser (login : string) (updatedUser : Api.CreateUser) =
-        task {
-            let! shouldUpdate = this.userExists updatedUser.username
-            if not shouldUpdate then
-                return! this.createUser updatedUser
-            else
-                return! this.updateUser login updatedUser
-        }
-        // This won't work, because the Redmine data model doesn't have "login" as a unique key constraint (?!?)
-        // let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
-        //           "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW()) " +
-        //           "ON DUPLICATE KEY UPDATE firstname = @firstname, lastname = @lastname, hashedPassword = @hashedPassword, salt = @salt, status = @status, updated_on = NOW()"
-        // createUserImpl connString updatedUser sql
-
-    // TODO: Do manual SQL statements from here on down (we've done up to here so far)
-
-    member this.projectsAndRolesQueryAsyncReminder =
+    member this.projectsAndRolesQueryAsync () =
         task {
             let sql = this.projectWithMembersBaseQuery + this.projectsWithMembersGroupByClause
             let! result = fetchData connString sql this.convertProjectRow
@@ -411,153 +240,311 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             return result
     }
 
-    member this.projectsAndRolesByUser username = task {
-        let! projectsAndRoles = this.projectsAndRolesByUserImpl username
-        let projectCodes, roles = projectsAndRoles |> Array.unzip
-        let! projects = this.getProjectDetails projectCodes
-        return Array.zip projects roles
-    }
-
-    member this.legacyProjectsAndRolesByUser username = task {
-        let! projectsAndRoles = this.projectsAndRolesByUserImpl username
-        let projectCodes, roles = projectsAndRoles |> Array.unzip
-        let! projects = this.getProjectDetails projectCodes
-        let legacyProjects = (projects, roles) ||> Array.zip |> Array.map (fun (proj,role) ->
-            let result : Dto.LegacyProjectDetails = {
-                identifier = proj.code
-                name = proj.name
-                repository = "http://public.languagedepot.org"
-                role = role.ToLowerInvariant()
-            }
-            result
-        )
-        return legacyProjects
-    }
-
-    member this.projectsAndRolesByUserRole username (roleName : string) = task {
-        let! projectsAndRoles = this.projectsAndRolesByUserImpl username
-        let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
-        let! projects = this.getProjectDetails projectCodes
-        return Array.zip projects roles
-    }
-
-    member this.projectsByUserRole username (roleName : string) = task {
-        let! projectsAndRoles = this.projectsAndRolesByUserImpl username
-        let projectCodes, _ = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
-        return! this.getProjectDetails projectCodes
-    }
-
-    member this.projectsByUser username = task {
-        let! projectsAndRoles = this.projectsAndRolesByUserImpl username
-        let projectCodes, _ = projectsAndRoles |> Array.unzip
-        return! this.getProjectDetails projectCodes
-    }
-
-    member this.roleNames() =
-        task {
-            let sql = "SELECT id, name FROM roles"
-            let convertRow (reader : MySqlDataReader) =
-                reader.GetInt32("id"), reader.GetString("name")
-            return! fetchData connString sql convertRow
-        }
-
+    // TODO: This doesn't belong in MySqlModel
     member this.verifyPass (clearPass : string) (salt : string) (hashPass : string) =
         let calculatedHash = PasswordHashing.hashPassword salt clearPass
         calculatedHash = hashPass
 
-    member this.verifyLoginInfo (loginCredentials : Api.LoginCredentials) =
-        // During development of the client UI, just accept any credentials. TODO: Natually, restore real code before going to production
-        task { return true }
-        // task {
-        //     let sql = "SELECT salt, hashed_password FROM users where login = @username"
-        //     let setParams (cmd : MySqlCommand) =
-        //         cmd.Parameters.AddWithValue("username", loginCredentials.username) |> ignore
-        //     let convertRow (reader : MySqlDataReader) =
-        //         reader.GetString("salt"), reader.GetString("hashed_password")
-        //     let rows = fetchDataWithParams connString sql setParams convertRow
-        //     if rows.Length > 0 then
-        //         let salt, hashedPassword = rows.[0]
-        //         return verifyPass loginCredentials.password salt hashedPassword
-        //     else
-        //         return false
-        // }
+    interface IModel with
 
-    member this.changePassword (login : string) (changeRequest : Api.ChangePassword) =
-        task {
-            let! salt =
-                let sql = "SELECT salt FROM users where login = @username"
+        member this.listUsers (limit : int option) (offset : int option) =
+            task {
+                let sql = baseUsersQuery
+                let withLimit = match limit with | None -> "" | Some n -> sprintf " LIMIT %d" n
+                let withOffset = match offset with | None -> "" | Some n -> sprintf " OFFSET %d" n
+                let! result = fetchData connString (sql + withLimit + withOffset) convertUserRow
+                return result
+            }
+
+        member this.getUser username =
+            task {
+                let sql = baseUsersQuery + " WHERE login = @username"
                 let setParams (cmd : MySqlCommand) =
-                    cmd.Parameters.AddWithValue("username", changeRequest.username) |> ignore
-                doScalarQueryWithParams connString sql setParams
-            let hashedPassword = PasswordHashing.hashPassword salt changeRequest.password
-            let sql = "UPDATE users SET hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, updated_on = NOW() WHERE login = @username"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
-                cmd.Parameters.AddWithValue("mustChangePassword", changeRequest.mustChangePassword |> Option.defaultValue false) |> ignore
-            let! result = doNonQueryWithParams connString sql setParams
-            return (result = 1)
-        }
+                    cmd.Parameters.AddWithValue("username", username) |> ignore
+                let! result = fetchDataWithParams connString sql setParams convertUserRow
+                return result |> Array.tryHead
+            }
 
-    member this.removeMembership (username : string) (projectCode : string) =
-        task {
-            use conn = new MySqlConnection(connString)
-            do! conn.OpenAsync()
-            use transaction = conn.BeginTransaction()
-            let sql =
-                "SELECT members.id FROM members" +
-                " JOIN users ON users.id = members.user_id" +
-                " JOIN projects ON projects.id = members.project_id" +
-                " WHERE users.login = @username AND projects.identifier = @projectCode"
-            use cmd = new MySqlCommand(sql, conn, transaction)
-            cmd.Parameters.AddWithValue("username", username) |> ignore
-            cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
-            let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
-            do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
-            // Also have to delete from member_roles table
-            let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
-            let sql = "DELETE FROM member_roles WHERE " + whereClause
-            use cmd = new MySqlCommand(sql, conn, transaction)
-            for idx, code in memberRowIds |> Seq.indexed do
-                cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
-            let! _ = cmd.ExecuteNonQueryAsync()
-            let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
-            let sql = "DELETE FROM members WHERE " + whereClause
-            use cmd = new MySqlCommand(sql, conn, transaction)
-            for idx, code in memberRowIds |> Seq.indexed do
-                cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
-            let! _ = cmd.ExecuteNonQueryAsync()
-            do! transaction.CommitAsync()
-            return true
-        }
+        member this.searchUsersLoose (searchTerm : string) =
+            task {
+                let sql = baseUsersQuery + " WHERE login LIKE @searchTerm OR firstname LIKE @searchTerm OR lastname LIKE @searchTerm OR address LIKE @searchTerm"
+                let escapedSearchTerm = "%" + searchTerm.Replace(@"\", @"\\").Replace("%", @"\%") + "%"
+                // TODO: Test whether that works, or whether we need to write something like "LIKE %@searchTerm%" instead
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("searchTerm", escapedSearchTerm) |> ignore
+                let! result = fetchDataWithParams connString sql setParams convertUserRow
+                return result
+            }
 
-    member this.addMembership (username : string) (projectCode : string) (roleName : string) =
+        member this.searchUsersExact (searchTerm : string) =
+            task {
+                let sql = baseUsersQuery + " WHERE login = @searchTerm OR firstname = @searchTerm OR lastname = @searchTerm OR address = @searchTerm"
+                let! result = fetchDataWithParams connString sql (fun cmd -> cmd.Parameters.AddWithValue("searchTerm", searchTerm) |> ignore) convertUserRow
+                return result
+            }
 
-        let getId (sql : string) (paramName : string) (paramValue : string) (conn : MySqlConnection) (transaction: MySqlTransaction) = task {
-                use cmd = new MySqlCommand(sql, conn, transaction)
-                cmd.Parameters.AddWithValue(paramName, paramValue) |> ignore
-                use! reader = cmd.ExecuteReaderAsync()
-                let! ids = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
-                if ids.Length = 0 then
-                    return -1
+        member this.listProjects() =
+            task {
+                let sql = this.baseProjectQuery
+                let setParams (cmd : MySqlCommand) =
+                    ()
+                let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
+                return result
+            }
+
+        member this.listProjectsAndRoles() =
+            task {
+                let sql = this.projectWithMembersBaseQuery + this.projectsWithMembersGroupByClause
+                let! result = fetchData connString sql this.convertProjectRow
+                return result
+            }
+
+        member this.countProjects() =
+            task {
+                let sql = "SELECT COUNT(*) FROM projects"
+                return! doCountQuery connString sql
+            }
+
+        member this.countRealProjects() =
+            task {
+                let sql = this.baseProjectQuery
+                let! result = fetchData connString sql this.convertProjectRow
+                return
+                    result
+                    |> Seq.map (fun project -> project, GuessProjectType.guessType project.code project.name project.description)
+                    |> Seq.filter (fun (project, projectType) -> projectType <> Test && not (project.code.StartsWith "test"))
+                    |> Seq.length
+                    |> int64
+            }
+
+        member this.countUsers() =
+            task {
+                let sql = "SELECT COUNT(*) FROM users"
+                return! doCountQuery connString sql
+            }
+
+        // TODO: Implement userExists, then use it later on below in upsertUser
+
+        member this.userExists username =
+            task {
+                let sql = "SELECT COUNT(*) FROM users WHERE login = @username"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("username", username) |> ignore
+                let! count = doCountQueryWithParams connString sql setParams
+                return (count > 0L)
+            }
+
+        member this.projectExists projectCode =
+            task {
+                let sql = "SELECT COUNT(*) FROM projects WHERE identifier = @projectCode"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                let! count = doCountQueryWithParams connString sql setParams
+                return (count > 0L)
+            }
+
+        member this.isAdmin username =
+            task {
+                let sql = "SELECT is_admin FROM users WHERE login = @username"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("username", username) |> ignore
+                let convertRow (reader : MySqlDataReader) = reader.GetBoolean(0)
+                let! results = fetchDataWithParams connString sql setParams convertRow
+                if results.Length > 0 then return results.[0] else return false
+            }
+
+        member this.getProject projectCode =
+            task {
+                let sql = this.baseProjectQuery + " WHERE projects.identifier = @projectCode"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
+                return result |> Array.tryHead
+            }
+
+        member this.getProjectWithRoles projectCode =
+            task {
+                let whereClause = " WHERE projects.identifier = @projectCode"
+                let sql = this.projectWithMembersBaseQuery + whereClause + this.projectsWithMembersGroupByClause
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
+                if result.Length = 0 then return None else return Some result.[0]
+            }
+
+        member this.createProject (project : Api.CreateProject) =
+            task {
+                let sqlTxt = "INSERT INTO projects (name, description, identifier, status, created_on, updated_on) VALUES (@name, @description, @identifier, @status, NOW(), NOW())"
+                use conn = new MySqlConnection(connString)
+                do! conn.OpenAsync()
+                use cmd = new MySqlCommand(sqlTxt, conn)
+                cmd.Parameters.AddWithValue("name", project.name) |> ignore
+                cmd.Parameters.AddWithValue("description", project.description) |> ignore
+                cmd.Parameters.AddWithValue("identifier", project.code) |> ignore
+                cmd.Parameters.AddWithValue("status", ProjectStatus.Active) |> ignore
+                let! result = cmd.ExecuteNonQueryAsync()
+                if result = 0 then return -1
+                elif result < 0 then return result
                 else
-                    return ids.[0]
+                    let newId = int cmd.LastInsertedId
+                    return newId
+            }
+
+        member this.createUser (user : Api.CreateUser) =
+            let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
+                      "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW())"
+            this.createUserImpl user sql
+
+        member this.updateUser (login : string) (updatedUser : Api.CreateUser) =
+            task {
+                // Everyone may change their own data, but only admins may change some else's data
+                let sql = "SELECT is_admin, login FROM users WHERE login = @login"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("login", updatedUser.login.username) |> ignore
+                    // TODO: Once we move "is this allowed?" logic into controller, verify password as well
+                let! result = fetchDataWithParams connString sql setParams (fun row -> row.GetBoolean("is_admin"), row.GetString("login"))
+                if result.Length = 0 then
+                    // TODO: Edit to return a Result<unit, errorDU> so we can indicate why this may fail (e.g., "Invalid login" or whatever). In this case, login user not found
+                    // That errorDU should live in ErrorCodes.fs
+                    return ()
+                let isAdmin, loggedInUser = result.[0]
+                // TODO: Move "is this allowed?" logic into the controller, not here
+                // TODO: Once we move "is this allowed?" logic into controller, verify password as well
+                let allowed = isAdmin || loggedInUser = updatedUser.username
+                if not allowed then
+                    // Return error indicating 403 forbidden
+                    return 0
+                else
+                    let! salt =
+                        let sql = "SELECT salt FROM users where login = @username"
+                        let setParams (cmd : MySqlCommand) =
+                            cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
+                        doScalarQueryWithParams connString sql setParams
+                    let isPasswordChange = not (String.IsNullOrEmpty updatedUser.password)
+                    let hashedPassword = if isPasswordChange then PasswordHashing.hashPassword salt updatedUser.password else ""
+                    let sql =
+                        if isPasswordChange then
+                            "UPDATE users SET login = @username, hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
+                            " WHERE login = @loggedInUser"
+                        else
+                            "UPDATE users SET login = @username, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
+                            " WHERE login = @loggedInUser"
+                    let setParams (cmd : MySqlCommand) =
+                        cmd.Parameters.AddWithValue("login", updatedUser.username) |> ignore
+                        if isPasswordChange then
+                            cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
+                        cmd.Parameters.AddWithValue("mustChangePassword", updatedUser.mustChangePassword) |> ignore
+                        cmd.Parameters.AddWithValue("firstName", updatedUser.firstName) |> ignore
+                        cmd.Parameters.AddWithValue("lastName", updatedUser.lastName) |> ignore
+                        cmd.Parameters.AddWithValue("language", updatedUser.language |> Option.defaultValue "en") |> ignore
+                        cmd.Parameters.AddWithValue("loggedInUser", loggedInUser) |> ignore
+                    let! changedRows = doNonQueryWithParams connString sql setParams
+                    // TODO: Detect changeRows being 0 and return an error code
+                    return changedRows
+            }
+
+        member this.upsertUser login updatedUser =
+            task {
+                let! shouldUpdate = (this :> IModel).userExists updatedUser.username
+                if not shouldUpdate then
+                    return! (this :> IModel).createUser updatedUser
+                else
+                    return! (this :> IModel).updateUser login updatedUser
+            }
+            // This won't work, because the Redmine data model doesn't have "login" as a unique key constraint (?!?)
+            // let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
+            //           "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW()) " +
+            //           "ON DUPLICATE KEY UPDATE firstname = @firstname, lastname = @lastname, hashedPassword = @hashedPassword, salt = @salt, status = @status, updated_on = NOW()"
+            // createUserImpl connString updatedUser sql
+
+        member this.projectsAndRolesByUser username = task {
+            let! projectsAndRoles = this.projectsAndRolesByUserImpl username
+            let projectCodes, roles = projectsAndRoles |> Array.unzip
+            let! projects = this.getProjectDetails projectCodes
+            return Array.zip projects roles
         }
 
-        task {
-            use conn = new MySqlConnection(connString)
-            do! conn.OpenAsync()
-            use transaction = conn.BeginTransaction()
+        member this.legacyProjectsAndRolesByUser username = task {
+            let! projectsAndRoles = this.projectsAndRolesByUserImpl username
+            let projectCodes, roles = projectsAndRoles |> Array.unzip
+            let! projects = this.getProjectDetails projectCodes
+            let legacyProjects = (projects, roles) ||> Array.zip |> Array.map (fun (proj,role) ->
+                let result : Dto.LegacyProjectDetails = {
+                    identifier = proj.code
+                    name = proj.name
+                    repository = "http://public.languagedepot.org"
+                    role = role.ToLowerInvariant()
+                }
+                result
+            )
+            return legacyProjects
+        }
 
-            let! roleId = getId "SELECT id FROM roles WHERE name = @roleName" "roleName" roleName conn transaction
-            let! userId = getId "SELECT id FROM users WHERE login = @username" "username" username conn transaction
-            let! projId = getId "SELECT id FROM projects WHERE identifier = @projectCode" "projectCode" projectCode conn transaction
-            if roleId < 0 || userId < 0 || projId < 0 then
-                // Can't do anything with invalid data
-                do! transaction.RollbackAsync()
-                return false
-            else
-                // First, check whether user is already a member
+        member this.projectsAndRolesByUserRole username (roleName : string) = task {
+            let! projectsAndRoles = this.projectsAndRolesByUserImpl username
+            let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
+            let! projects = this.getProjectDetails projectCodes
+            return Array.zip projects roles
+        }
+
+        member this.projectsByUserRole username (roleName : string) = task {
+            let! projectsAndRoles = this.projectsAndRolesByUserImpl username
+            let projectCodes, _ = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
+            return! this.getProjectDetails projectCodes
+        }
+
+        member this.projectsByUser username = task {
+            let! projectsAndRoles = this.projectsAndRolesByUserImpl username
+            let projectCodes, _ = projectsAndRoles |> Array.unzip
+            return! this.getProjectDetails projectCodes
+        }
+
+        member this.listRoles() =
+            task {
+                let sql = "SELECT id, name FROM roles"
+                let convertRow (reader : MySqlDataReader) =
+                    reader.GetInt32("id"), reader.GetString("name")
+                return! fetchData connString sql convertRow
+            }
+
+        member this.verifyLoginInfo (loginCredentials : Api.LoginCredentials) =
+            // During development of the client UI, just accept any credentials. TODO: Natually, restore real code before going to production
+            task { return true }
+            // task {
+            //     let sql = "SELECT salt, hashed_password FROM users where login = @username"
+            //     let setParams (cmd : MySqlCommand) =
+            //         cmd.Parameters.AddWithValue("username", loginCredentials.username) |> ignore
+            //     let convertRow (reader : MySqlDataReader) =
+            //         reader.GetString("salt"), reader.GetString("hashed_password")
+            //     let rows = fetchDataWithParams connString sql setParams convertRow
+            //     if rows.Length > 0 then
+            //         let salt, hashedPassword = rows.[0]
+            //         return verifyPass loginCredentials.password salt hashedPassword
+            //     else
+            //         return false
+            // }
+
+        member this.changePassword (login : string) (changeRequest : Api.ChangePassword) =
+            task {
+                let! salt =
+                    let sql = "SELECT salt FROM users where login = @username"
+                    let setParams (cmd : MySqlCommand) =
+                        cmd.Parameters.AddWithValue("username", changeRequest.username) |> ignore
+                    doScalarQueryWithParams connString sql setParams
+                let hashedPassword = PasswordHashing.hashPassword salt changeRequest.password
+                let sql = "UPDATE users SET hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, updated_on = NOW() WHERE login = @username"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
+                    cmd.Parameters.AddWithValue("mustChangePassword", changeRequest.mustChangePassword |> Option.defaultValue false) |> ignore
+                let! result = doNonQueryWithParams connString sql setParams
+                return (result = 1)
+            }
+
+        member this.removeMembership (username : string) (projectCode : string) =
+            task {
+                use conn = new MySqlConnection(connString)
+                do! conn.OpenAsync()
+                use transaction = conn.BeginTransaction()
                 let sql =
                     "SELECT members.id FROM members" +
                     " JOIN users ON users.id = members.user_id" +
@@ -569,74 +556,129 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
                 let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
                 do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
-                if memberRowIds.Length > 0 then
-                    let memberId = memberRowIds.[0]
-                    // Already a member; just update the membership role that user already has
-                    let sql = "UPDATE member_roles SET role_id = @roleId WHERE member_id = @memberId"
+                // Also have to delete from member_roles table
+                let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
+                let sql = "DELETE FROM member_roles WHERE " + whereClause
+                use cmd = new MySqlCommand(sql, conn, transaction)
+                for idx, code in memberRowIds |> Seq.indexed do
+                    cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
+                let! _ = cmd.ExecuteNonQueryAsync()
+                let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
+                let sql = "DELETE FROM members WHERE " + whereClause
+                use cmd = new MySqlCommand(sql, conn, transaction)
+                for idx, code in memberRowIds |> Seq.indexed do
+                    cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
+                let! _ = cmd.ExecuteNonQueryAsync()
+                do! transaction.CommitAsync()
+                return true
+            }
+
+        member this.addMembership (username : string) (projectCode : string) (roleName : string) =
+
+            let getId (sql : string) (paramName : string) (paramValue : string) (conn : MySqlConnection) (transaction: MySqlTransaction) = task {
                     use cmd = new MySqlCommand(sql, conn, transaction)
-                    cmd.Parameters.AddWithValue("roleId", roleId) |> ignore
-                    cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
-                    let! _ = cmd.ExecuteNonQueryAsync()
-                    do! transaction.CommitAsync()
-                    return true
-                else
-                    // Add new members *and* member_roles entries
-                    let sql =
-                        "INSERT INTO members (user_id, project_id, created_on) " +
-                        "VALUES (@userId, @projectId, NOW())"
-                    use cmd = new MySqlCommand(sql, conn, transaction)
-                    cmd.Parameters.AddWithValue("userId", userId) |> ignore
-                    cmd.Parameters.AddWithValue("projectId", projId) |> ignore
-                    let! affectedRows = cmd.ExecuteNonQueryAsync()
-                    if affectedRows <= 0 then
-                        do! transaction.RollbackAsync()
-                        return false
+                    cmd.Parameters.AddWithValue(paramName, paramValue) |> ignore
+                    use! reader = cmd.ExecuteReaderAsync()
+                    let! ids = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
+                    if ids.Length = 0 then
+                        return -1
                     else
-                        let memberId = cmd.LastInsertedId
-                        let sql =
-                            "INSERT INTO member_roles (member_id, role_id) " +
-                            "VALUES (@memberId, @roleId)"
+                        return ids.[0]
+            }
+
+            task {
+                use conn = new MySqlConnection(connString)
+                do! conn.OpenAsync()
+                use transaction = conn.BeginTransaction()
+
+                let! roleId = getId "SELECT id FROM roles WHERE name = @roleName" "roleName" roleName conn transaction
+                let! userId = getId "SELECT id FROM users WHERE login = @username" "username" username conn transaction
+                let! projId = getId "SELECT id FROM projects WHERE identifier = @projectCode" "projectCode" projectCode conn transaction
+                if roleId < 0 || userId < 0 || projId < 0 then
+                    // Can't do anything with invalid data
+                    do! transaction.RollbackAsync()
+                    return false
+                else
+                    // First, check whether user is already a member
+                    let sql =
+                        "SELECT members.id FROM members" +
+                        " JOIN users ON users.id = members.user_id" +
+                        " JOIN projects ON projects.id = members.project_id" +
+                        " WHERE users.login = @username AND projects.identifier = @projectCode"
+                    use cmd = new MySqlCommand(sql, conn, transaction)
+                    cmd.Parameters.AddWithValue("username", username) |> ignore
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                    let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
+                    let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
+                    do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
+                    if memberRowIds.Length > 0 then
+                        let memberId = memberRowIds.[0]
+                        // Already a member; just update the membership role that user already has
+                        let sql = "UPDATE member_roles SET role_id = @roleId WHERE member_id = @memberId"
                         use cmd = new MySqlCommand(sql, conn, transaction)
-                        cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
                         cmd.Parameters.AddWithValue("roleId", roleId) |> ignore
+                        cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
+                        let! _ = cmd.ExecuteNonQueryAsync()
+                        do! transaction.CommitAsync()
+                        return true
+                    else
+                        // Add new members *and* member_roles entries
+                        let sql =
+                            "INSERT INTO members (user_id, project_id, created_on) " +
+                            "VALUES (@userId, @projectId, NOW())"
+                        use cmd = new MySqlCommand(sql, conn, transaction)
+                        cmd.Parameters.AddWithValue("userId", userId) |> ignore
+                        cmd.Parameters.AddWithValue("projectId", projId) |> ignore
                         let! affectedRows = cmd.ExecuteNonQueryAsync()
                         if affectedRows <= 0 then
                             do! transaction.RollbackAsync()
                             return false
                         else
-                            do! transaction.CommitAsync()
-                            return true
-        }
+                            let memberId = cmd.LastInsertedId
+                            let sql =
+                                "INSERT INTO member_roles (member_id, role_id) " +
+                                "VALUES (@memberId, @roleId)"
+                            use cmd = new MySqlCommand(sql, conn, transaction)
+                            cmd.Parameters.AddWithValue("memberId", memberId) |> ignore
+                            cmd.Parameters.AddWithValue("roleId", roleId) |> ignore
+                            let! affectedRows = cmd.ExecuteNonQueryAsync()
+                            if affectedRows <= 0 then
+                                do! transaction.RollbackAsync()
+                                return false
+                            else
+                                do! transaction.CommitAsync()
+                                return true
+            }
 
-    member this.archiveProject (projectCode : string) =
-        task {
-            use conn = new MySqlConnection(connString)
-            do! conn.OpenAsync()
-            use transaction = conn.BeginTransaction()
+        member this.archiveProject (projectCode : string) =
+            task {
+                use conn = new MySqlConnection(connString)
+                do! conn.OpenAsync()
+                use transaction = conn.BeginTransaction()
 
-            let sql = sprintf "UPDATE projects SET status = @status WHERE identifier = @projectCode"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("status", ProjectStatus.Archived) |> ignore
-                cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
-            let! affectedRows = doNonQueryWithParams connString sql setParams
-            if affectedRows > 0 then
-                do! transaction.CommitAsync()
-                return true
-            else
-                do! transaction.RollbackAsync()
-                return false
-        }
+                let sql = sprintf "UPDATE projects SET status = @status WHERE identifier = @projectCode"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("status", ProjectStatus.Archived) |> ignore
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                let! affectedRows = doNonQueryWithParams connString sql setParams
+                if affectedRows > 0 then
+                    do! transaction.CommitAsync()
+                    return true
+                else
+                    do! transaction.RollbackAsync()
+                    return false
+            }
 
-    member this.emailIsAdmin email =
-        task {
-            let sql = "SELECT COUNT(u.login) FROM email_addresses AS e JOIN users AS u ON e.user_id = u.id WHERE u.admin=1 AND e.address = @email"
-            let setParams (cmd : MySqlCommand) =
-                cmd.Parameters.AddWithValue("email", email) |> ignore
-            let! count = doCountQueryWithParams connString sql setParams
-            return (count > 0L)
-            // Note that this will return false for both a non-admin address and a non-existing address.
-            // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
-        }
+        member this.emailIsAdmin email =
+            task {
+                let sql = "SELECT COUNT(u.login) FROM email_addresses AS e JOIN users AS u ON e.user_id = u.id WHERE u.admin=1 AND e.address = @email"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("email", email) |> ignore
+                let! count = doCountQueryWithParams connString sql setParams
+                return (count > 0L)
+                // Note that this will return false for both a non-admin address and a non-existing address.
+                // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
+            }
 
 type MySqlPublicModel(config : IConfiguration) =
     inherit MySqlModel(config, true)
