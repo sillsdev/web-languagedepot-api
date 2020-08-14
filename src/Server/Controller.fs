@@ -25,13 +25,50 @@ let jsonResult (result : Result<'a, string>) : HttpHandler =
     | Ok data -> jsonSuccess data
     | Error msg -> jsonError msg
 
-let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let serviceFunction = ctx.GetService<'service>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-    let! result = impl connString serviceFunction
-    return! jsonSuccess result next ctx
+// let withServiceFunc (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+//     let serviceFunction = ctx.GetService<'service>()
+//     let cfg = ctx |> getSettings<MySqlSettings>
+//     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
+//     let! result = impl connString serviceFunction
+//     return! jsonSuccess result next ctx
+// }
+
+let withSimpleFunc (impl : 'a -> Task<'result>) (param : 'a) (next : HttpFunc) (ctx : HttpContext) = task {
+    try
+        let! result = impl param
+        return! jsonSuccess result next ctx
+    with e ->
+        return! jsonError<'result> (e.ToString()) next ctx  // TODO: More sophisticated error type that carries a message *and* a stacktrace, so the message can be displayed and the stacktrace can be logged
 }
+
+// Exact same thing as withServiceFunc, really, except that we're retrieving an entire model implementation
+let withModel (impl : Model.MySqlModel -> Task<'result>) (next : HttpFunc) (ctx : HttpContext) = task {
+    let model = ctx.GetService<Model.MySqlModel>()
+    try
+        let! result = impl model
+        return! jsonSuccess result next ctx
+    with e ->
+        return! jsonError<'result> (e.ToString()) next ctx  // TODO: More sophisticated error type that carries a message *and* a stacktrace, so the message can be displayed and the stacktrace can be logged
+}
+
+let withModelReturningOption (impl : Model.MySqlModel -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! opt = (impl model)
+    match opt with
+    | Some result -> return! jsonSuccess result next ctx
+    | None -> return! RequestErrors.notFound (jsonError msg) next ctx
+}
+
+let tryParseSingleInt (strs : Microsoft.Extensions.Primitives.StringValues) =
+    if strs.Count > 0 then
+        match System.Int32.TryParse strs.[0] with
+        | true, n -> Some n
+        | false, _ -> None
+    else None
+
+let getLimitOffset (ctx : HttpContext) =
+    let q = ctx.Request.Query
+    tryParseSingleInt q.["limit"], tryParseSingleInt q.["offset"]
 
 let withServiceFuncNoSuccessWrap (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
     let serviceFunction = ctx.GetService<'service>()
@@ -41,142 +78,97 @@ let withServiceFuncNoSuccessWrap (isPublic : bool) (impl : string -> 'service ->
     return! json result next ctx
 }
 
-let withServiceFuncWrappingExceptions (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    try
-        return! withServiceFunc isPublic impl next ctx
-    with e ->
-        return! jsonError e.Message next ctx
+let withLoggedInModel (loginCredentials : Api.LoginCredentials) (impl : Model.MySqlModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! goodLogin = model.verifyLoginInfo loginCredentials
+    if goodLogin then
+        return! withModel impl next ctx
+    else
+        return! RequestErrors.forbidden (jsonError "Login failed") next ctx
 }
 
-let withServiceFuncOrNotFound (isPublic : bool) (impl : string -> 'service -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
-    let serviceFunction = ctx.GetService<'service>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-
-    let! resultOpt = impl connString serviceFunction
-    match resultOpt with
-    | Some result -> return! jsonSuccess result next ctx
-    | None -> return! RequestErrors.notFound (jsonError msg) next ctx
+let withLoggedInServiceFuncNoSuccessWrap (loginCredentials : Api.LoginCredentials) (impl : 'model -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+    let model = ctx.GetService<Model.MySqlModel>()  // TODO: Too tightly bound. Add type restrictions on generic 'model param and then use that
+    let! goodLogin = model.verifyLoginInfo loginCredentials
+    if goodLogin then
+        let model = ctx.GetService<'model>()
+        let! result = impl model
+        return! json result next ctx
+    else
+        return! RequestErrors.forbidden (json "Login failed") next ctx
 }
 
-let withLoggedInServiceFunc (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Task<'a>) =
-    fun (next : HttpFunc) (ctx : HttpContext) -> task {
-        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
-        let cfg = ctx |> getSettings<MySqlSettings>
-        let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-        let! goodLogin = verifyLoginCredentials connString loginCredentials
-        if goodLogin then
-            return! withServiceFunc isPublic impl next ctx
-        else
-            return! RequestErrors.forbidden (jsonError "Login failed") next ctx
-    }
-
-let withLoggedInServiceFuncNoSuccessWrap (isPublic : bool) (loginCredentials : Api.LoginCredentials) (impl : string -> 'service -> Task<'a>) =
-    fun (next : HttpFunc) (ctx : HttpContext) -> task {
-        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
-        let cfg = ctx |> getSettings<MySqlSettings>
-        let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-        let! goodLogin = verifyLoginCredentials connString loginCredentials
-        if goodLogin then
-            return! withServiceFuncNoSuccessWrap isPublic impl next ctx
-        else
-            return! RequestErrors.forbidden (jsonError "Login failed") next ctx
-    }
-
-let getAllPrivateProjects : HttpHandler =
-    withServiceFunc false
-        (fun connString (listProjects : Model.ListProjects) -> listProjects connString)
-
-let getPrivateProject projectCode : HttpHandler =
-    withServiceFuncOrNotFound false
-        (fun connString (getProject : Model.GetProject) -> getProject connString projectCode)
-        (sprintf "Project code %s not found" projectCode)
-
-let getAllPublicProjects : HttpHandler =
-    withServiceFunc true
-        (fun connString (listProjects : Model.ListProjects) -> listProjects connString)
+let getUser login : HttpHandler =
+    withModelReturningOption
+        (fun model -> model.getUser login)
+        (sprintf "Username %s not found" login)
 
 let getPublicProject projectCode : HttpHandler =
-    withServiceFuncOrNotFound true
-        (fun connString (getProject : Model.GetProject) -> getProject connString projectCode)
+    withModelReturningOption
+        (fun model -> model.getProject projectCode)
         (sprintf "Project code %s not found" projectCode)
 
-// TODO: Not in real API spec. Why not? Probably need to add it
-let getUser login : HttpHandler =
-    withServiceFuncOrNotFound true
-        (fun connString (getUser : Model.GetUser) -> getUser connString login)
-        (sprintf "Username %s not found" login)
+let getPrivateProject projectCode : HttpHandler =
+    // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
+    withModelReturningOption
+        (fun model -> model.getProject projectCode)
+        (sprintf "Project code %s not found" projectCode)
 
 let searchUsers searchText (loginCredentials : Api.LoginCredentials) : HttpHandler =
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
-        let verifyLoginCredentials = ctx.GetService<Model.VerifyLoginCredentials>()
-        let cfg = ctx |> getSettings<MySqlSettings>
-        // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Decide whether we want to allow searching in private LD instance as well; if so, must be admin
-        let connString = cfg.ConnString
-        let! goodLogin = verifyLoginCredentials connString loginCredentials
+        let model = ctx.GetService<Model.MySqlModel>()
+        let! goodLogin = model.verifyLoginInfo loginCredentials
         if goodLogin then
-            let (Model.IsAdmin userIsAdmin) = ctx.GetService<Model.IsAdmin>()
-            let! isAdmin = userIsAdmin connString loginCredentials.username
+            let! isAdmin = model.isAdmin loginCredentials.username
             if isAdmin then
-                return! withServiceFunc true
-                    (fun connString (Model.SearchUsersLoose searchUsersLoose) -> searchUsersLoose connString searchText) next ctx
+                return! withSimpleFunc model.searchUsersLoose searchText next ctx
             else
-                return! withServiceFunc true
-                    (fun connString (Model.SearchUsersExact searchUsersExact) -> searchUsersExact connString searchText) next ctx
+                return! withSimpleFunc model.searchUsersExact searchText next ctx
         else
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
 
 // TODO: Remove before going to production
 let listUsers : HttpHandler =
-    withServiceFunc true
-        (fun connString (listUsers : Model.ListUsers) -> listUsers connString None None)
-
-let listUsersPrivate : HttpHandler =
-    withServiceFunc false
-        (fun connString (listUsers : Model.ListUsers) -> listUsers connString None None)
+    withModel (fun model -> model.listUsers None None)
 
 let listUsersLimit limit : HttpHandler =
-    withServiceFunc true
-        (fun connString (listUsers : Model.ListUsers) -> listUsers connString (Some limit) None)
+    withModel (fun model -> model.listUsers (Some limit) None)
 
 let listUsersOffset offset : HttpHandler =
-    withServiceFunc true
-        (fun connString (listUsers : Model.ListUsers) -> listUsers connString None (Some offset))
+    withModel (fun model -> model.listUsers None (Some offset))
 
 let listUsersLimitOffset (limit,offset) : HttpHandler =
-    withServiceFunc true
-        (fun connString (listUsers : Model.ListUsers) -> listUsers connString (Some limit) (Some offset))
+    withModel (fun model -> model.listUsers (Some limit) (Some offset))
 
 let projectExists projectCode : HttpHandler =
-    withServiceFunc true
-        (fun connString (Model.ProjectExists projectExists) -> projectExists connString projectCode)
+    withModel (fun model -> model.projectExists projectCode)
 
 let userExists projectCode : HttpHandler =
-    withServiceFunc true
-        (fun connString (Model.UserExists userExists) -> userExists connString projectCode)
+    withModel (fun model -> model.userExists projectCode)
+
+let getAllPublicProjects : HttpHandler =
+    withModel (fun model -> model.projectsQueryAsync())
+
+let getAllPrivateProjects : HttpHandler =
+    // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
+    withModel (fun model -> model.projectsQueryAsync())
 
 let projectsAndRolesByUser username (loginCredentials : Api.LoginCredentials) : HttpHandler =
-    withLoggedInServiceFunc true loginCredentials
-        (fun connString (projectsAndRolesByUser : Model.ProjectsAndRolesByUser) -> projectsAndRolesByUser connString username)
+    withLoggedInModel loginCredentials (fun model -> model.projectsAndRolesByUser username)
 
 let legacyProjectsAndRolesByUser username (legacyLoginCredentials : Api.LegacyLoginCredentials) : HttpHandler =
     let loginCredentials : Api.LoginCredentials =
         { username = username
           password = legacyLoginCredentials.password }
-    withLoggedInServiceFuncNoSuccessWrap true loginCredentials
-        (fun connString (legacyProjectsAndRolesByUser : Model.LegacyProjectsAndRolesByUser) -> legacyProjectsAndRolesByUser connString username)
+    withLoggedInServiceFuncNoSuccessWrap loginCredentials (fun (model : Model.MySqlModel) -> model.legacyProjectsAndRolesByUser username)
 
 let projectsAndRolesByUserRole username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
-    withLoggedInServiceFunc true loginCredentials
-        (fun connString (projectsAndRolesByUserRole : Model.ProjectsAndRolesByUserRole) -> projectsAndRolesByUserRole connString username roleName)
+    withLoggedInModel loginCredentials (fun model -> model.projectsAndRolesByUserRole username roleName)
 
 let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let (Model.AddMembership addMember) = ctx.GetService<Model.AddMembership>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Add a private version of this to the server routing list
-    let connString = cfg.ConnString
-    let! success = addMember connString username projectCode roleName
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! success = model.addMembership username projectCode roleName
     let result =
         if success then
             Ok (sprintf "Added %s to %s" username projectCode)
@@ -188,11 +180,8 @@ let addUserToProjectWithRole (projectCode, username, roleName) : HttpHandler = f
 let addUserToProject (projectCode, username) = addUserToProjectWithRole (projectCode,username,"Contributer")
 
 let removeUserFromProject (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let (Model.RemoveMembership removeUserFromProject) = ctx.GetService<Model.RemoveMembership>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Add a private version of this to the server routing list
-    let connString = cfg.ConnString
-    let! success = removeUserFromProject connString username projectCode
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! success = model.removeMembership username projectCode
     let result =
         if success then
             Ok (sprintf "Removed %s from %s" username projectCode)
@@ -202,9 +191,9 @@ let removeUserFromProject (projectCode, username) : HttpHandler = fun (next : Ht
 }
 let addOrRemoveUserFromProjectInternal projectCode (patchData : Api.EditProjectMembershipInternalDetails) =
     match patchData with
-    | Api.EditProjectMembershipInternalDetails.AddUserRoles memberships -> RequestErrors.badRequest (json (Error "Add not yet implemented"))
-    | Api.EditProjectMembershipInternalDetails.RemoveUserRoles memberships -> RequestErrors.badRequest (json (Error "Remove not yet implemented"))
-    | Api.EditProjectMembershipInternalDetails.RemoveUserEntirely username -> RequestErrors.badRequest (json (Error "RemoveUser not yet implemented"))
+    | Api.EditProjectMembershipInternalDetails.AddUserRoles memberships -> RequestErrors.badRequest (jsonError "Add not yet implemented")
+    | Api.EditProjectMembershipInternalDetails.RemoveUserRoles memberships -> RequestErrors.badRequest (jsonError "Remove not yet implemented")
+    | Api.EditProjectMembershipInternalDetails.RemoveUserEntirely username -> RequestErrors.badRequest (jsonError "RemoveUser not yet implemented")
 
 let mapRoles (apiRoles : Api.MembershipRecordApiCall list) : Result<Api.MembershipRecordInternal list, string> =
     let roleTypes = apiRoles |> List.map (fun apiRole -> apiRole, RoleType.TryOfString apiRole.role)
@@ -220,7 +209,7 @@ let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershi
     | Some _, Some _, None
     | Some _, None,   Some _
     | None,   Some _, Some _ ->
-        RequestErrors.badRequest (json (Error "Specify exactly one of add, remove, or removeUser"))
+        RequestErrors.badRequest (jsonError "Specify exactly one of add, remove, or removeUser")
     | Some add, None, None ->
         match mapRoles add with
         | Ok addInternal ->
@@ -236,88 +225,64 @@ let addOrRemoveUserFromProject projectCode (patchData : Api.EditProjectMembershi
     | None, None, Some removeUser ->
         addOrRemoveUserFromProjectInternal projectCode (Api.EditProjectMembershipInternalDetails.RemoveUserEntirely removeUser)
     | None, None, None ->
-        RequestErrors.badRequest (json (Error "No command included in JSON: should be one of add, remove, or removeUser"))
+        RequestErrors.badRequest (jsonError "No command included in JSON: should be one of add, remove, or removeUser")
 
 let getAllRoles : HttpHandler =
-    withServiceFunc true
-        (fun connString (roleNames : Model.ListRoles) -> roleNames connString)
+    withModel (fun model -> model.roleNames())
 
 let createUser (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
-    let (Model.UserExists userExists) = ctx.GetService<Model.UserExists>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Implement private version of this API endpoint in server routing list
-    let connString = cfg.ConnString
-    let! alreadyExists = userExists connString user.username
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! alreadyExists = model.userExists user.username
     if alreadyExists then
         return! jsonError "Username already exists; pick another one" next ctx
     else
-        let createUser = ctx.GetService<Model.CreateUser>()
-        let! newId = createUser connString user
-        return! json newId next ctx
+        let! newId = model.createUser user
+        return! jsonSuccess newId next ctx
 }
 
 let upsertUser (login : string) (updateData : Api.CreateUser) =
-    withServiceFunc true
-        (fun connString (upsertUser : Model.UpsertUser) -> upsertUser connString login updateData)
+    withModel (fun (model : Model.MySqlModel) -> model.upsertUser login updateData)
 
 let changePassword login (updateData : Api.ChangePassword) =
-    withServiceFunc true
-        (fun connString (changePassword : Model.ChangePassword) -> changePassword connString login updateData)
+    withModel (fun (model : Model.MySqlModel) -> model.changePassword login updateData)
 
 // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
 let verifyPassword (loginCredentials : Api.LoginCredentials) =
-    withServiceFunc true
-        (fun connString (verifyLoginInfo : Model.VerifyLoginCredentials) -> verifyLoginInfo connString loginCredentials)
+    withModel (fun model -> model.verifyLoginInfo loginCredentials)
 
 let createProject (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
-    let (Model.ProjectExists projectExists) = ctx.GetService<Model.ProjectExists>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    // let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate  // TODO: Implement private version of this API endpoint in server routing list
-    let connString = cfg.ConnString
-    let! alreadyExists = projectExists connString proj.code
+    let model = ctx.GetService<Model.MySqlModel>()
+    let! alreadyExists = model.projectExists proj.code
     if alreadyExists then
         return! jsonError "Project code already exists; pick another one" next ctx
     else
-        return! withServiceFunc true (fun connString (createProject : Model.CreateProject) -> createProject connString proj) next ctx
+        let! newId = model.createProject proj
+        if newId < 0 then
+            return! jsonError "Something went wrong creating the project; please try again" next ctx
+        else
+            return! jsonSuccess newId next ctx
 }
 
 let countUsers : HttpHandler =
-    withServiceFunc true
-        (fun connString (Model.CountUsers countUsers) -> task {
-                do! Async.Sleep 500 // Simulate server load
-                return! countUsers connString
-        })
+    withModel (fun model -> model.usersCountAsync())
 
 let countProjects : HttpHandler =
-    withServiceFunc true
-        (fun connString (Model.CountProjects countProjects) -> task {
-                do! Async.Sleep 750 // Simulate server load
-                return! countProjects connString
-        })
+    withModel (fun model -> model.projectsCountAsync())
 
 let countRealProjects : HttpHandler =
-    withServiceFunc true
-        (fun connString (Model.CountRealProjects countRealProjects) -> task {
-                do! Async.Sleep 1000 // Simulate server load
-                return! countRealProjects connString
-        })
+    withModel (fun model -> model.realProjectsCountAsync())
 
 let archiveProject projectCode : HttpHandler =
-    withServiceFunc true
-        (fun connString (archiveProject : Model.ArchiveProject) -> archiveProject connString projectCode)
+    withModel (fun model -> model.archiveProject projectCode)
 
 let archivePrivateProject projectCode : HttpHandler =
-    withServiceFunc false
-        (fun connString (archiveProject : Model.ArchiveProject) -> archiveProject connString projectCode)
+    withModel (fun model -> model.archiveProject projectCode)  // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
 
 let emailIsAdminImpl email (ctx : HttpContext) = task {
-    let (Model.EmailIsAdmin serviceFunction) = ctx.GetService<Model.EmailIsAdmin>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    let isPublic = true  // TODO: Discuss whether we need separate admin lists for public & private instances; if so, make this a parameter
-    let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-    return! serviceFunction connString email
+    let model = ctx.GetService<Model.MySqlModel>()
+    return! model.emailIsAdmin email
 }
 
 let emailIsAdmin email : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
