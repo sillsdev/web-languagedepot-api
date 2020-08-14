@@ -51,7 +51,7 @@ export class AppComponent implements OnInit {
     this.populateData(result, 'Users');
   }
   projects(): void {
-    const result = this.jsonApi.call<object[]>('/api/project');
+    const result = this.jsonApi.call<object[]>('/api/projects');
     this.columns = {
       code: 'Project Code',
       description: 'Description',

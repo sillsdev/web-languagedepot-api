@@ -61,10 +61,10 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
 
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
-    get "/api/project/private" Controller.getAllPrivateProjects
-    getf "/api/project/private/%s" Controller.getPrivateProject
-    get "/api/project" Controller.getAllPublicProjects
-    getf "/api/project/%s" Controller.getPublicProject
+    get "/api/projects/private" Controller.getAllPrivateProjects
+    getf "/api/projects/private/%s" Controller.getPrivateProject
+    get "/api/projects" Controller.getAllPublicProjects
+    getf "/api/projects/%s" Controller.getPublicProject
     // TODO: Not in real API spec. Why not? Probably need to add it
     get "/api/users" Controller.listUsers
     get "/api/privateUsers" Controller.listUsersPrivate  // TODO: Test-only. Remove before going to production.
@@ -74,26 +74,26 @@ let securedApp = router {
     getf "/api/users/%s" Controller.getUser  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
     postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers searchText))
     // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
-    getf "/api/project/exists/%s" Controller.projectExists
+    getf "/api/projects/exists/%s" Controller.projectExists
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
+    patchf "/api/projects/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
-    postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
-    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
-    deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
+    postf "/api/projects/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
+    postf "/api/projects/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
+    deletef "/api/projects/%s/user/%s" Controller.removeUserFromProject
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
     putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
     post "/api/verify-password" (bindJson<Api.LoginCredentials> Controller.verifyPassword)
-    post "/api/project" (bindJson<Api.CreateProject> Controller.createProject)
+    post "/api/projects" (bindJson<Api.CreateProject> Controller.createProject)
     get "/api/count/users" Controller.countUsers
     get "/api/count/projects" Controller.countProjects
     get "/api/count/non-test-projects" Controller.countRealProjects
-    deletef "/api/project/%s" Controller.archiveProject
-    deletef "/api/project/private/%s" Controller.archivePrivateProject
+    deletef "/api/projects/%s" Controller.archiveProject
+    deletef "/api/projects/private/%s" Controller.archivePrivateProject
 }
 
 let publicWebApp = router {

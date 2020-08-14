@@ -11,10 +11,10 @@ export class ProjectsService {
 constructor(private readonly jsonApi: JsonApiService) { }
 
   public getProjects(): Observable<Project[]> {
-    return this.jsonApi.call('/api/project');
+    return this.jsonApi.call('/api/projects');
   }
 
   public getProject(projectCode: string): Observable<Project> {
-    return this.jsonApi.call(`/api/project/${projectCode}`);
+    return this.jsonApi.call(`/api/projects/${projectCode}`);
   }
 }
