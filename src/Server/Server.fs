@@ -89,15 +89,15 @@ let securedApp = router {
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
     post "/api/verify-password" (bindJson<Api.LoginCredentials> Controller.verifyPassword)
     post "/api/projects" (bindJson<Api.CreateProject> Controller.createProject)
-    get "/api/count/users" Controller.countUsers
-    get "/api/count/projects" Controller.countProjects
-    get "/api/count/non-test-projects" Controller.countRealProjects
     deletef "/api/projects/%s" Controller.archiveProject
     deletef "/api/projects/private/%s" Controller.archivePrivateProject
 }
 
 let publicWebApp = router {
     // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
+    get "/api/count/users" Controller.countUsers
+    get "/api/count/projects" Controller.countProjects
+    get "/api/count/non-test-projects" Controller.countRealProjects
     postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
     get "/api/roles" Controller.getAllRoles
     // Rejected API: POST /api/project/{projId}/add-user/{username}
