@@ -84,11 +84,9 @@ let convertUserRow (reader : MySqlDataReader) =
 let baseUsersQuery = "SELECT login, firstname, lastname, language, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id"
 
 // TODO: Extract an abstract base class (or an interface) with the various queries we need
-type MySqlModel(config : IConfiguration) =  // TODO: Add ", isPublic : bool" to constructor params and create child class for private
-    let isPublic = true
+type MySqlModel(config : IConfiguration, isPublic : bool) =
     let settings = SettingsHelper.getSettingsValue<Settings.MySqlSettings> config
     let connString = if isPublic then settings.ConnString else settings.ConnStringPrivate
-    // TODO: Create two subclasses for public and private, that have just an IConfiguration constructor param
 
     member this.listUsers (limit : int option) (offset : int option) =
         task {
@@ -640,6 +638,12 @@ type MySqlModel(config : IConfiguration) =  // TODO: Add ", isPublic : bool" to 
             // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
         }
 
+type MySqlPublicModel(config : IConfiguration) =
+    inherit MySqlModel(config, true)
+
+type MySqlPrivateModel(config : IConfiguration) =
+    inherit MySqlModel(config, false)
+
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
     open Microsoft.Extensions.DependencyInjection.Extensions
@@ -647,6 +651,6 @@ module ModelRegistration =
     let registerServices (builder : IServiceCollection) (connString : string) =
         // We need to turn off MySQL's ONLY_FULL_GROUP_BY setting for our entire session
         builder
-            .RemoveAll<MySqlModel>()
-            .AddScoped<MySqlModel,MySqlModel>()  // TODO: Make the first type param an interface or ABC
+            .AddScoped<MySqlPublicModel>()
+            .AddScoped<MySqlPrivateModel>()
         |> ignore
