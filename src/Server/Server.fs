@@ -67,7 +67,6 @@ let securedApp = router {
     getf "/api/projects/%s" Controller.getPublicProject
     // TODO: Not in real API spec. Why not? Probably need to add it
     get "/api/users" Controller.listUsers
-    get "/api/privateUsers" Controller.listUsersPrivate  // TODO: Test-only. Remove before going to production.
     getf "/api/users/limit/%i" Controller.listUsersLimit
     getf "/api/users/offset/%i" Controller.listUsersOffset
     getf "/api/users/limit/%i/offset/%i" Controller.listUsersLimitOffset
