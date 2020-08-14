@@ -534,7 +534,8 @@ INSERT INTO `email_addresses` (`id`, `user_id`, `address`, `is_default`, `notify
 (14, 1094, 'robin_hood@example.org',     0, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
 (15, 1094, 'rhood@example.com',          1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
 (16, 1947, 'ws1@example.org',            1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
-(17, 4159, 'alan_a_dale@example.org',    1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30');
+(17, 4159, 'alan_a_dale@example.org',    1, 1, '2019-10-04 13:27:30', '2019-10-04 13:27:30'),
+(18, 5,    'robin_munn@sil.org',         1, 1, '2020-08-14 12:34:56', '2020-08-14 12:34:56');
 /*!40000 ALTER TABLE `email_addresses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1577,6 +1578,7 @@ INSERT INTO `users` (`id`, `login`, `hashed_password`, `firstname`, `lastname`, 
 (2,'','','','Anonymous',0,0,NULL,'',NULL,'2009-07-22 08:44:34','2009-07-22 08:44:34','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),
 (3,'richard','','Richard','Lionheart',1,1,'2019-05-31 07:05:05','en',NULL,'2009-07-23 08:40:51','2019-05-31 07:05:05','User',NULL,'only_my_events','3fd636ad724f378e648c343def141bcb',0,NULL),
 (4,'prince_john','','Prince','John',1,1,'2018-05-30 19:39:34','en',NULL,'2009-07-23 10:40:09','2018-05-30 19:39:34','User',NULL,'all','aa9ba054485f376979dfd561cd69dbf8',0,NULL),
+(5,'rmunn','','Robin','Munn',1,1,'2020-08-10 12:34:56','en',NULL,'2020-08-10 12:34:56','2020-08-10 12:34:56','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',0,NULL),
 (10,  'manager1', 'bc852d2e71e76cf734e3a4b74619bc28d867c8bd', 'Manager1', 'User',   0, 1, '2009-07-23 08:44:48', 'en', NULL, '2009-07-22 06:32:07', '2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),
 (11,  'manager2', '5857a28060d630a5ed9e0bfd4e6e17a76fa41b79', 'Manager2', 'User',   0, 1, '2009-07-23 08:44:48', 'en', NULL, '2009-07-22 06:32:07', '2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),
 (20,  'user1',    '02484720fe235a6fa352ffa0d5dac80897008ec0', 'User',     'One',    0, 1, '2015-10-16 09:08:39', 'en', NULL, '2009-07-23 08:40:51', '2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),
