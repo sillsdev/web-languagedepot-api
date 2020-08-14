@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../services/auth.service';
-import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-login',
