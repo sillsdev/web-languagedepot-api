@@ -658,6 +658,8 @@ let emailIsAdmin (connString : string) email =
             cmd.Parameters.AddWithValue("email", email) |> ignore
         let! count = doCountQueryWithParams connString sql setParams
         return (count > 0L)
+        // Note that this will return false for both a non-admin address and a non-existing address.
+        // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
     }
 
 module ModelRegistration =

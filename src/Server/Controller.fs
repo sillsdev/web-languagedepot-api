@@ -312,10 +312,15 @@ let archivePrivateProject projectCode : HttpHandler =
     withServiceFunc false
         (fun connString (archiveProject : Model.ArchiveProject) -> archiveProject connString projectCode)
 
-let emailIsAdmin (ctx : HttpContext) email = task {
+let emailIsAdminImpl email (ctx : HttpContext) = task {
     let (Model.EmailIsAdmin serviceFunction) = ctx.GetService<Model.EmailIsAdmin>()
     let cfg = ctx |> getSettings<MySqlSettings>
     let isPublic = true  // TODO: Discuss whether we need separate admin lists for public & private instances; if so, make this a parameter
     let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
     return! serviceFunction connString email
+}
+
+let emailIsAdmin email : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    let! isAdmin = emailIsAdminImpl email ctx
+    return! jsonSuccess isAdmin next ctx
 }

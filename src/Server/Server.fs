@@ -50,7 +50,7 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
     let! isAdmin =
         match ctx.User.FindFirst ClaimTypes.Email with
         | null -> task { return false }
-        | claim -> Controller.emailIsAdmin ctx claim.Value
+        | claim -> Controller.emailIsAdminImpl claim.Value ctx
     if isAdmin then
         return! next ctx
     else
@@ -101,6 +101,7 @@ let publicWebApp = router {
     postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
     get "/api/roles" Controller.getAllRoles
     // Rejected API: POST /api/project/{projId}/add-user/{username}
+    getf "/api/isAdmin/%s" Controller.emailIsAdmin
 }
 
 let webApp = choose [ publicWebApp; securedApp ]
