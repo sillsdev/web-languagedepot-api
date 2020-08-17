@@ -18,8 +18,15 @@ open Shared.Settings
 
 // TODO: Define these two return types in Shared.fs
 // TODO: Then switch all client code to expect the success/error return type
-let jsonError<'a> (msg : string) : HttpHandler = json { ok = false; data = Unchecked.defaultof<'a>; message = msg }
-let jsonSuccess data : HttpHandler = json { ok = true; data = data; message = "" }
+let apiError<'a> (msg : string) = { ok = false; data = Unchecked.defaultof<'a>; message = msg }
+let apiSuccess data = { ok = true; data = data; message = "" }
+let apiResult (result : Result<'a, string>) =
+    match result with
+    | Ok data -> apiSuccess data
+    | Error msg -> apiError msg
+
+let jsonError<'a> (msg : string) : HttpHandler = json (apiError<'a> msg)
+let jsonSuccess data : HttpHandler = json (apiSuccess data)
 let jsonResult (result : Result<'a, string>) : HttpHandler =
     match result with
     | Ok data -> jsonSuccess data
@@ -243,8 +250,31 @@ let createUser isPublic (user : Api.CreateUser) : HttpHandler = fun (next : Http
         return! jsonSuccess newId next ctx
 }
 
+let withModelAndData isPublic (impl : 'data -> Model.IModel -> Task<Result<'out,string>>) next ctx = task {
+    try
+        let! data = Controller.getJson<'data> ctx
+        let model = ctx |> getModel isPublic
+        let! result = impl data model
+        return! jsonResult result next ctx
+    with :? System.Text.Json.JsonException as e ->
+        return! RequestErrors.badRequest (jsonError (e.ToString())) next ctx
+}
+
+let createUserManualDeserialize isPublic =
+    withModelAndData isPublic (fun (user : Api.CreateUser) model -> task {
+        let! alreadyExists = model.UserExists user.username
+        if alreadyExists then
+            return Error "Username already exists; pick another one"
+        else
+            let! newId = model.CreateUser user
+            return Ok newId
+    })
+
 let upsertUser isPublic (login : string) (updateData : Api.CreateUser) =
     withModel isPublic (fun (model : Model.IModel) -> model.UpsertUser login updateData)
+
+let upsertUserManual isPublic (login : string) =
+    withModelAndData isPublic (fun (updateData : Api.CreateUser) (model : Model.IModel) -> task { return Ok (model.UpsertUser login updateData)})
 
 let changePassword isPublic login (updateData : Api.ChangePassword) =
     withModel isPublic (fun (model : Model.IModel) -> model.ChangePassword login updateData)

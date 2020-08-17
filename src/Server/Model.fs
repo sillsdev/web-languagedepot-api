@@ -113,7 +113,7 @@ type IModel =
 
     abstract UpsertUser : string -> Api.CreateUser -> Task<int>
     abstract ChangePassword : string -> Api.ChangePassword -> Task<bool>
-    abstract UpdateUser : string -> Api.CreateUser -> Task<int>
+    abstract UpdateUser : string -> Api.CreateUser -> Task<int>  // TODO: Change to Task<Result<int,string>>
 
     abstract AddMembership : string -> string -> string -> Task<bool>
     abstract RemoveMembership : string -> string -> Task<bool>

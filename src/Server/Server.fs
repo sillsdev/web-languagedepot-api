@@ -79,6 +79,7 @@ let securedApp = router {
 
     get    "/api/users" (Controller.listUsers true)  // Now takes optional "?limit=(int)&offset=(int)" query parameters
     post   "/api/users" (bindJson<Api.CreateUser> (Controller.createUser true))
+    post   "/api/experimental/users" (Controller.createUserManualDeserialize true)
     getf   "/api/users/%s" (Controller.getUser true)  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
     putf   "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser true login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword true login))
