@@ -40,6 +40,11 @@ let fetchDataWithParams (connString : string) (sql : string) (setParams : MySqlC
 let fetchData (connString : string) (sql : string) (convertRow : MySqlDataReader -> 'result) =
     fetchDataWithParams connString sql ignore convertRow
 
+let fetchDataWithLimitOffset (connString : string) (sql : string) (limit : int option) (offset : int option) (convertRow : MySqlDataReader -> 'result) =
+    let withLimit = match limit with | None -> "" | Some n -> sprintf " LIMIT %d" n
+    let withOffset = match offset with | None -> "" | Some n -> sprintf " OFFSET %d" n
+    fetchDataWithParams connString (sql + withLimit + withOffset) ignore convertRow
+
 let doScalarQueryWithParams<'result> (connString : string) (sql : string) (setParams : MySqlCommand -> unit) = task {
     use conn = new MySqlConnection(connString)
     do! conn.OpenAsync()
@@ -85,9 +90,9 @@ let baseUsersQuery = "SELECT login, firstname, lastname, language, address FROM 
 
 type IModel =
     abstract ListUsers : int option -> int option -> Task<Dto.UserDetails []>
-    abstract ListProjects : unit -> Task<Dto.ProjectList>
-    abstract ListRoles : unit -> Task<(int * string)[]>
-    abstract ListProjectsAndRoles : unit -> Task<Dto.ProjectDetails []>
+    abstract ListProjects : int option -> int option -> Task<Dto.ProjectList>
+    abstract ListRoles : int option -> int option -> Task<(int * string)[]>
+    abstract ListProjectsAndRoles : int option -> int option -> Task<Dto.ProjectDetails []>
 
     abstract SearchUsersExact : string -> Task<Dto.UserList>
     abstract SearchUsersLoose : string -> Task<Dto.UserList>
@@ -250,9 +255,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
         member this.ListUsers (limit : int option) (offset : int option) =
             task {
                 let sql = baseUsersQuery
-                let withLimit = match limit with | None -> "" | Some n -> sprintf " LIMIT %d" n
-                let withOffset = match offset with | None -> "" | Some n -> sprintf " OFFSET %d" n
-                let! result = fetchData connString (sql + withLimit + withOffset) convertUserRow
+                let! result = fetchDataWithLimitOffset connString sql limit offset convertUserRow
                 return result
             }
 
@@ -283,19 +286,17 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result
             }
 
-        member this.ListProjects() =
+        member this.ListProjects (limit : int option) (offset : int option) =
             task {
                 let sql = this.baseProjectQuery
-                let setParams (cmd : MySqlCommand) =
-                    ()
-                let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
+                let! result = fetchDataWithLimitOffset connString sql limit offset this.convertProjectRow
                 return result
             }
 
-        member this.ListProjectsAndRoles() =
+        member this.ListProjectsAndRoles (limit : int option) (offset : int option) =
             task {
                 let sql = this.projectWithMembersBaseQuery + this.projectsWithMembersGroupByClause
-                let! result = fetchData connString sql this.convertProjectRow
+                let! result = fetchDataWithLimitOffset connString sql limit offset this.convertProjectRow
                 return result
             }
 
@@ -322,8 +323,6 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 let sql = "SELECT COUNT(*) FROM users"
                 return! doCountQuery connString sql
             }
-
-        // TODO: Implement userExists, then use it later on below in upsertUser
 
         member this.UserExists username =
             task {
@@ -499,12 +498,12 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             return! this.getProjectDetails projectCodes
         }
 
-        member this.ListRoles() =
+        member this.ListRoles (limit : int option) (offset : int option) =
             task {
                 let sql = "SELECT id, name FROM roles"
                 let convertRow (reader : MySqlDataReader) =
                     reader.GetInt32("id"), reader.GetString("name")
-                return! fetchData connString sql convertRow
+                return! fetchDataWithLimitOffset connString sql limit offset convertRow
             }
 
         member this.VerifyLoginInfo (loginCredentials : Api.LoginCredentials) =

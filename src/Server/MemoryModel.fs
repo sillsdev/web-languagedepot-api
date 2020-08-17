@@ -11,6 +11,15 @@ let adminEmails = [
     "robin_munn@sil.org"
 ]
 
+let doLimitOffset limit offset =
+    let limitFn = match limit with
+                  | Some limit -> Seq.take<'a> limit
+                  | None -> id
+    let offsetFn = match offset with
+                   | Some offset -> Seq.skip<'a> offset
+                   | None -> id
+    limitFn >> offsetFn
+
 type MemoryModel() =
     member this.isRealProject (proj : Dto.ProjectDetails) =
         let projType = GuessProjectType.guessType proj.code proj.name proj.description
@@ -35,21 +44,15 @@ type MemoryModel() =
 
     interface Model.IModel with
         member this.ListUsers limit offset = task {
-            let limitFn = match limit with
-                          | Some limit -> Seq.take limit
-                          | None -> id
-            let offsetFn = match offset with
-                           | Some offset -> Seq.skip offset
-                           | None -> id
-            return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> Array.ofSeq
+            return MemoryStorage.userStorage.Values |> doLimitOffset limit offset |> Array.ofSeq
         }
 
-        member this.ListProjects() = task {
-            return MemoryStorage.projectStorage.Values |> Array.ofSeq
+        member this.ListProjects limit offset = task {
+            return MemoryStorage.projectStorage.Values |> doLimitOffset limit offset |> Array.ofSeq
         }
 
-        member this.ListProjectsAndRoles() = task {
-            return MemoryStorage.projectStorage.Values |> Array.ofSeq
+        member this.ListProjectsAndRoles limit offset = task {
+            return MemoryStorage.projectStorage.Values |> doLimitOffset limit offset |> Array.ofSeq
         }
 
         member this.CountUsers() = task {
@@ -63,8 +66,8 @@ type MemoryModel() =
             return MemoryStorage.projectStorage.Values |> Seq.filter this.isRealProject |> Seq.length |> int64
         }
 
-        member this.ListRoles() = task {
-            return SampleData.StandardRoles |> Array.map (fun role -> role.id, role.name)
+        member this.ListRoles limit offset = task {
+            return SampleData.StandardRoles |> doLimitOffset limit offset |> Array.ofSeq |> Array.map (fun role -> role.id, role.name)
         }
 
         member this.ProjectsAndRolesByUser username = task {

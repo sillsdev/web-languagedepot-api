@@ -74,14 +74,11 @@ let securedApp = router {
     getf    "/api/projects/private/%s" (Controller.getPrivateProject false)
     deletef "/api/projects/private/%s" (Controller.archivePrivateProject false)
 
-    get    "/api/users" (Controller.listUsers true)
+    get    "/api/users" (Controller.listUsers true)  // Now takes optional "?limit=(int)&offset=(int)" query parameters
     post   "/api/users" (bindJson<Api.CreateUser> (Controller.createUser true))
     getf   "/api/users/%s" (Controller.getUser true)  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
     putf   "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser true login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword true login))
-    getf   "/api/users/limit/%i" (Controller.listUsersLimit true)
-    getf   "/api/users/offset/%i" (Controller.listUsersOffset true)
-    getf   "/api/users/limit/%i/offset/%i" (Controller.listUsersLimitOffset true)
     // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
     getf   "/api/users/exists/%s" (Controller.userExists true)
     postf  "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser true username))

@@ -38,7 +38,7 @@ let withSimpleFunc (impl : 'a -> Task<'result>) (param : 'a) (next : HttpFunc) (
         let! result = impl param
         return! jsonSuccess result next ctx
     with e ->
-        return! jsonError<'result> (e.ToString()) next ctx  // TODO: More sophisticated error type that carries a message *and* a stacktrace, so the message can be displayed and the stacktrace can be logged
+        return! jsonError<'result> e.Message next ctx
 }
 
 let getModel isPublic (ctx : HttpContext) =
@@ -53,15 +53,15 @@ let withModel isPublic (impl : Model.IModel -> Task<'result>) (next : HttpFunc) 
         let! result = impl model
         return! jsonSuccess result next ctx
     with e ->
-        return! jsonError<'result> (e.ToString()) next ctx  // TODO: More sophisticated error type that carries a message *and* a stacktrace, so the message can be displayed and the stacktrace can be logged
+        return! jsonError<'result> e.Message next ctx
 }
 
-let withModelReturningOption isPublic (impl : Model.IModel -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
+let withModelReturningOption isPublic (impl : Model.IModel -> Task<'a option>) (notFoundMsg : string) (next : HttpFunc) (ctx : HttpContext) = task {
     let model = ctx |> getModel isPublic
     let! opt = (impl model)
     match opt with
     | Some result -> return! jsonSuccess result next ctx
-    | None -> return! RequestErrors.notFound (jsonError msg) next ctx
+    | None -> return! RequestErrors.notFound (jsonError notFoundMsg) next ctx
 }
 
 let tryParseSingleInt (strs : Microsoft.Extensions.Primitives.StringValues) =
@@ -132,17 +132,10 @@ let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : 
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
 
-let listUsers isPublic : HttpHandler =
-    withModel isPublic (fun model -> model.ListUsers None None)
-
-let listUsersLimit isPublic limit : HttpHandler =
-    withModel isPublic (fun model -> model.ListUsers (Some limit) None)
-
-let listUsersOffset isPublic offset : HttpHandler =
-    withModel isPublic (fun model -> model.ListUsers None (Some offset))
-
-let listUsersLimitOffset isPublic (limit,offset) : HttpHandler =
-    withModel isPublic (fun model -> model.ListUsers (Some limit) (Some offset))
+let listUsers isPublic : HttpHandler = fun next ctx -> task {
+        let limit, offset = getLimitOffset ctx
+        return! withModel isPublic (fun model -> model.ListUsers limit offset) next ctx
+    }
 
 let projectExists isPublic projectCode : HttpHandler =
     withModel isPublic (fun model -> model.ProjectExists projectCode)
@@ -150,12 +143,16 @@ let projectExists isPublic projectCode : HttpHandler =
 let userExists isPublic projectCode : HttpHandler =
     withModel isPublic (fun model -> model.UserExists projectCode)
 
-let getAllPublicProjects isPublic : HttpHandler =
-    withModel isPublic (fun model -> model.ListProjects())
+let getAllPublicProjects isPublic : HttpHandler = fun next ctx -> task {
+        let limit, offset = getLimitOffset ctx
+        return! withModel isPublic (fun model -> model.ListProjects limit offset) next ctx
+    }
 
-let getAllPrivateProjects isPublic : HttpHandler =
+let getAllPrivateProjects isPublic : HttpHandler = fun next ctx -> task {
+        let limit, offset = getLimitOffset ctx
+        return! withModel isPublic (fun model -> model.ListProjects limit offset) next ctx
+    }
     // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
-    withModel isPublic (fun model -> model.ListProjects())
 
 let projectsAndRolesByUser isPublic username (loginCredentials : Api.LoginCredentials) : HttpHandler =
     withLoggedInModel isPublic loginCredentials (fun model -> model.ProjectsAndRolesByUser username)
@@ -230,8 +227,10 @@ let addOrRemoveUserFromProject isPublic projectCode (patchData : Api.EditProject
     | None, None, None ->
         RequestErrors.badRequest (jsonError "No command included in JSON: should be one of add, remove, or removeUser")
 
-let getAllRoles isPublic : HttpHandler =
-    withModel isPublic (fun model -> model.ListRoles())
+let getAllRoles isPublic : HttpHandler = fun next ctx -> task {
+        let limit, offset = getLimitOffset ctx
+        return! withModel isPublic (fun model -> model.ListRoles limit offset) next ctx
+    }
 
 let createUser isPublic (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
