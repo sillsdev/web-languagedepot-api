@@ -34,7 +34,7 @@ type MemoryModel() =
             lst |> List.filter (fun listItem -> listItem <> item)
 
     interface Model.IModel with
-        member this.listUsers limit offset = task {
+        member this.ListUsers limit offset = task {
             let limitFn = match limit with
                           | Some limit -> Seq.take limit
                           | None -> id
@@ -44,30 +44,30 @@ type MemoryModel() =
             return MemoryStorage.userStorage.Values |> offsetFn |> limitFn |> Array.ofSeq
         }
 
-        member this.listProjects() = task {
+        member this.ListProjects() = task {
             return MemoryStorage.projectStorage.Values |> Array.ofSeq
         }
 
-        member this.listProjectsAndRoles() = task {
+        member this.ListProjectsAndRoles() = task {
             return MemoryStorage.projectStorage.Values |> Array.ofSeq
         }
 
-        member this.countUsers() = task {
+        member this.CountUsers() = task {
             return int64 MemoryStorage.userStorage.Count
         }
 
-        member this.countProjects() = task {
+        member this.CountProjects() = task {
             return int64 MemoryStorage.projectStorage.Count
         }
-        member this.countRealProjects() = task {
+        member this.CountRealProjects() = task {
             return MemoryStorage.projectStorage.Values |> Seq.filter this.isRealProject |> Seq.length |> int64
         }
 
-        member this.listRoles() = task {
+        member this.ListRoles() = task {
             return SampleData.StandardRoles |> Array.map (fun role -> role.id, role.name)
         }
 
-        member this.projectsAndRolesByUser username = task {
+        member this.ProjectsAndRolesByUser username = task {
             let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
                 let maybeRole = proj.membership |> Map.tryFind username
                 match maybeRole with
@@ -76,7 +76,7 @@ type MemoryModel() =
             return Array.ofSeq projectsAndRoles
         }
 
-        member this.legacyProjectsAndRolesByUser username = task {
+        member this.LegacyProjectsAndRolesByUser username = task {
             let projectsAndRoles = MemoryStorage.projectStorage.Values |> Seq.choose (fun proj ->
                 let maybeRole = proj.membership |> Map.tryFind username
                 match maybeRole with
@@ -97,34 +97,34 @@ type MemoryModel() =
             return legacyProjectDetails
         }
 
-        member this.projectsAndRolesByUserRole username roleType = task {
-            let! projectsAndRoles = (this :> Model.IModel).projectsAndRolesByUser username
+        member this.ProjectsAndRolesByUserRole username roleType = task {
+            let! projectsAndRoles = (this :> Model.IModel).ProjectsAndRolesByUser username
             return (projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleType))
         }
 
-        member this.projectsByUser username = task {
-            let! projectsAndRoles = (this :> Model.IModel).projectsAndRolesByUser username
+        member this.ProjectsByUser username = task {
+            let! projectsAndRoles = (this :> Model.IModel).ProjectsAndRolesByUser username
             return projectsAndRoles |> Array.map fst
         }
 
-        member this.projectsByUserRole username roleType = task {
-            let! projectsAndRoles = (this :> Model.IModel).projectsAndRolesByUserRole username roleType
+        member this.ProjectsByUserRole username roleType = task {
+            let! projectsAndRoles = (this :> Model.IModel).ProjectsAndRolesByUserRole username roleType
             return projectsAndRoles |> Array.map fst
         }
 
-        member this.userExists username = task {
+        member this.UserExists username = task {
             return MemoryStorage.userStorage.ContainsKey username
         }
 
-        member this.projectExists code = task {
+        member this.ProjectExists code = task {
             return MemoryStorage.projectStorage.ContainsKey code
         }
 
-        member this.isAdmin username = task {
+        member this.IsAdmin username = task {
             return username = "admin"
         }
 
-        member this.searchUsersExact searchText = task {
+        member this.SearchUsersExact searchText = task {
             return
                 MemoryStorage.userStorage.Values
                 |> Seq.filter (fun user ->
@@ -135,7 +135,7 @@ type MemoryModel() =
                 |> Array.ofSeq
         }
 
-        member this.searchUsersLoose (searchText : string) = task {
+        member this.SearchUsersLoose (searchText : string) = task {
             return
                 MemoryStorage.userStorage.Values
                 |> Seq.filter (fun user ->
@@ -146,23 +146,23 @@ type MemoryModel() =
                 |> Array.ofSeq
         }
 
-        member this.getUser username = task {
+        member this.GetUser username = task {
             return
                 match MemoryStorage.userStorage.TryGetValue username with
                 | false, _ -> None
                 | true, user -> Some user
         }
 
-        member this.getProject projectCode = task {
+        member this.GetProject projectCode = task {
             return
                 match MemoryStorage.projectStorage.TryGetValue projectCode with
                 | false, _ -> None
                 | true, project -> Some project
         }
 
-        member this.getProjectWithRoles projectCode = (this :> Model.IModel).getProject projectCode
+        member this.GetProjectWithRoles projectCode = (this :> Model.IModel).GetProject projectCode
 
-        member this.createProject (createProjectApiData : Api.CreateProject) = task {
+        member this.CreateProject (createProjectApiData : Api.CreateProject) = task {
             let proj : Dto.ProjectDetails = {
                 code = createProjectApiData.code
                 name = createProjectApiData.name
@@ -173,13 +173,13 @@ type MemoryModel() =
             return if added then 1 else 0
         }
 
-        member this.createUser (createUserApiData : Api.CreateUser) = task {
+        member this.CreateUser (createUserApiData : Api.CreateUser) = task {
             let user = this.mkUserDetailsFromApiData createUserApiData
             let added = MemoryStorage.userStorage.TryAdd(user.username,user)
             return if added then 1 else 0
         }
 
-        member this.upsertUser username (createUserApiData : Api.CreateUser) = task {
+        member this.UpsertUser username (createUserApiData : Api.CreateUser) = task {
             if username = createUserApiData.username then
                 let newUser = this.mkUserDetailsFromApiData createUserApiData
                 MemoryStorage.userStorage.AddOrUpdate(username, newUser, fun _ _ -> newUser) |> ignore
@@ -189,10 +189,10 @@ type MemoryModel() =
                 | Error _ -> return 0
                 | Ok _ ->
                     // Now recursive call to update the rest of the info
-                    return! (this :> Model.IModel).upsertUser createUserApiData.username createUserApiData
+                    return! (this :> Model.IModel).UpsertUser createUserApiData.username createUserApiData
         }
 
-        member this.updateUser username (createUserApiData : Api.CreateUser) = task {
+        member this.UpdateUser username (createUserApiData : Api.CreateUser) = task {
             if username = createUserApiData.username then
                 let newUser = this.mkUserDetailsFromApiData createUserApiData
                 MemoryStorage.userStorage.AddOrUpdate(username, newUser, fun _ _ -> newUser) |> ignore
@@ -202,16 +202,16 @@ type MemoryModel() =
                 | Error _ -> return 0
                 | Ok _ ->
                     // Now recursive call to update the rest of the info
-                    return! (this :> Model.IModel).upsertUser createUserApiData.username createUserApiData
+                    return! (this :> Model.IModel).UpsertUser createUserApiData.username createUserApiData
         }
 
-        member this.changePassword username (changePasswordApiData : Api.ChangePassword) = task {
+        member this.ChangePassword username (changePasswordApiData : Api.ChangePassword) = task {
             let cleartext = changePasswordApiData.password
             MemoryStorage.storeNewPassword username changePasswordApiData.password
             return true
         }
 
-        member this.verifyLoginInfo loginCredentials = task {
+        member this.VerifyLoginInfo loginCredentials = task {
             // Skip verifying login credentials until I update the sample data to have "x" as the default password everywhere
             return true
             // match MemoryStorage.passwordStorage.TryGetValue loginCredentials.username with
@@ -221,7 +221,7 @@ type MemoryModel() =
             //     return hashedPassword = passwordDetails.hashedPassword
         }
 
-        member this.addMembership username projectCode (roleName : string) = task {
+        member this.AddMembership username projectCode (roleName : string) = task {
             match MemoryStorage.userStorage.TryGetValue username with
             | false, _ -> return false
             | true, _ ->  // We don't need user details, we just want to make sure the user exists
@@ -237,7 +237,7 @@ type MemoryModel() =
                     return true
         }
 
-        member this.removeMembership (username : string) (projectCode : string) = task {
+        member this.RemoveMembership (username : string) (projectCode : string) = task {
             match MemoryStorage.userStorage.TryGetValue username with
             | false, _ -> return false
             | true, _ ->  // We don't need user details, we just want to make sure the user exists
@@ -253,9 +253,9 @@ type MemoryModel() =
                     return true
         }
 
-        member this.archiveProject projectCode = raise (System.NotImplementedException("Not implemented"))
+        member this.ArchiveProject projectCode = raise (System.NotImplementedException("Not implemented"))
 
-        member this.emailIsAdmin email = task { return adminEmails |> List.contains email }
+        member this.EmailIsAdmin email = task { return adminEmails |> List.contains email }
 
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection

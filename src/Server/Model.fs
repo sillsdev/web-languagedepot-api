@@ -84,45 +84,45 @@ let convertUserRow (reader : MySqlDataReader) =
 let baseUsersQuery = "SELECT login, firstname, lastname, language, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id"
 
 type IModel =
-    abstract listUsers : int option -> int option -> Task<Dto.UserDetails []>
-    abstract listProjects : unit -> Task<Dto.ProjectList>
-    abstract listRoles : unit -> Task<(int * string)[]>
-    abstract listProjectsAndRoles : unit -> Task<Dto.ProjectDetails []>
+    abstract ListUsers : int option -> int option -> Task<Dto.UserDetails []>
+    abstract ListProjects : unit -> Task<Dto.ProjectList>
+    abstract ListRoles : unit -> Task<(int * string)[]>
+    abstract ListProjectsAndRoles : unit -> Task<Dto.ProjectDetails []>
 
-    abstract searchUsersExact : string -> Task<Dto.UserList>
-    abstract searchUsersLoose : string -> Task<Dto.UserList>
+    abstract SearchUsersExact : string -> Task<Dto.UserList>
+    abstract SearchUsersLoose : string -> Task<Dto.UserList>
 
-    abstract getUser : string -> Task<Dto.UserDetails option>
-    abstract getProject : string -> Task<Dto.ProjectDetails option>
-    abstract getProjectWithRoles : string -> Task<Dto.ProjectDetails option>
+    abstract GetUser : string -> Task<Dto.UserDetails option>
+    abstract GetProject : string -> Task<Dto.ProjectDetails option>
+    abstract GetProjectWithRoles : string -> Task<Dto.ProjectDetails option>
 
-    abstract countUsers : unit -> Task<int64>
-    abstract countProjects : unit -> Task<int64>
-    abstract countRealProjects : unit -> Task<int64>
+    abstract CountUsers : unit -> Task<int64>
+    abstract CountProjects : unit -> Task<int64>
+    abstract CountRealProjects : unit -> Task<int64>
 
-    abstract userExists : string -> Task<bool>
-    abstract projectExists : string -> Task<bool>
+    abstract UserExists : string -> Task<bool>
+    abstract ProjectExists : string -> Task<bool>
 
-    abstract createProject : Api.CreateProject -> Task<int>
-    abstract createUser : Api.CreateUser -> Task<int>
+    abstract CreateProject : Api.CreateProject -> Task<int>
+    abstract CreateUser : Api.CreateUser -> Task<int>
 
-    abstract upsertUser : string -> Api.CreateUser -> Task<int>
-    abstract changePassword : string -> Api.ChangePassword -> Task<bool>
-    abstract updateUser : string -> Api.CreateUser -> Task<int>
+    abstract UpsertUser : string -> Api.CreateUser -> Task<int>
+    abstract ChangePassword : string -> Api.ChangePassword -> Task<bool>
+    abstract UpdateUser : string -> Api.CreateUser -> Task<int>
 
-    abstract addMembership : string -> string -> string -> Task<bool>
-    abstract removeMembership : string -> string -> Task<bool>
+    abstract AddMembership : string -> string -> string -> Task<bool>
+    abstract RemoveMembership : string -> string -> Task<bool>
 
-    abstract projectsByUser : string -> Task<Dto.ProjectDetails []>
-    abstract projectsByUserRole : string -> string -> Task<Dto.ProjectDetails []>
-    abstract projectsAndRolesByUser : string -> Task<(Dto.ProjectDetails * string) []>
-    abstract projectsAndRolesByUserRole : string -> string -> Task<(Dto.ProjectDetails * string) []>
-    abstract legacyProjectsAndRolesByUser : string -> Task<Dto.LegacyProjectDetails[]>
+    abstract ProjectsByUser : string -> Task<Dto.ProjectDetails []>
+    abstract ProjectsByUserRole : string -> string -> Task<Dto.ProjectDetails []>
+    abstract ProjectsAndRolesByUser : string -> Task<(Dto.ProjectDetails * string) []>
+    abstract ProjectsAndRolesByUserRole : string -> string -> Task<(Dto.ProjectDetails * string) []>
+    abstract LegacyProjectsAndRolesByUser : string -> Task<Dto.LegacyProjectDetails[]>
 
-    abstract isAdmin : string -> Task<bool>
-    abstract emailIsAdmin : string -> Task<bool>
-    abstract verifyLoginInfo : Api.LoginCredentials -> Task<bool>
-    abstract archiveProject : string -> Task<bool>
+    abstract IsAdmin : string -> Task<bool>
+    abstract EmailIsAdmin : string -> Task<bool>
+    abstract VerifyLoginInfo : Api.LoginCredentials -> Task<bool>
+    abstract ArchiveProject : string -> Task<bool>
 
 
 type MySqlModel(config : IConfiguration, isPublic : bool) =
@@ -247,7 +247,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
 
     interface IModel with
 
-        member this.listUsers (limit : int option) (offset : int option) =
+        member this.ListUsers (limit : int option) (offset : int option) =
             task {
                 let sql = baseUsersQuery
                 let withLimit = match limit with | None -> "" | Some n -> sprintf " LIMIT %d" n
@@ -256,7 +256,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result
             }
 
-        member this.getUser username =
+        member this.GetUser username =
             task {
                 let sql = baseUsersQuery + " WHERE login = @username"
                 let setParams (cmd : MySqlCommand) =
@@ -265,7 +265,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result |> Array.tryHead
             }
 
-        member this.searchUsersLoose (searchTerm : string) =
+        member this.SearchUsersLoose (searchTerm : string) =
             task {
                 let sql = baseUsersQuery + " WHERE login LIKE @searchTerm OR firstname LIKE @searchTerm OR lastname LIKE @searchTerm OR address LIKE @searchTerm"
                 let escapedSearchTerm = "%" + searchTerm.Replace(@"\", @"\\").Replace("%", @"\%") + "%"
@@ -276,14 +276,14 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result
             }
 
-        member this.searchUsersExact (searchTerm : string) =
+        member this.SearchUsersExact (searchTerm : string) =
             task {
                 let sql = baseUsersQuery + " WHERE login = @searchTerm OR firstname = @searchTerm OR lastname = @searchTerm OR address = @searchTerm"
                 let! result = fetchDataWithParams connString sql (fun cmd -> cmd.Parameters.AddWithValue("searchTerm", searchTerm) |> ignore) convertUserRow
                 return result
             }
 
-        member this.listProjects() =
+        member this.ListProjects() =
             task {
                 let sql = this.baseProjectQuery
                 let setParams (cmd : MySqlCommand) =
@@ -292,20 +292,20 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result
             }
 
-        member this.listProjectsAndRoles() =
+        member this.ListProjectsAndRoles() =
             task {
                 let sql = this.projectWithMembersBaseQuery + this.projectsWithMembersGroupByClause
                 let! result = fetchData connString sql this.convertProjectRow
                 return result
             }
 
-        member this.countProjects() =
+        member this.CountProjects() =
             task {
                 let sql = "SELECT COUNT(*) FROM projects"
                 return! doCountQuery connString sql
             }
 
-        member this.countRealProjects() =
+        member this.CountRealProjects() =
             task {
                 let sql = this.baseProjectQuery
                 let! result = fetchData connString sql this.convertProjectRow
@@ -317,7 +317,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                     |> int64
             }
 
-        member this.countUsers() =
+        member this.CountUsers() =
             task {
                 let sql = "SELECT COUNT(*) FROM users"
                 return! doCountQuery connString sql
@@ -325,7 +325,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
 
         // TODO: Implement userExists, then use it later on below in upsertUser
 
-        member this.userExists username =
+        member this.UserExists username =
             task {
                 let sql = "SELECT COUNT(*) FROM users WHERE login = @username"
                 let setParams (cmd : MySqlCommand) =
@@ -334,7 +334,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return (count > 0L)
             }
 
-        member this.projectExists projectCode =
+        member this.ProjectExists projectCode =
             task {
                 let sql = "SELECT COUNT(*) FROM projects WHERE identifier = @projectCode"
                 let setParams (cmd : MySqlCommand) =
@@ -343,7 +343,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return (count > 0L)
             }
 
-        member this.isAdmin username =
+        member this.IsAdmin username =
             task {
                 let sql = "SELECT is_admin FROM users WHERE login = @username"
                 let setParams (cmd : MySqlCommand) =
@@ -353,7 +353,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 if results.Length > 0 then return results.[0] else return false
             }
 
-        member this.getProject projectCode =
+        member this.GetProject projectCode =
             task {
                 let sql = this.baseProjectQuery + " WHERE projects.identifier = @projectCode"
                 let setParams (cmd : MySqlCommand) =
@@ -362,7 +362,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result |> Array.tryHead
             }
 
-        member this.getProjectWithRoles projectCode =
+        member this.GetProjectWithRoles projectCode =
             task {
                 let whereClause = " WHERE projects.identifier = @projectCode"
                 let sql = this.projectWithMembersBaseQuery + whereClause + this.projectsWithMembersGroupByClause
@@ -372,7 +372,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 if result.Length = 0 then return None else return Some result.[0]
             }
 
-        member this.createProject (project : Api.CreateProject) =
+        member this.CreateProject (project : Api.CreateProject) =
             task {
                 let sqlTxt = "INSERT INTO projects (name, description, identifier, status, created_on, updated_on) VALUES (@name, @description, @identifier, @status, NOW(), NOW())"
                 use conn = new MySqlConnection(connString)
@@ -390,12 +390,12 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                     return newId
             }
 
-        member this.createUser (user : Api.CreateUser) =
+        member this.CreateUser (user : Api.CreateUser) =
             let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
                       "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW())"
             this.createUserImpl user sql
 
-        member this.updateUser (login : string) (updatedUser : Api.CreateUser) =
+        member this.UpdateUser (login : string) (updatedUser : Api.CreateUser) =
             task {
                 // Everyone may change their own data, but only admins may change some else's data
                 let sql = "SELECT is_admin, login FROM users WHERE login = @login"
@@ -443,13 +443,13 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                     return changedRows
             }
 
-        member this.upsertUser login updatedUser =
+        member this.UpsertUser login updatedUser =
             task {
-                let! shouldUpdate = (this :> IModel).userExists updatedUser.username
+                let! shouldUpdate = (this :> IModel).UserExists updatedUser.username
                 if not shouldUpdate then
-                    return! (this :> IModel).createUser updatedUser
+                    return! (this :> IModel).CreateUser updatedUser
                 else
-                    return! (this :> IModel).updateUser login updatedUser
+                    return! (this :> IModel).UpdateUser login updatedUser
             }
             // This won't work, because the Redmine data model doesn't have "login" as a unique key constraint (?!?)
             // let sql = "INSERT INTO users (login, firstname, lastname, hashed_password, salt, status, created_on, updated_on) " +
@@ -457,14 +457,14 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             //           "ON DUPLICATE KEY UPDATE firstname = @firstname, lastname = @lastname, hashedPassword = @hashedPassword, salt = @salt, status = @status, updated_on = NOW()"
             // createUserImpl connString updatedUser sql
 
-        member this.projectsAndRolesByUser username = task {
+        member this.ProjectsAndRolesByUser username = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
             return Array.zip projects roles
         }
 
-        member this.legacyProjectsAndRolesByUser username = task {
+        member this.LegacyProjectsAndRolesByUser username = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
@@ -480,26 +480,26 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             return legacyProjects
         }
 
-        member this.projectsAndRolesByUserRole username (roleName : string) = task {
+        member this.ProjectsAndRolesByUserRole username (roleName : string) = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
             return Array.zip projects roles
         }
 
-        member this.projectsByUserRole username (roleName : string) = task {
+        member this.ProjectsByUserRole username (roleName : string) = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, _ = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
             return! this.getProjectDetails projectCodes
         }
 
-        member this.projectsByUser username = task {
+        member this.ProjectsByUser username = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, _ = projectsAndRoles |> Array.unzip
             return! this.getProjectDetails projectCodes
         }
 
-        member this.listRoles() =
+        member this.ListRoles() =
             task {
                 let sql = "SELECT id, name FROM roles"
                 let convertRow (reader : MySqlDataReader) =
@@ -507,7 +507,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return! fetchData connString sql convertRow
             }
 
-        member this.verifyLoginInfo (loginCredentials : Api.LoginCredentials) =
+        member this.VerifyLoginInfo (loginCredentials : Api.LoginCredentials) =
             // During development of the client UI, just accept any credentials. TODO: Natually, restore real code before going to production
             task { return true }
             // task {
@@ -524,7 +524,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             //         return false
             // }
 
-        member this.changePassword (login : string) (changeRequest : Api.ChangePassword) =
+        member this.ChangePassword (login : string) (changeRequest : Api.ChangePassword) =
             task {
                 let! salt =
                     let sql = "SELECT salt FROM users where login = @username"
@@ -540,7 +540,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return (result = 1)
             }
 
-        member this.removeMembership (username : string) (projectCode : string) =
+        member this.RemoveMembership (username : string) (projectCode : string) =
             task {
                 use conn = new MySqlConnection(connString)
                 do! conn.OpenAsync()
@@ -573,7 +573,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return true
             }
 
-        member this.addMembership (username : string) (projectCode : string) (roleName : string) =
+        member this.AddMembership (username : string) (projectCode : string) (roleName : string) =
 
             let getId (sql : string) (paramName : string) (paramValue : string) (conn : MySqlConnection) (transaction: MySqlTransaction) = task {
                     use cmd = new MySqlCommand(sql, conn, transaction)
@@ -650,7 +650,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                                 return true
             }
 
-        member this.archiveProject (projectCode : string) =
+        member this.ArchiveProject (projectCode : string) =
             task {
                 use conn = new MySqlConnection(connString)
                 do! conn.OpenAsync()
@@ -669,7 +669,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                     return false
             }
 
-        member this.emailIsAdmin email =
+        member this.EmailIsAdmin email =
             task {
                 let sql = "SELECT COUNT(u.login) FROM email_addresses AS e JOIN users AS u ON e.user_id = u.id WHERE u.admin=1 AND e.address = @email"
                 let setParams (cmd : MySqlCommand) =
