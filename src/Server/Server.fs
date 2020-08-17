@@ -62,6 +62,18 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
 }
 
+let projectRouter isPublic = router {
+    get     "/" (Controller.getAllPublicProjects isPublic)
+    post    "/" (Controller.createProjectManual isPublic)
+    getf    "/%s" (Controller.getPublicProject isPublic)
+    patchf  "/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject isPublic projId))
+    deletef "/%s" (Controller.archiveProject isPublic)
+    postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
+    postf   "/%s/user/%s" (Controller.addUserToProject isPublic)  // Default role is "Contributer", yes, spelled with "er"
+    deletef "/%s/user/%s" (Controller.removeUserFromProject isPublic)
+    getf    "/exists/%s" (Controller.projectExists isPublic)
+}
+
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     get     "/api/projects" (Controller.getAllPublicProjects true)
@@ -80,6 +92,8 @@ let securedApp = router {
     get    "/api/users" (Controller.listUsers true)  // Now takes optional "?limit=(int)&offset=(int)" query parameters
     post   "/api/users" (bindJson<Api.CreateUser> (Controller.createUser true))
     post   "/api/experimental/users" (Controller.createUserManualDeserialize true)
+    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProjectExperimental true)
+    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectExperimentalSample true)
     getf   "/api/users/%s" (Controller.getUser true)  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
     putf   "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser true login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword true login))
@@ -135,7 +149,7 @@ let extraJsonCoders =
 
 let jsonSerializer =
     let options = JsonSerializerOptions()
-    options.Converters.Add(JsonFSharpConverter())
+    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.FSharpLuLike))
     SystemTextJsonSerializer(options)
 
 let app = application {

@@ -79,4 +79,22 @@ export class AppComponent implements OnInit {
       tap(console.log)
     ).subscribe();
   }
+  editUser(): void {
+    const body = {
+      login: { username: 'rhood', password: 'y' },
+      // remove: [{username: 'user-to-remove', role: 'Contributor'}]
+      // add: [{username: 'user-to-remove', role: 'Contributor'}]
+      // removeUser: 'user-to-remove'  // Wrong, should be removeUser
+      // add: [{username: 'rhood', role: 'Contributer'}]
+      remove: [{username: 'rhood', role: 'Contributer'}]
+    };
+    this.jsonApi.addRemoveUserExp<any>(body).pipe(
+      tap(console.log)
+    ).subscribe();
+  }
+  editUserSample(): void {
+    this.jsonApi.addRemoveUserExpSample<any>().pipe(
+      tap(console.log)
+    ).subscribe();
+  }
 }

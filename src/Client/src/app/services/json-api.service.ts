@@ -26,4 +26,11 @@ export class JsonApiService {
   public createUserExp<T>(body: any): Observable<T> {
     return this.post<T>('/api/experimental/users', body);
   }
+
+  public addRemoveUserExp<T>(body: any): Observable<T> {
+    return this.post<T>('/api/experimental/addRemoveUsers/test-ws-1-flex', body);
+  }
+  public addRemoveUserExpSample<T>(): Observable<T> {
+    return this.call<T>('/api/experimental/addRemoveUsersSample');
+  }
 }
