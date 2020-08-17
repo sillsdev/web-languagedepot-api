@@ -41,11 +41,14 @@ let withSimpleFunc (impl : 'a -> Task<'result>) (param : 'a) (next : HttpFunc) (
         return! jsonError<'result> (e.ToString()) next ctx  // TODO: More sophisticated error type that carries a message *and* a stacktrace, so the message can be displayed and the stacktrace can be logged
 }
 
+let getModel isPublic (ctx : HttpContext) =
+    if isPublic
+        then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
+        else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+
 // Exact same thing as withServiceFunc, really, except that we're retrieving an entire model implementation
 let withModel isPublic (impl : Model.IModel -> Task<'result>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     try
         let! result = impl model
         return! jsonSuccess result next ctx
@@ -54,9 +57,7 @@ let withModel isPublic (impl : Model.IModel -> Task<'result>) (next : HttpFunc) 
 }
 
 let withModelReturningOption isPublic (impl : Model.IModel -> Task<'a option>) (msg : string) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! opt = (impl model)
     match opt with
     | Some result -> return! jsonSuccess result next ctx
@@ -83,9 +84,7 @@ let withServiceFuncNoSuccessWrap (isPublic : bool) (impl : string -> 'service ->
 }
 
 let withLoggedInModel isPublic (loginCredentials : Api.LoginCredentials) (impl : Model.IModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! goodLogin = model.VerifyLoginInfo loginCredentials
     if goodLogin then
         return! withModel isPublic impl next ctx
@@ -94,9 +93,7 @@ let withLoggedInModel isPublic (loginCredentials : Api.LoginCredentials) (impl :
 }
 
 let withLoggedInServiceFuncNoSuccessWrap isPublic (loginCredentials : Api.LoginCredentials) (impl : Model.IModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! goodLogin = model.VerifyLoginInfo loginCredentials
     if goodLogin then
         let! result = impl model
@@ -123,9 +120,7 @@ let getPrivateProject isPublic projectCode : HttpHandler =
 
 let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : HttpHandler =
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
-        let model = if isPublic
-                        then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                        else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+        let model = ctx |> getModel isPublic
         let! goodLogin = model.VerifyLoginInfo loginCredentials
         if goodLogin then
             let! isAdmin = model.IsAdmin loginCredentials.username
@@ -137,7 +132,6 @@ let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : 
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
 
-// TODO: Remove before going to production
 let listUsers isPublic : HttpHandler =
     withModel isPublic (fun model -> model.ListUsers None None)
 
@@ -176,9 +170,7 @@ let projectsAndRolesByUserRole isPublic username roleName (loginCredentials : Ap
     withLoggedInModel isPublic loginCredentials (fun model -> model.ProjectsAndRolesByUserRole username roleName)
 
 let addUserToProjectWithRole isPublic (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! success = model.AddMembership username projectCode roleName
     let result =
         if success then
@@ -191,9 +183,7 @@ let addUserToProjectWithRole isPublic (projectCode, username, roleName) : HttpHa
 let addUserToProject isPublic (projectCode, username) = addUserToProjectWithRole isPublic (projectCode,username,"Contributer")
 
 let removeUserFromProject isPublic (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! success = model.RemoveMembership username projectCode
     let result =
         if success then
@@ -245,9 +235,7 @@ let getAllRoles isPublic : HttpHandler =
 
 let createUser isPublic (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to do extra work in the success branch
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! alreadyExists = model.UserExists user.username
     if alreadyExists then
         return! jsonError "Username already exists; pick another one" next ctx
@@ -268,9 +256,7 @@ let verifyPassword isPublic (loginCredentials : Api.LoginCredentials) =
 
 let createProject isPublic (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
     // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     let! alreadyExists = model.ProjectExists proj.code
     if alreadyExists then
         return! jsonError "Project code already exists; pick another one" next ctx
@@ -298,9 +284,7 @@ let archivePrivateProject isPublic projectCode : HttpHandler =
     withModel isPublic (fun model -> model.ArchiveProject projectCode)  // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
 
 let emailIsAdminImpl isPublic email (ctx : HttpContext) = task {
-    let model = if isPublic
-                    then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-                    else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+    let model = ctx |> getModel isPublic
     return! model.EmailIsAdmin email
 }
 
