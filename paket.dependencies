@@ -4,9 +4,11 @@ group Server
     storage: none
 
     nuget FSharp.Core
-    nuget Saturn
+    nuget Saturn 0.15.0-preview01
     nuget Microsoft.AspNetCore.Authentication.JwtBearer
+    nuget Giraffe 5.0.0-alpha-002
     nuget Thoth.Json.Giraffe
+    nuget FSharp.SystemTextJson
     nuget BCrypt.Net-Next
 
 group Sql

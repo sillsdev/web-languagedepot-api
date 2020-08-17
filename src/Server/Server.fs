@@ -13,10 +13,13 @@ open Microsoft.Extensions.Hosting
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Giraffe.HttpStatusCodeHandlers
+open Giraffe.Serialization.Json
 open Saturn
 open Shared
 open Shared.Settings
 open Thoth.Json.Net
+open System.Text.Json
+open System.Text.Json.Serialization
 open Microsoft.IdentityModel.Tokens
 
 // let [<Literal>] SecretApiToken = "not-a-secret"
@@ -129,13 +132,18 @@ let extraJsonCoders =
     Extra.empty
     |> Extra.withInt64
 
+let jsonSerializer =
+    let options = JsonSerializerOptions()
+    options.Converters.Add(JsonFSharpConverter())
+    SystemTextJsonSerializer(options)
+
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
     disable_diagnostics  // Don't create site.map file
     error_handler errorHandler
-    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
+    use_json_serializer jsonSerializer
     use_gzip
     webhost_config hostConfig
     use_config buildConfig // TODO: Get rid of this
