@@ -312,7 +312,14 @@ let emailIsAdmin isPublic email : HttpHandler = fun (next : HttpFunc) (ctx : Htt
 
 let mapRolesIntoDb (s : string) =
     match s.ToLowerInvariant() with
-    | "contributor" -> "Contributer"  // Misspelled in database
+    // Misspelled in database
+    | "contributor" -> "Contributer"
+    // Alternate ways to describe some roles
+    | "member" -> "Contributer"
+    | "programmer" -> "LanguageDepotProgrammer"
+    | "observer" -> "Obv - do not use"  // TODO: Get this renamed in the database, as we *do* want to use this role for Language Forge
+    | "guest" -> "Obv - do not use"
+    | "non-member" -> "Non member"
     | _ -> s
 
 let addUsers (model : Model.IModel) projectCode (data : Api.MembershipRecordApiCall list) =
