@@ -588,12 +588,16 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                         return ids.[0]
             }
 
+            let escapeForLikeClause (s : string) =
+                s.Replace(@"\", @"\\").Replace("%",@"\%").Replace("_",@"\_")
+
             task {
                 use conn = new MySqlConnection(connString)
                 do! conn.OpenAsync()
                 use transaction = conn.BeginTransaction()
 
-                let! roleId = getId "SELECT id FROM roles WHERE name = @roleName" "roleName" roleName conn transaction
+                // Use a LIKE clause for roles because that's case-insensitive in MySQL: https://dev.mysql.com/doc/refman/5.7/en/string-comparison-functions.html#operator_like
+                let! roleId = getId "SELECT id FROM roles WHERE name LIKE @roleName" "roleName" (escapeForLikeClause roleName) conn transaction
                 let! userId = getId "SELECT id FROM users WHERE login = @username" "username" username conn transaction
                 let! projId = getId "SELECT id FROM projects WHERE identifier = @projectCode" "projectCode" projectCode conn transaction
                 if roleId < 0 || userId < 0 || projId < 0 then

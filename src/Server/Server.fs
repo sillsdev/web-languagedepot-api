@@ -66,7 +66,7 @@ let projectRouter isPublic = router {
     get     "/" (Controller.getAllPublicProjects isPublic)
     post    "/" (Controller.createProjectManual isPublic)
     getf    "/%s" (Controller.getPublicProject isPublic)
-    patchf  "/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject isPublic projId))
+    patchf  "/%s" (Controller.addOrRemoveUserFromProject isPublic)
     deletef "/%s" (Controller.archiveProject isPublic)
     postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
     postf   "/%s/user/%s" (Controller.addUserToProject isPublic)  // Default role is "Contributer", yes, spelled with "er"
@@ -79,7 +79,7 @@ let securedApp = router {
     get     "/api/projects" (Controller.getAllPublicProjects true)
     post    "/api/projects" (bindJson<Api.CreateProject> (Controller.createProject true))
     getf    "/api/projects/%s" (Controller.getPublicProject true)
-    patchf  "/api/projects/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject true projId))
+    patchf  "/api/projects/%s" (Controller.addOrRemoveUserFromProject true)
     deletef "/api/projects/%s" (Controller.archiveProject true)
     postf   "/api/projects/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole true)
     postf   "/api/projects/%s/user/%s" (Controller.addUserToProject true)  // Default role is "Contributer", yes, spelled with "er"
@@ -92,8 +92,8 @@ let securedApp = router {
     get    "/api/users" (Controller.listUsers true)  // Now takes optional "?limit=(int)&offset=(int)" query parameters
     post   "/api/users" (bindJson<Api.CreateUser> (Controller.createUser true))
     post   "/api/experimental/users" (Controller.createUserManualDeserialize true)
-    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProjectExperimental true)
-    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectExperimentalSample true)
+    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
+    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
     getf   "/api/users/%s" (Controller.getUser true)  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
     putf   "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser true login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword true login))
@@ -149,7 +149,7 @@ let extraJsonCoders =
 
 let jsonSerializer =
     let options = JsonSerializerOptions()
-    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.FSharpLuLike))
+    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.Untagged))
     SystemTextJsonSerializer(options)
 
 let app = application {

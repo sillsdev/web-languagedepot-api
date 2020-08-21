@@ -196,44 +196,6 @@ let removeUserFromProject isPublic (projectCode, username) : HttpHandler = fun (
             Error (sprintf "Failed to remove %s from %s" username projectCode)
     return! jsonResult result next ctx
 }
-let addOrRemoveUserFromProjectInternal isPublic projectCode (patchData : Api.EditProjectMembershipInternalDetails) =
-    match patchData with
-    | Api.EditProjectMembershipInternalDetails.Add(login, memberships) -> RequestErrors.badRequest (jsonError "Add not yet implemented")
-    | Api.EditProjectMembershipInternalDetails.Remove(login, memberships) -> RequestErrors.badRequest (jsonError "Remove not yet implemented")
-    | Api.EditProjectMembershipInternalDetails.RemoveUser(login, username) -> RequestErrors.badRequest (jsonError "RemoveUser not yet implemented")
-
-let mapRoles (apiRoles : Api.MembershipRecordApiCall list) : Result<Api.MembershipRecordInternal list, string> =
-    let roleTypes = apiRoles |> List.map (fun apiRole -> apiRole, RoleType.TryOfString apiRole.role)
-    let errors = roleTypes |> List.choose (fun (apiRole, roleType) -> if roleType.IsNone then Some apiRole else None)
-    if List.isEmpty errors then
-        roleTypes |> List.map (fun (apiRole, roleType) -> { username = apiRole.username; role = roleType.Value } : Api.MembershipRecordInternal) |> Ok
-    else
-        errors |> List.map (fun apiRole -> apiRole.role) |> String.concat ", " |> sprintf "Unrecognized role names: %s" |> Error
-
-let addOrRemoveUserFromProject isPublic projectCode (patchData : Api.EditProjectMembershipApiCall) : HttpHandler =
-    let login : Api.LoginCredentials = { username = "x"; password = "y" }
-    match patchData.add, patchData.remove, patchData.removeUser with
-    | Some _, Some _, Some _
-    | Some _, Some _, None
-    | Some _, None,   Some _
-    | None,   Some _, Some _ ->
-        RequestErrors.badRequest (jsonError "Specify exactly one of add, remove, or removeUser")
-    | Some add, None, None ->
-        match mapRoles add with
-        | Ok addInternal ->
-            addOrRemoveUserFromProjectInternal isPublic projectCode (Api.EditProjectMembershipInternalDetails.Add (login, addInternal))
-        | Error msg ->
-            jsonError msg
-    | None, Some remove, None ->
-        match mapRoles remove with
-        | Ok removeInternal ->
-            addOrRemoveUserFromProjectInternal isPublic projectCode (Api.EditProjectMembershipInternalDetails.Remove (login, removeInternal))
-        | Error msg ->
-            jsonError msg
-    | None, None, Some removeUser ->
-        addOrRemoveUserFromProjectInternal isPublic projectCode (Api.EditProjectMembershipInternalDetails.RemoveUser (login, removeUser))
-    | None, None, None ->
-        RequestErrors.badRequest (jsonError "No command included in JSON: should be one of add, remove, or removeUser")
 
 let getAllRoles isPublic : HttpHandler = fun next ctx -> task {
         let limit, offset = getLimitOffset ctx
@@ -348,13 +310,18 @@ let emailIsAdmin isPublic email : HttpHandler = fun (next : HttpFunc) (ctx : Htt
     return! jsonSuccess isAdmin next ctx
 }
 
+let mapRolesIntoDb (s : string) =
+    match s.ToLowerInvariant() with
+    | "contributor" -> "Contributer"  // Misspelled in database
+    | _ -> s
+
 let addUsers (model : Model.IModel) projectCode (data : Api.MembershipRecordApiCall list) =
     let rec loop (data : Api.MembershipRecordApiCall list) =
         match data with
         | [] -> task { return Ok () }
         | record :: rest ->
             task {
-                let! success = model.AddMembership record.username projectCode record.role
+                let! success = model.AddMembership record.username projectCode (mapRolesIntoDb record.role)
                 if success then
                     return! loop rest
                 else
@@ -376,7 +343,7 @@ let removeUsers (model : Model.IModel) projectCode (data : Api.MembershipRecordA
             }
     loop data
 
-let addOrRemoveUserFromProjectExperimental isPublic projectCode =
+let addOrRemoveUserFromProject isPublic projectCode =
     choose [
         withModelOrPass isPublic (fun (addApi : Api.AddProjectMembershipApiCall) model -> task {
             let! success = addUsers model projectCode addApi.add
@@ -406,17 +373,18 @@ let addOrRemoveUserFromProjectExperimental isPublic projectCode =
 //     | Api.EditProjectMembershipInternalDetails.RemoveUser (login, username) -> return Error (sprintf "Would remove user %s from %s" username projectCode)
 // })
 
-let addOrRemoveUserFromProjectExperimentalSample isPublic =
+let addOrRemoveUserFromProjectSample isPublic =
     let login : Api.LoginCredentials = { username = "x"; password = "y" }
     withModel isPublic (fun model -> task {
-        // let foo = Api.EditProjectMembershipInternalDetails.RemoveUser (login, "x")
-        let foo = Api.EditProjectMembershipInternalDetails.Add (login, [{
-            username = "foo"
-            role = RoleType.Contributor
-        }])
-        // let foo = Api.EditProjectMembershipInternalDetails.Remove (login, [{
+        // let foo : Api.RemoveUserProjectMembershipApiCall = { login = login; removeUser = "x" }
+        // let foo = Api.EditProjectMembershipApiCall.RemoveUser (login, "x")
+        // let foo : Api.AddProjectMembershipApiCall = { login = login; add = [{
         //     username = "foo"
-        //     role = RoleType.Contributor
-        // }])
+        //     role = "Contributor"
+        // }]}
+        let foo : Api.RemoveProjectMembershipApiCall = { login = login; remove = [{
+            username = "foo"
+            role = "Contributor"
+        }]}
         return foo
     })

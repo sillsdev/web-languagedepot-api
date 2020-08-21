@@ -177,18 +177,6 @@ module Api =
         removeUser : string
     }
 
-    [<JsonFSharpConverter(JsonUnionEncoding.Untagged)>]
-    type EditProjectMembershipInternalDetails =
-        | Add of login: LoginCredentials * add: MembershipRecordInternal list
-        | Remove of login: LoginCredentials * remove: MembershipRecordInternal list
-        | RemoveUser of login: LoginCredentials * removeUser: string
-
-    type EditProjectMembershipInternal = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        projectCode : string
-        details : EditProjectMembershipInternalDetails
-    }
-
     type ChangeUserActiveStatus = {
         login : LoginCredentials // (the login credentials of an existing admin account, or the one being changed)
         username : string
