@@ -50,8 +50,8 @@ let withSimpleFunc (impl : 'a -> Task<'result>) (param : 'a) (next : HttpFunc) (
 
 let getModel isPublic (ctx : HttpContext) =
     if isPublic
-        then ctx.GetService<Model.MySqlPublicModel>() :> Model.IModel
-        else ctx.GetService<Model.MySqlPrivateModel>() :> Model.IModel
+        then ctx.GetService<MySqlModel.MySqlPublicModel>() :> Model.IModel
+        else ctx.GetService<MySqlModel.MySqlPrivateModel>() :> Model.IModel
 
 // Exact same thing as withServiceFunc, really, except that we're retrieving an entire model implementation
 let withModel isPublic (impl : Model.IModel -> Task<'result>) (next : HttpFunc) (ctx : HttpContext) = task {

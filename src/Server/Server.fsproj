@@ -14,6 +14,7 @@
         <Compile Include="GuessProjectType.fs" />
         <Compile Include="PasswordHashing.fs" />
         <Compile Include="Model.fs" />
+        <Compile Include="MySqlModel.fs" />
         <Compile Include="MemoryStorage.fs" />
         <Compile Include="MemoryModel.fs" />
         <Compile Include="Controller.fs" />

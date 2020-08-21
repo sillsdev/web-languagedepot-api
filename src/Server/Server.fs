@@ -133,7 +133,7 @@ let setupAppConfig (context : WebHostBuilderContext) (configBuilder : IConfigura
 
 let registerMySqlServices (context : WebHostBuilderContext) (svc : IServiceCollection) =
     let x = getSettingsValue<MySqlSettings> context.Configuration
-    Model.ModelRegistration.registerServices svc x.ConnString
+    MySqlModel.ModelRegistration.registerServices svc x.ConnString
 
 let hostConfig (builder : IWebHostBuilder) =
     builder
