@@ -237,7 +237,8 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
         then return Array.empty
         else
             let whereClause = projectCodes |> Seq.mapi (fun idx _ -> sprintf "projects.identifier = @var%d" idx) |> String.concat " OR "
-            let sql = this.projectWithMembersBaseQuery + " WHERE " + whereClause + this.projectsWithMembersGroupByClause
+            let safeWhereClause = if String.IsNullOrEmpty whereClause then "" else " WHERE " + whereClause
+            let sql = this.projectWithMembersBaseQuery + safeWhereClause + this.projectsWithMembersGroupByClause
             let setParams (cmd : MySqlCommand) =
                 for idx, code in projectCodes |> Seq.indexed do
                     cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
@@ -557,13 +558,15 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
                 // Also have to delete from member_roles table
                 let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
-                let sql = "DELETE FROM member_roles WHERE " + whereClause
+                let safeWhereClause = if String.IsNullOrEmpty whereClause then "" else " WHERE " + whereClause
+                let sql = "DELETE FROM member_roles" + safeWhereClause
                 use cmd = new MySqlCommand(sql, conn, transaction)
                 for idx, code in memberRowIds |> Seq.indexed do
                     cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
                 let! _ = cmd.ExecuteNonQueryAsync()
                 let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
-                let sql = "DELETE FROM members WHERE " + whereClause
+                let safeWhereClause = if String.IsNullOrEmpty whereClause then "" else " WHERE " + whereClause
+                let sql = "DELETE FROM members" + safeWhereClause
                 use cmd = new MySqlCommand(sql, conn, transaction)
                 for idx, code in memberRowIds |> Seq.indexed do
                     cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
