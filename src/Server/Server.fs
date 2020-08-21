@@ -6,6 +6,9 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Authentication.JwtBearer
+open System.Security.Claims
 open Microsoft.Extensions.Hosting
 open FSharp.Control.Tasks.V2
 open Giraffe
@@ -14,9 +17,16 @@ open Saturn
 open Shared
 open Shared.Settings
 open Thoth.Json.Net
+open Microsoft.IdentityModel.Tokens
 
 // let [<Literal>] SecretApiToken = "not-a-secret"
 // let [<Literal>] BearerToken = "Bearer " + SecretApiToken
+
+// TODO: Create an API endpoint that looks this up in the database
+let adminEmails = [
+    "robin_munn@sil.org"
+    // "robin.munn@gmail.com"
+]
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -36,9 +46,21 @@ let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-let webApp = router {
-    // pipe_through (requireHeader "Authorization" BearerToken)
-    // TODO: That returns a 404 NOT FOUND when no bearer token. I want it to return 403 UNAUTHORIZED instead.
+let requireAdmin : HttpHandler = fun next ctx -> task {
+    let! isAdmin =
+        match ctx.User.FindFirst ClaimTypes.Email with
+        | null -> task { return false }
+        | claim -> Controller.emailIsAdminImpl claim.Value ctx
+    if isAdmin then
+        return! next ctx
+    else
+        return! (setStatusCode 403 >=> Controller.jsonError "Unauthorized") next ctx
+        // TODO: Decide whether to return a more detailed explanation for unauthorized API requests
+        // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
+}
+
+let securedApp = router {
+    pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     get "/api/project/private" Controller.getAllPrivateProjects
     getf "/api/project/private/%s" Controller.getPrivateProject
     get "/api/project" Controller.getAllPublicProjects
@@ -56,15 +78,12 @@ let webApp = router {
     getf "/api/users/exists/%s" Controller.userExists
     postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
-    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
     patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
     // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
     postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
     postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
     deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
     postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    get "/api/roles" Controller.getAllRoles
     post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
     putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
     patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
@@ -75,8 +94,17 @@ let webApp = router {
     get "/api/count/non-test-projects" Controller.countRealProjects
     deletef "/api/project/%s" Controller.archiveProject
     deletef "/api/project/private/%s" Controller.archivePrivateProject
-    // Rejected API: POST /api/project/{projId}/add-user/{username}
 }
+
+let publicWebApp = router {
+    // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
+    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
+    get "/api/roles" Controller.getAllRoles
+    // Rejected API: POST /api/project/{projId}/add-user/{username}
+    getf "/api/isAdmin/%s" Controller.emailIsAdmin
+}
+
+let webApp = choose [ publicWebApp; securedApp ]
 
 let setupAppConfig (context : WebHostBuilderContext) (configBuilder : IConfigurationBuilder) =
     configBuilder.AddIniFile("/etc/ldapi-server/ldapi-server.ini", optional=true, reloadOnChange=false) |> ignore
@@ -91,6 +119,16 @@ let hostConfig (builder : IWebHostBuilder) =
         .ConfigureAppConfiguration(setupAppConfig)
         .ConfigureServices(registerMySqlServices)
 
+let jwtConfig (options : JwtBearerOptions) =
+    let tvp =
+        TokenValidationParameters(
+            ValidateActor = true
+        )
+    options.Audience <- "https://admin.languagedepot.org"
+    options.Authority <- "https://dev-rmunn-ldapi.us.auth0.com"  // TODO: Move into config file
+    options.RequireHttpsMetadata <- false  // FIXME: ONLY do this during development!
+    options.TokenValidationParameters <- tvp
+
 let extraJsonCoders =
     Extra.empty
     |> Extra.withInt64
@@ -103,8 +141,9 @@ let app = application {
     error_handler errorHandler
     use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
     use_gzip
-    host_config hostConfig
+    webhost_config hostConfig
     use_config buildConfig // TODO: Get rid of this
+    use_jwt_authentication_with_config jwtConfig
 }
 
 run app

@@ -14,6 +14,9 @@ import { DataTableComponent } from './components/data-table.component';
 
 // Angular MDC (use this for future dev work)
 import { MDCDataTableModule } from '@angular-mdc/web/data-table';
+import { MdcIconModule } from '@angular-mdc/web/icon';
+import { MdcMenuModule } from '@angular-mdc/web/menu';
+import { MdcTopAppBarModule } from '@angular-mdc/web/top-app-bar';
 
 // Angular Material (phase this out unless MDC doesn't have something we need)
 import { MatGridListModule } from '@angular/material/grid-list';
@@ -25,8 +28,7 @@ import { SingleUserComponent } from './single-user/single-user.component';
 import { UsersComponent } from './users/users.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
 import { ProjectsComponent } from './projects/projects.component';
-import { JsonApiService } from './services/json-api.service';
-import { UsersService } from './services/users.service';
+import { LoginComponent } from './login/login.component';
 
 @NgModule({
   declarations: [
@@ -36,7 +38,8 @@ import { UsersService } from './services/users.service';
     SingleUserComponent,
     UsersComponent,
     SingleProjectComponent,
-    ProjectsComponent
+    ProjectsComponent,
+    LoginComponent
   ],
   imports: [
     BrowserModule,
@@ -52,6 +55,9 @@ import { UsersService } from './services/users.service';
     MatIconModule,
     MatToolbarModule,
     MDCDataTableModule,
+    MdcMenuModule,
+    MdcIconModule,
+    MdcTopAppBarModule,
     LayoutModule
   ],
   providers: [],

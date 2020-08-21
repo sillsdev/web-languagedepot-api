@@ -3,7 +3,11 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  auth0Domain: 'dev-rmunn-ldapi.us.auth0.com',
+  auth0ClientId: 'vBdDgCTbyJY8RsOBNhWEMjmKpOh5914n',
+  scope: 'ldapi',
+  audience: 'https://admin.languagedepot.org',
 };
 
 /*

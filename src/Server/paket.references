@@ -3,6 +3,7 @@ group Server
     Saturn
     Thoth.Json.Giraffe
     BCrypt.Net-Next
+    Microsoft.AspNetCore.Authentication.JwtBearer
 
 group Sql
     MySqlConnector

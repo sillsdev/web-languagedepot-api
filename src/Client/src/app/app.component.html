@@ -1,27 +1,26 @@
 <div class="app-root">
-  <mat-toolbar class="grid-header" color="primary">
-    <mat-toolbar-row>
-      <button mat-icon-button>
-        <!-- <mat-icon (click)="sidenav.toggle()">menu</mat-icon> -->
-      </button>
-      <h1>LD API</h1>
-      <span class="menu-spacer"></span>
-      <div>
-        <a mat-button [routerLink]="'/admin/users'"> Users (WIP) </a>
-        <a mat-button [routerLink]="'/admin/users/rhood'"> Single User (demo) </a>
-        <a mat-button [routerLink]="'/admin/projects'"> Projects (WIP) </a>
-        <a mat-button [routerLink]="'/admin/projects/tha-food'"> Single Project (demo) </a>
-
-      </div>
-    </mat-toolbar-row>
-  </mat-toolbar>
-  <div class="grid-nav">
-    <ul>
-      <li>One</li>
-      <li>Two</li>
-    </ul>
-  </div>
-  <div class="grid-content">
+  <mdc-top-app-bar dense [scrollTarget]="fixedContent">
+    <mdc-top-app-bar-row>
+      <mdc-top-app-bar-section align="start" title="LD Admin" style="flex: 0 1 auto">
+        <button mdcTopAppBarNavIcon>
+          <mdc-icon>menu</mdc-icon>
+        </button>
+      </mdc-top-app-bar-section>
+      <mdc-top-app-bar-section align="start">
+        <span class="menu-spacer"></span>
+        <div>
+          <a mat-button [routerLink]="'/admin/users'"> Users (WIP) </a>
+          <a mat-button [routerLink]="'/admin/users/rhood'"> Single User (demo) </a>
+          <a mat-button [routerLink]="'/admin/projects'"> Projects (WIP) </a>
+          <a mat-button [routerLink]="'/admin/projects/tha-food'"> Single Project (demo) </a>
+        </div>
+      </mdc-top-app-bar-section>
+      <mdc-top-app-bar-section align="end">
+        <app-login></app-login>
+      </mdc-top-app-bar-section>
+    </mdc-top-app-bar-row>
+  </mdc-top-app-bar>
+  <div #fixedContent mdcTopAppBarFixedAdjust>
     <div class="buttons">
       <button mat-button (click)="users()">Users</button>
       <button mat-button (click)="projects()">Projects</button>

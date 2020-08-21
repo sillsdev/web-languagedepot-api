@@ -5,7 +5,7 @@ open System.Linq
 open System.Threading.Tasks
 open System.Collections.Generic
 open Shared
-open MySql.Data.MySqlClient
+open MySqlConnector
 
 // TODO: Add "is_archived" boolean to model (default false) so we can implement archiving; update queries that list or count projects to specify "where (isArchived = false)"
 
@@ -37,6 +37,8 @@ type VerifyLoginCredentials = string -> Api.LoginCredentials -> Task<bool>
 type AddMembership = AddMembership of (string -> string -> string -> string -> Task<bool>)
 type RemoveMembership = RemoveMembership of (string -> string -> string -> Task<bool>)
 type ArchiveProject = string -> string -> Task<bool>
+
+type EmailIsAdmin = EmailIsAdmin of (string -> string -> Task<bool>)
 
 open FSharp.Control.Tasks.V2
 
@@ -649,6 +651,17 @@ let archiveProject (connString : string) (projectCode : string) =
             return false
     }
 
+let emailIsAdmin (connString : string) email =
+    task {
+        let sql = "SELECT COUNT(u.login) FROM email_addresses AS e JOIN users AS u ON e.user_id = u.id WHERE u.admin=1 AND e.address = @email"
+        let setParams (cmd : MySqlCommand) =
+            cmd.Parameters.AddWithValue("email", email) |> ignore
+        let! count = doCountQueryWithParams connString sql setParams
+        return (count > 0L)
+        // Note that this will return false for both a non-admin address and a non-existing address.
+        // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
+    }
+
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
     open Microsoft.Extensions.DependencyInjection.Extensions
@@ -708,4 +721,6 @@ module ModelRegistration =
             .AddSingleton<RemoveMembership>(RemoveMembership removeMembership)
             .RemoveAll<ArchiveProject>()
             .AddSingleton<ArchiveProject>(archiveProject)
+            .RemoveAll<EmailIsAdmin>()
+            .AddSingleton<EmailIsAdmin>(EmailIsAdmin (emailIsAdmin))
         |> ignore

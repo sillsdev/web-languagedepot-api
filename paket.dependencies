@@ -1,18 +1,17 @@
 group Server
     source https://api.nuget.org/v3/index.json
-    framework: netcoreapp3.0
+    framework: netcoreapp3.1
     storage: none
 
     nuget FSharp.Core
     nuget Saturn
-    # For some reason, Microsoft.AspNetCore.Authentication.JwtBearer 3.1 is packaged for netcoreapp3.1 only
-    nuget Microsoft.AspNetCore.Authentication.JwtBearer >= 3.0 < 3.1
+    nuget Microsoft.AspNetCore.Authentication.JwtBearer
     nuget Thoth.Json.Giraffe
     nuget BCrypt.Net-Next
 
 group Sql
     source https://api.nuget.org/v3/index.json
-    framework: netcoreapp3.0
+    framework: netcoreapp3.1
     storage: packages
     nuget MySqlConnector
 
