@@ -21,6 +21,7 @@ open Thoth.Json.Net
 open System.Text.Json
 open System.Text.Json.Serialization
 open Microsoft.IdentityModel.Tokens
+open Microsoft.AspNetCore.Http
 
 // let [<Literal>] SecretApiToken = "not-a-secret"
 // let [<Literal>] BearerToken = "Bearer " + SecretApiToken
@@ -62,49 +63,55 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
 }
 
+let head (handler : string -> HttpHandler) (next : HttpFunc) (ctx : HttpContext) =
+    if HttpMethods.IsHead ctx.Request.Method then
+        routef "/%s" handler next ctx
+    else
+        next ctx
+
 let projectRouter isPublic = router {
-    get     "/" (Controller.getAllPublicProjects isPublic)
-    post    "/" (Controller.createProjectManual isPublic)
-    getf    "/%s" (Controller.getPublicProject isPublic)
+    pipe_through (head (Controller.projectExists isPublic))  // Ugly, but there's no `headf` operation so we have to do it manually
+    get     "/" (Controller.listProjects isPublic)
+    post    "/" (Controller.createProject isPublic)
+    getf    "/%s" (Controller.getProject isPublic)
     patchf  "/%s" (Controller.addOrRemoveUserFromProject isPublic)
     deletef "/%s" (Controller.archiveProject isPublic)
     postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
     postf   "/%s/user/%s" (Controller.addUserToProject isPublic)  // Default role is "Contributer", yes, spelled with "er"
     deletef "/%s/user/%s" (Controller.removeUserFromProject isPublic)
-    getf    "/exists/%s" (Controller.projectExists isPublic)
+    // getf    "/exists/%s" (Controller.projectExists isPublic)  // No need, can just send HEAD request to /%s instead of GET request
+}
+
+let usersRouter isPublic = router {
+    pipe_through (head (Controller.userExists isPublic))
+    get    "/" (Controller.listUsers isPublic)
+    post   "/" (Controller.createUser isPublic)
+    getf   "/%s" (Controller.getUser isPublic)
+    putf   "/%s"  (Controller.upsertUser isPublic)
+    patchf "/%s" (Controller.changePassword isPublic) // TODO: Allow more operations than just changing password
+    // deletef "/%s" (Controller.deleteUser isPublic) // TODO: Implement
+    // getf   "/exists/%s" (Controller.userExists true)  // No need, can just send HEAD request to /%s instead of GET request
+
+    postf  "/%s/projects" (Controller.projectsAndRolesByUser isPublic)
+    postf  "/%s/projects/withRole/%s" (Controller.projectsAndRolesByUserRole isPublic)
 }
 
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
-    get     "/api/projects" (Controller.getAllPublicProjects true)
-    post    "/api/projects" (bindJson<Api.CreateProject> (Controller.createProject true))
-    getf    "/api/projects/%s" (Controller.getPublicProject true)
-    patchf  "/api/projects/%s" (Controller.addOrRemoveUserFromProject true)
-    deletef "/api/projects/%s" (Controller.archiveProject true)
-    postf   "/api/projects/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole true)
-    postf   "/api/projects/%s/user/%s" (Controller.addUserToProject true)  // Default role is "Contributer", yes, spelled with "er"
-    deletef "/api/projects/%s/user/%s" (Controller.removeUserFromProject true)
-    getf    "/api/projects/exists/%s" (Controller.projectExists true)
-    get     "/api/projects/private" (Controller.getAllPrivateProjects false)
-    getf    "/api/projects/private/%s" (Controller.getPrivateProject false)
-    deletef "/api/projects/private/%s" (Controller.archivePrivateProject false)
 
-    get    "/api/users" (Controller.listUsers true)  // Now takes optional "?limit=(int)&offset=(int)" query parameters
-    post   "/api/users" (bindJson<Api.CreateUser> (Controller.createUser true))
-    post   "/api/experimental/users" (Controller.createUserManualDeserialize true)
-    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
-    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
-    getf   "/api/users/%s" (Controller.getUser true)  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
-    putf   "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser true login))
-    patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword true login))
-    // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
-    getf   "/api/users/exists/%s" (Controller.userExists true)
-    postf  "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser true username))
-    postf  "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole true username roleName))
-    postf  "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole true username roleName))
+    forward "/api/projects" (projectRouter true)
+    forward "/api/privateProjects" (projectRouter false)
+    forward "/api/users" (usersRouter true)
+    forward "/api/privateUsers" (usersRouter false)
 
     postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
+    postf "/api/searchPrivateUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers false searchText))
     post  "/api/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
+    post  "/api/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))
+
+    // Remove this once we're done experimenting
+    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
+    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
 }
 
 let publicWebApp = router {

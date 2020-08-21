@@ -111,8 +111,8 @@ type IModel =
     abstract CreateProject : Api.CreateProject -> Task<int>
     abstract CreateUser : Api.CreateUser -> Task<int>
 
-    abstract UpsertUser : string -> Api.CreateUser -> Task<int>
-    abstract ChangePassword : string -> Api.ChangePassword -> Task<bool>
+    abstract UpsertUser : string -> Api.CreateUser -> Task<int>  // TODO: Change to Task<Result<int,string>> so we can return more meaningful error messages
+    abstract ChangePassword : string -> Api.ChangePassword -> Task<bool>  // TODO: Change to Task<Result<int,string>> so we can return more meaningful error messages
     abstract UpdateUser : string -> Api.CreateUser -> Task<int>  // TODO: Change to Task<Result<int,string>> so we can return more meaningful error messages
 
     abstract AddMembership : string -> string -> string -> Task<bool>  // TODO: Change to Task<Result<unit,string>> so we can return more meaningful error messages

@@ -63,12 +63,58 @@ let withModel isPublic (impl : Model.IModel -> Task<'result>) (next : HttpFunc) 
         return! jsonError<'result> e.Message next ctx
 }
 
+let withModelForHeadRequest isPublic (impl : Model.IModel -> Task<bool>) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+    let model = ctx |> getModel isPublic
+    let! opt = impl model
+    let resultHandler = if opt then Successful.OK else RequestErrors.NOT_FOUND
+    return! resultHandler () next ctx
+}
+
 let withModelReturningOption isPublic (impl : Model.IModel -> Task<'a option>) (notFoundMsg : string) (next : HttpFunc) (ctx : HttpContext) = task {
     let model = ctx |> getModel isPublic
     let! opt = (impl model)
     match opt with
     | Some result -> return! jsonSuccess result next ctx
     | None -> return! RequestErrors.notFound (jsonError notFoundMsg) next ctx
+}
+
+let withModelReturningResult isPublic (impl : Model.IModel -> Task<Result<'out,string>>) (next : HttpFunc) (ctx : HttpContext) = task {
+    let model = ctx |> getModel isPublic
+    let! result = (impl model)
+    return! jsonResult result next ctx
+}
+
+let withModelAndData isPublic (impl : 'data -> Model.IModel -> Task<Result<'out,string>>) next ctx = task {
+    try
+        let! data = Controller.getJson<'data> ctx
+        return! withModelReturningResult isPublic (impl data) next ctx
+    with :? System.Text.Json.JsonException as e ->
+        return! RequestErrors.badRequest (jsonError (e.ToString())) next ctx
+}
+
+let withLoggedInModel isPublic (impl : Model.IModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
+    try
+        let! loginCredentials = Controller.getJson<Api.LoginCredentials> ctx
+        let model = ctx |> getModel isPublic
+        let! goodLogin = model.VerifyLoginInfo loginCredentials
+        if goodLogin then
+            return! withModel isPublic impl next ctx
+        else
+            return! RequestErrors.forbidden (jsonError "Login failed") next ctx
+    with :? System.Text.Json.JsonException as e ->
+    return! RequestErrors.badRequest (jsonError (e.ToString())) next ctx
+}
+
+let withModelOrPass isPublic (impl : 'data -> Model.IModel -> Task<Result<'out,string>>) next (ctx : HttpContext) = task {
+    ctx.Request.EnableBuffering()  // So the request body can be attempted multiple times
+    try
+        let! data = Controller.getJson<'data> ctx
+        let model = ctx |> getModel isPublic
+        let! result = impl data model
+        return! jsonResult result next ctx
+    with :? System.Text.Json.JsonException as e ->
+        ctx.Request.Body.Position <- 0L  // Rewind for the next attempt
+        return None
 }
 
 let tryParseSingleInt (strs : Microsoft.Extensions.Primitives.StringValues) =
@@ -82,45 +128,12 @@ let getLimitOffset (ctx : HttpContext) =
     let q = ctx.Request.Query
     tryParseSingleInt q.["limit"], tryParseSingleInt q.["offset"]
 
-let withServiceFuncNoSuccessWrap (isPublic : bool) (impl : string -> 'service -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let serviceFunction = ctx.GetService<'service>()
-    let cfg = ctx |> getSettings<MySqlSettings>
-    let connString = if isPublic then cfg.ConnString else cfg.ConnStringPrivate
-    let! result = impl connString serviceFunction
-    return! json result next ctx
-}
-
-let withLoggedInModel isPublic (loginCredentials : Api.LoginCredentials) (impl : Model.IModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = ctx |> getModel isPublic
-    let! goodLogin = model.VerifyLoginInfo loginCredentials
-    if goodLogin then
-        return! withModel isPublic impl next ctx
-    else
-        return! RequestErrors.forbidden (jsonError "Login failed") next ctx
-}
-
-let withLoggedInServiceFuncNoSuccessWrap isPublic (loginCredentials : Api.LoginCredentials) (impl : Model.IModel -> Task<'a>) (next : HttpFunc) (ctx : HttpContext) = task {
-    let model = ctx |> getModel isPublic
-    let! goodLogin = model.VerifyLoginInfo loginCredentials
-    if goodLogin then
-        let! result = impl model
-        return! json result next ctx
-    else
-        return! RequestErrors.forbidden (json "Login failed") next ctx
-}
-
 let getUser isPublic login : HttpHandler =
     withModelReturningOption isPublic
         (fun model -> model.GetUser login)
         (sprintf "Username %s not found" login)
 
-let getPublicProject isPublic projectCode : HttpHandler =
-    withModelReturningOption isPublic
-        (fun model -> model.GetProject projectCode)
-        (sprintf "Project code %s not found" projectCode)
-
-let getPrivateProject isPublic projectCode : HttpHandler =
-    // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
+let getProject isPublic projectCode : HttpHandler =
     withModelReturningOption isPublic
         (fun model -> model.GetProject projectCode)
         (sprintf "Project code %s not found" projectCode)
@@ -145,97 +158,56 @@ let listUsers isPublic : HttpHandler = fun next ctx -> task {
     }
 
 let projectExists isPublic projectCode : HttpHandler =
-    withModel isPublic (fun model -> model.ProjectExists projectCode)
+    withModelForHeadRequest isPublic (fun model -> model.ProjectExists projectCode)
 
 let userExists isPublic projectCode : HttpHandler =
     withModel isPublic (fun model -> model.UserExists projectCode)
 
-let getAllPublicProjects isPublic : HttpHandler = fun next ctx -> task {
+let listProjects isPublic : HttpHandler = fun next ctx -> task {
         let limit, offset = getLimitOffset ctx
         return! withModel isPublic (fun model -> model.ListProjects limit offset) next ctx
     }
 
-let getAllPrivateProjects isPublic : HttpHandler = fun next ctx -> task {
-        let limit, offset = getLimitOffset ctx
-        return! withModel isPublic (fun model -> model.ListProjects limit offset) next ctx
-    }
-    // TODO: Get rid of the public/private distinction. The appropriate model will be loaded from the service collection
+let projectsAndRolesByUser isPublic username : HttpHandler =
+    withLoggedInModel isPublic (fun model -> model.ProjectsAndRolesByUser username)
 
-let projectsAndRolesByUser isPublic username (loginCredentials : Api.LoginCredentials) : HttpHandler =
-    withLoggedInModel isPublic loginCredentials (fun model -> model.ProjectsAndRolesByUser username)
+let projectsAndRolesByUserRole isPublic (username, roleName) : HttpHandler =
+    withLoggedInModel isPublic (fun model -> model.ProjectsAndRolesByUserRole username roleName)
 
-let legacyProjectsAndRolesByUser isPublic username (legacyLoginCredentials : Api.LegacyLoginCredentials) : HttpHandler =
-    let loginCredentials : Api.LoginCredentials =
-        { username = username
-          password = legacyLoginCredentials.password }
-    withLoggedInServiceFuncNoSuccessWrap isPublic loginCredentials (fun model -> model.LegacyProjectsAndRolesByUser username)
-
-let projectsAndRolesByUserRole isPublic username roleName (loginCredentials : Api.LoginCredentials) : HttpHandler =
-    withLoggedInModel isPublic loginCredentials (fun model -> model.ProjectsAndRolesByUserRole username roleName)
-
-let addUserToProjectWithRole isPublic (projectCode, username, roleName) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
+let legacyProjectsAndRolesByUser isPublic username (legacyLoginCredentials : Api.LegacyLoginCredentials) (next : HttpFunc) (ctx : HttpContext) = task {
     let model = ctx |> getModel isPublic
-    let! success = model.AddMembership username projectCode roleName
-    let result =
-        if success then
-            Ok (sprintf "Added %s to %s" username projectCode)
-        else
-            Error (sprintf "Failed to add %s to %s" username projectCode)
-    return! jsonResult result next ctx
+    let! goodLogin = model.VerifyLoginInfo { username = username; password = legacyLoginCredentials.password }
+    if goodLogin then
+        let! result = model.LegacyProjectsAndRolesByUser username
+        return! json result next ctx
+    else
+        return! RequestErrors.forbidden (json "Login failed") next ctx
 }
+
+let addUserToProjectWithRole isPublic (projectCode, username, roleName) : HttpHandler =
+    withModelReturningResult isPublic (fun model -> task {
+        let! success = model.AddMembership username projectCode roleName
+        if success then
+            return Ok (sprintf "Added %s to %s" username projectCode)
+        else
+            return Error (sprintf "Failed to add %s to %s" username projectCode)})
 
 let addUserToProject isPublic (projectCode, username) = addUserToProjectWithRole isPublic (projectCode,username,"Contributer")
 
-let removeUserFromProject isPublic (projectCode, username) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    let model = ctx |> getModel isPublic
-    let! success = model.RemoveMembership username projectCode
-    let result =
+let removeUserFromProject isPublic (projectCode, username) : HttpHandler =
+    withModelReturningResult isPublic (fun model -> task {
+        let! success = model.RemoveMembership username projectCode
         if success then
-            Ok (sprintf "Removed %s from %s" username projectCode)
+            return Ok (sprintf "Removed %s from %s" username projectCode)
         else
-            Error (sprintf "Failed to remove %s from %s" username projectCode)
-    return! jsonResult result next ctx
-}
+            return Error (sprintf "Failed to remove %s from %s" username projectCode)})
 
 let getAllRoles isPublic : HttpHandler = fun next ctx -> task {
         let limit, offset = getLimitOffset ctx
         return! withModel isPublic (fun model -> model.ListRoles limit offset) next ctx
     }
 
-let createUser isPublic (user : Api.CreateUser) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    // Can't use withServiceFunc for this one since we need to do extra work in the success branch
-    let model = ctx |> getModel isPublic
-    let! alreadyExists = model.UserExists user.username
-    if alreadyExists then
-        return! jsonError "Username already exists; pick another one" next ctx
-    else
-        let! newId = model.CreateUser user
-        return! jsonSuccess newId next ctx
-}
-
-let withModelAndData isPublic (impl : 'data -> Model.IModel -> Task<Result<'out,string>>) next ctx = task {
-    try
-        let! data = Controller.getJson<'data> ctx
-        let model = ctx |> getModel isPublic
-        let! result = impl data model
-        return! jsonResult result next ctx
-    with :? System.Text.Json.JsonException as e ->
-        return! RequestErrors.badRequest (jsonError (e.ToString())) next ctx
-}
-
-let withModelOrPass isPublic (impl : 'data -> Model.IModel -> Task<Result<'out,string>>) next (ctx : HttpContext) = task {
-    ctx.Request.EnableBuffering()  // So the request body can be attempted multiple times
-    try
-        let! data = Controller.getJson<'data> ctx
-        let model = ctx |> getModel isPublic
-        let! result = impl data model
-        return! jsonResult result next ctx
-    with :? System.Text.Json.JsonException as e ->
-        ctx.Request.Body.Position <- 0L  // Rewind for the next attempt
-        return None
-}
-
-let createUserManualDeserialize isPublic =
+let createUser isPublic =
     withModelAndData isPublic (fun (user : Api.CreateUser) model -> task {
         let! alreadyExists = model.UserExists user.username
         if alreadyExists then
@@ -245,34 +217,17 @@ let createUserManualDeserialize isPublic =
             return Ok newId
     })
 
-let upsertUser isPublic (login : string) (updateData : Api.CreateUser) =
-    withModel isPublic (fun (model : Model.IModel) -> model.UpsertUser login updateData)
-
-let upsertUserManual isPublic (login : string) =
+let upsertUser isPublic (login : string) =
     withModelAndData isPublic (fun (updateData : Api.CreateUser) (model : Model.IModel) -> task { return Ok (model.UpsertUser login updateData)})
 
-let changePassword isPublic login (updateData : Api.ChangePassword) =
-    withModel isPublic (fun (model : Model.IModel) -> model.ChangePassword login updateData)
+let changePassword isPublic login =
+    withModelAndData isPublic (fun (updateData : Api.ChangePassword) (model : Model.IModel) -> task { return Ok (model.ChangePassword login updateData)})
 
 // NOTE: We don't do any work behind the scenes to reconcile MySQL and Mongo passwords; that's up to Language Forge
 let verifyPassword isPublic (loginCredentials : Api.LoginCredentials) =
     withModel isPublic (fun model -> model.VerifyLoginInfo loginCredentials)
 
-let createProject isPublic (proj : Api.CreateProject) : HttpHandler = fun (next : HttpFunc) (ctx : HttpContext) -> task {
-    // Can't use withServiceFunc for this one since we need to tweak the return value in the success branch
-    let model = ctx |> getModel isPublic
-    let! alreadyExists = model.ProjectExists proj.code
-    if alreadyExists then
-        return! jsonError "Project code already exists; pick another one" next ctx
-    else
-        let! newId = model.CreateProject proj
-        if newId < 0 then
-            return! jsonError "Something went wrong creating the project; please try again" next ctx
-        else
-            return! jsonSuccess newId next ctx
-}
-
-let createProjectManual isPublic =
+let createProject isPublic =
     withModelAndData isPublic (fun (proj : Api.CreateProject) model -> task {
         let! alreadyExists = model.ProjectExists proj.code
         if alreadyExists then
@@ -372,13 +327,6 @@ let addOrRemoveUserFromProject isPublic projectCode =
         })
         RequestErrors.badRequest (jsonError "Could not parse JSON")
     ]
-
-// withModelAndData isPublic (fun (patchData : Api.EditProjectMembershipInternalDetails) model -> task {
-//     match patchData with
-//     | Api.EditProjectMembershipInternalDetails.Add (login, memberships) -> return Ok (sprintf "Would add memberships %A to %s" memberships projectCode)
-//     | Api.EditProjectMembershipInternalDetails.Remove (login, memberships) -> return Error (sprintf "Would remove memberships %A from %s" memberships projectCode)
-//     | Api.EditProjectMembershipInternalDetails.RemoveUser (login, username) -> return Error (sprintf "Would remove user %s from %s" username projectCode)
-// })
 
 let addOrRemoveUserFromProjectSample isPublic =
     let login : Api.LoginCredentials = { username = "x"; password = "y" }
