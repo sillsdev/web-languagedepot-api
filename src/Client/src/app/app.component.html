@@ -28,6 +28,9 @@
       <button mat-button (click)="createUser()">Create User</button>
       <button mat-button (click)="editUser()">Edit User</button>
       <button mat-button (click)="editUserSample()">Sample Edit</button>
+      <button mat-button (click)="projectExists()">Project that exists</button>
+      <button mat-button (click)="projectDoesNotExist()">Project that does NOT exist</button>
+      <button mat-button (click)="getProject()">Get Project</button>
     </div>
 
     <app-data-table [dataSource]="dataSource"

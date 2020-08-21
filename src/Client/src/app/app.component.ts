@@ -95,4 +95,16 @@ export class AppComponent implements OnInit {
       tap(console.log)
     ).subscribe();
   }
+
+  projectExists(): void {
+    this.jsonApi.projectExists('test-ws-1-flex').subscribe(console.log);
+  }
+
+  getProject(): void {
+    this.jsonApi.getProject('test-ws-1-flex').subscribe(console.log);
+  }
+
+  projectDoesNotExist(): void {
+    this.jsonApi.projectExists('no-such-project').subscribe(console.log);
+  }
 }
