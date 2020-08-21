@@ -1,6 +1,6 @@
 import { Component, ViewChild, OnInit } from '@angular/core';
 import { JsonApiService } from './services/json-api.service';
-import { retry, map } from 'rxjs/operators';
+import { retry, map, tap } from 'rxjs/operators';
 import { PageEvent, MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 
@@ -51,7 +51,7 @@ export class AppComponent implements OnInit {
     this.populateData(result, 'Users');
   }
   projects(): void {
-    const result = this.jsonApi.call<object[]>('/api/project');
+    const result = this.jsonApi.call<object[]>('/api/projects');
     this.columns = {
       code: 'Project Code',
       description: 'Description',
@@ -63,5 +63,36 @@ export class AppComponent implements OnInit {
     const result = this.jsonApi.call<string[][]>('/api/roles');
     this.columns = ['Num', 'Role'];
     this.populateData(result, 'Roles');
+  }
+  createUser(): void {
+    const body = {
+      login: { username: 'x', password: 'y' },
+      username: 'x',
+      password: 'y',
+      mustChangePassword: false,
+      firstName: 'Joe',
+      lastNames: 'Test',
+      // language: (not provided, let's see what happens)
+      emailAddresses: 'joe_test@example.com'
+    };
+    this.jsonApi.createUserExp<any>(body).pipe(
+      tap(console.log)
+    ).subscribe();
+  }
+  editUser(): void {
+    const body = {
+      login: { username: 'rhood', password: 'y' },
+      // removeUser: 'rhood',
+      // remove: [{username: 'rhood', role: 'Contributor'}],
+      add: [{username: 'rhood', role: 'Contributor'}],
+    };
+    this.jsonApi.addRemoveUserExp<any>(body).pipe(
+      tap(console.log)
+    ).subscribe();
+  }
+  editUserSample(): void {
+    this.jsonApi.addRemoveUserExpSample<any>().pipe(
+      tap(console.log)
+    ).subscribe();
   }
 }

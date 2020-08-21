@@ -13,11 +13,15 @@ open Microsoft.Extensions.Hosting
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Giraffe.HttpStatusCodeHandlers
+open Giraffe.Serialization.Json
 open Saturn
 open Shared
 open Shared.Settings
 open Thoth.Json.Net
+open System.Text.Json
+open System.Text.Json.Serialization
 open Microsoft.IdentityModel.Tokens
+open Microsoft.AspNetCore.Http
 
 // let [<Literal>] SecretApiToken = "not-a-secret"
 // let [<Literal>] BearerToken = "Bearer " + SecretApiToken
@@ -50,7 +54,7 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
     let! isAdmin =
         match ctx.User.FindFirst ClaimTypes.Email with
         | null -> task { return false }
-        | claim -> Controller.emailIsAdminImpl claim.Value ctx
+        | claim -> Controller.emailIsAdminImpl true claim.Value ctx
     if isAdmin then
         return! next ctx
     else
@@ -59,49 +63,66 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
 }
 
+let head (handler : string -> HttpHandler) (next : HttpFunc) (ctx : HttpContext) =
+    if HttpMethods.IsHead ctx.Request.Method then
+        routef "/%s" handler next ctx
+    else
+        next ctx
+
+let projectRouter isPublic = router {
+    pipe_through (head (Controller.projectExists isPublic))  // Ugly, but there's no `headf` operation so we have to do it manually
+    get     "/" (Controller.listProjects isPublic)
+    post    "/" (Controller.createProject isPublic)
+    getf    "/%s" (Controller.getProject isPublic)
+    patchf  "/%s" (Controller.addOrRemoveUserFromProject isPublic)
+    deletef "/%s" (Controller.archiveProject isPublic)
+    postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
+    postf   "/%s/user/%s" (Controller.addUserToProject isPublic)  // Default role is "Contributer", yes, spelled with "er"
+    deletef "/%s/user/%s" (Controller.removeUserFromProject isPublic)
+    // getf    "/exists/%s" (Controller.projectExists isPublic)  // No need, can just send HEAD request to /%s instead of GET request
+}
+
+let usersRouter isPublic = router {
+    pipe_through (head (Controller.userExists isPublic))
+    get    "/" (Controller.listUsers isPublic)
+    post   "/" (Controller.createUser isPublic)
+    getf   "/%s" (Controller.getUser isPublic)
+    putf   "/%s"  (Controller.upsertUser isPublic)
+    patchf "/%s" (Controller.changePassword isPublic) // TODO: Allow more operations than just changing password
+    // deletef "/%s" (Controller.deleteUser isPublic) // TODO: Implement
+    // getf   "/exists/%s" (Controller.userExists true)  // No need, can just send HEAD request to /%s instead of GET request
+
+    postf  "/%s/projects" (Controller.projectsAndRolesByUser isPublic)
+    postf  "/%s/projects/withRole/%s" (Controller.projectsAndRolesByUserRole isPublic)
+}
+
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
-    get "/api/project/private" Controller.getAllPrivateProjects
-    getf "/api/project/private/%s" Controller.getPrivateProject
-    get "/api/project" Controller.getAllPublicProjects
-    getf "/api/project/%s" Controller.getPublicProject
-    // TODO: Not in real API spec. Why not? Probably need to add it
-    get "/api/users" Controller.listUsers
-    get "/api/privateUsers" Controller.listUsersPrivate  // TODO: Test-only. Remove before going to production.
-    getf "/api/users/limit/%i" Controller.listUsersLimit
-    getf "/api/users/offset/%i" Controller.listUsersOffset
-    getf "/api/users/limit/%i/offset/%i" Controller.listUsersLimitOffset
-    getf "/api/users/%s" Controller.getUser  // Note this needs to come below the limit & offset endpoints so that we don't end up trying to fetch a user called "limit" or "offset"
-    postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers searchText))
-    // TODO: Change limit and offset above to be query parameters, because forbidding usernames called "limit" or "offset" would be an artificial restriction
-    getf "/api/project/exists/%s" Controller.projectExists
-    getf "/api/users/exists/%s" Controller.userExists
-    postf "/api/users/%s/projects" (fun username -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUser username))
-    postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    patchf "/api/project/%s" (fun projId -> bindJson<Api.EditProjectMembershipApiCall> (Controller.addOrRemoveUserFromProject projId))
-    // Suggested by Chris Hirt: POST to add, DELETE to remove, no JSON body needed
-    postf "/api/project/%s/user/%s/withRole/%s" Controller.addUserToProjectWithRole
-    postf "/api/project/%s/user/%s" Controller.addUserToProject  // Default role is "Contributer", yes, spelled with "er"
-    deletef "/api/project/%s/user/%s" Controller.removeUserFromProject
-    postf "/api/users/%s/projects/withRole/%s" (fun (username,roleName) -> bindJson<Api.LoginCredentials> (Controller.projectsAndRolesByUserRole username roleName))
-    post "/api/users" (bindJson<Api.CreateUser> Controller.createUser)
-    putf "/api/users/%s" (fun login -> bindJson<Api.CreateUser> (Controller.upsertUser login))
-    patchf "/api/users/%s" (fun login -> bindJson<Api.ChangePassword> (Controller.changePassword login))
-    post "/api/verify-password" (bindJson<Api.LoginCredentials> Controller.verifyPassword)
-    post "/api/project" (bindJson<Api.CreateProject> Controller.createProject)
-    get "/api/count/users" Controller.countUsers
-    get "/api/count/projects" Controller.countProjects
-    get "/api/count/non-test-projects" Controller.countRealProjects
-    deletef "/api/project/%s" Controller.archiveProject
-    deletef "/api/project/private/%s" Controller.archivePrivateProject
+
+    forward "/api/projects" (projectRouter true)
+    forward "/api/privateProjects" (projectRouter false)
+    forward "/api/users" (usersRouter true)
+    forward "/api/privateUsers" (usersRouter false)
+
+    postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
+    postf "/api/searchPrivateUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers false searchText))
+    post  "/api/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
+    post  "/api/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))
+
+    // Remove this once we're done experimenting
+    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
+    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
 }
 
 let publicWebApp = router {
     // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
-    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser username))
-    get "/api/roles" Controller.getAllRoles
+    get "/api/count/users" (Controller.countUsers true)
+    get "/api/count/projects" (Controller.countProjects true)
+    get "/api/count/non-test-projects" (Controller.countRealProjects true)
+    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser true username))
+    get "/api/roles" (Controller.getAllRoles true)
     // Rejected API: POST /api/project/{projId}/add-user/{username}
-    getf "/api/isAdmin/%s" Controller.emailIsAdmin
+    getf "/api/isAdmin/%s" (Controller.emailIsAdmin true)
 }
 
 let webApp = choose [ publicWebApp; securedApp ]
@@ -133,13 +154,18 @@ let extraJsonCoders =
     Extra.empty
     |> Extra.withInt64
 
+let jsonSerializer =
+    let options = JsonSerializerOptions()
+    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.Untagged))
+    SystemTextJsonSerializer(options)
+
 let app = application {
     url ("http://0.0.0.0:" + port.ToString() + "/")
     use_router webApp
     memory_cache
     disable_diagnostics  // Don't create site.map file
     error_handler errorHandler
-    use_json_serializer(Thoth.Json.Giraffe.ThothSerializer(extra=extraJsonCoders))
+    use_json_serializer jsonSerializer
     use_gzip
     webhost_config hostConfig
     use_config buildConfig // TODO: Get rid of this
