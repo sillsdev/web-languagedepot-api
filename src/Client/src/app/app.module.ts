@@ -29,6 +29,7 @@ import { UsersComponent } from './users/users.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
 import { ProjectsComponent } from './projects/projects.component';
 import { LoginComponent } from './login/login.component';
+import { UserTypeaheadComponent } from './user-typeahead/user-typeahead.component';
 
 @NgModule({
   declarations: [
@@ -39,7 +40,8 @@ import { LoginComponent } from './login/login.component';
     UsersComponent,
     SingleProjectComponent,
     ProjectsComponent,
-    LoginComponent
+    LoginComponent,
+    UserTypeaheadComponent,
   ],
   imports: [
     BrowserModule,

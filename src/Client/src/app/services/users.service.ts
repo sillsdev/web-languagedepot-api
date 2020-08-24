@@ -21,4 +21,8 @@ constructor(private readonly jsonApi: JsonApiService) { }
   public createUser(body: any): Observable<User> {
     return this.jsonApi.createUserExp<User>(body);
   }
+
+  public searchUsers(searchText: string): Observable<User[]> {
+    return this.jsonApi.call(`/api/searchUsers/${searchText}`);
+  }
 }

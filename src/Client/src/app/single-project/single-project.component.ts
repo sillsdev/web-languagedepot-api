@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Project } from '../models/project.model';
 import { ProjectsService } from '../services/projects.service';
 import { ActivatedRoute } from '@angular/router';
+import { User } from '../models/user.model';
 
 const fakeProject = {
   code: 'demo',
@@ -17,6 +18,8 @@ const fakeProject = {
 })
 export class SingleProjectComponent implements OnInit {
   project: Project;
+  showAddPersonBox = false;
+  usersFound: User[];
 
   constructor(private route: ActivatedRoute, private readonly projects: ProjectsService) { }
 
@@ -26,4 +29,11 @@ export class SingleProjectComponent implements OnInit {
     this.project = fakeProject;
   }
 
+  toggleAddPerson(): void {
+    this.showAddPersonBox = !this.showAddPersonBox;
+  }
+
+  foundUsers(users: User[]): void {
+    this.usersFound = users;
+  }
 }

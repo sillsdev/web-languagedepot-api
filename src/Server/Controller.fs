@@ -152,6 +152,9 @@ let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : 
             return! RequestErrors.forbidden (jsonError "Login failed") next ctx
     }
 
+let searchUsersWithoutLogin isPublic searchText =
+    withModel isPublic (fun model -> printfn "Trying to search for %s" searchText; model.SearchUsersLoose searchText)
+
 let listUsers isPublic : HttpHandler = fun next ctx -> task {
         let limit, offset = getLimitOffset ctx
         return! withModel isPublic (fun model -> model.ListUsers limit offset) next ctx

@@ -108,7 +108,8 @@ let securedApp = router {
     forward "/api/users" (usersRouter true)
     forward "/api/privateUsers" (usersRouter false)
 
-    postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
+    getf "/api/searchUsers/%s" (Controller.searchUsersWithoutLogin true)
+    // postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
     postf "/api/searchPrivateUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers false searchText))
     post  "/api/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
     post  "/api/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))

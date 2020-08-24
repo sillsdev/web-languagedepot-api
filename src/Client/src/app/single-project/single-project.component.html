@@ -3,7 +3,15 @@
 <span style="font-size: large; font-weight: bold;">Members</span><br/>
 <ul>
   <li *ngFor="let member of project?.membership">{{member.username}}: {{member.role}}</li>
+  <li *ngIf="!showAddPersonBox"><a class="mdc-button" (click)="toggleAddPerson()"><mdc-icon style="color: green">person_add</mdc-icon></a></li>
+  <li *ngIf="showAddPersonBox"><app-user-typeahead (foundUsers)="foundUsers($event)"></app-user-typeahead></li>
 </ul>
+<div *ngIf="usersFound">
+  Found users:
+  <ul>
+    <li *ngFor="let user of usersFound">{{user.firstName}} {{user.lastName}} &lt;{{user.email}}&gt;</li>
+  </ul>
+</div>
 <!--
   Project name up top as a heading
   Project code underneath it in smaller text, or maybe to the right of it
