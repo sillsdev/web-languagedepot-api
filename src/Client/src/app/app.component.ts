@@ -5,6 +5,9 @@ import { PageEvent, MatPaginator } from '@angular/material/paginator';
 import { MatTableDataSource } from '@angular/material/table';
 
 import { Observable } from 'rxjs';
+import { UsersService } from './services/users.service';
+import { ProjectsService } from './services/projects.service';
+import { Project } from './models/project.model';
 
 type Table = 'Users' | 'Projects' | 'Roles';
 
@@ -24,7 +27,9 @@ export class AppComponent implements OnInit {
 
   columns: any;
 
-  constructor(private readonly jsonApi: JsonApiService ) {
+  constructor(private readonly jsonApi: JsonApiService,
+              private readonly usersService: UsersService,
+              private readonly projectsService: ProjectsService) {
     this.dataSource = new MatTableDataSource();
   }
   ngOnInit(): void {
@@ -40,7 +45,7 @@ export class AppComponent implements OnInit {
   }
 
   users(): void {
-    const result = this.jsonApi.call<object[]>('/api/users');
+    const result = this.usersService.getUsers();
     this.columns = {
       firstName: 'First Name',
       lastName: 'Last Name',
@@ -51,11 +56,14 @@ export class AppComponent implements OnInit {
     this.populateData(result, 'Users');
   }
   projects(): void {
-    const result = this.jsonApi.call<object[]>('/api/projects');
+    const result = this.projectsService.getProjects().pipe(
+      map(projects => projects.map(proj => ({...proj, get memberCount(): number { return proj.membership.length; }}))),
+    );
     this.columns = {
       code: 'Project Code',
       description: 'Description',
-      name: 'Project Name'
+      name: 'Project Name',
+      memberCount: 'Member Count'
     };
     this.populateData(result, 'Projects');
   }

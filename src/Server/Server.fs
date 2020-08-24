@@ -71,9 +71,11 @@ let head (handler : string -> HttpHandler) (next : HttpFunc) (ctx : HttpContext)
 
 let projectRouter isPublic = router {
     pipe_through (head (Controller.projectExists isPublic))  // Ugly, but there's no `headf` operation so we have to do it manually
-    get     "/" (Controller.listProjects isPublic)
+    get     "" (Controller.listProjectsAndRoles isPublic)
+    get     "/" (Controller.listProjectsAndRoles isPublic)
+    post    "" (Controller.createProject isPublic)
     post    "/" (Controller.createProject isPublic)
-    getf    "/%s" (Controller.getProject isPublic)
+    getf    "/%s" (Controller.getProjectWithRoles isPublic)
     patchf  "/%s" (Controller.addOrRemoveUserFromProject isPublic)
     deletef "/%s" (Controller.archiveProject isPublic)
     postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
@@ -84,7 +86,9 @@ let projectRouter isPublic = router {
 
 let usersRouter isPublic = router {
     pipe_through (head (Controller.userExists isPublic))
+    get    "" (Controller.listUsers isPublic)
     get    "/" (Controller.listUsers isPublic)
+    post   "" (Controller.createUser isPublic)
     post   "/" (Controller.createUser isPublic)
     getf   "/%s" (Controller.getUser isPublic)
     putf   "/%s"  (Controller.upsertUser isPublic)

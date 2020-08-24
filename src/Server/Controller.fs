@@ -133,9 +133,9 @@ let getUser isPublic login : HttpHandler =
         (fun model -> model.GetUser login)
         (sprintf "Username %s not found" login)
 
-let getProject isPublic projectCode : HttpHandler =
+let getProjectWithRoles isPublic projectCode : HttpHandler =
     withModelReturningOption isPublic
-        (fun model -> model.GetProject projectCode)
+        (fun model -> model.GetProjectWithRoles projectCode)
         (sprintf "Project code %s not found" projectCode)
 
 let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : HttpHandler =
@@ -163,9 +163,9 @@ let projectExists isPublic projectCode : HttpHandler =
 let userExists isPublic projectCode : HttpHandler =
     withModel isPublic (fun model -> model.UserExists projectCode)
 
-let listProjects isPublic : HttpHandler = fun next ctx -> task {
+let listProjectsAndRoles isPublic : HttpHandler = fun next ctx -> task {
         let limit, offset = getLimitOffset ctx
-        return! withModel isPublic (fun model -> model.ListProjects limit offset) next ctx
+        return! withModel isPublic (fun model -> model.ListProjectsAndRoles limit offset) next ctx
     }
 
 let projectsAndRolesByUser isPublic username : HttpHandler =
