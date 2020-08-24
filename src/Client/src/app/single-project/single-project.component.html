@@ -6,10 +6,17 @@
   <li *ngIf="!showAddPersonBox"><a class="mdc-button" (click)="toggleAddPerson()"><mdc-icon style="color: green">person_add</mdc-icon></a></li>
   <li *ngIf="showAddPersonBox"><app-user-typeahead (foundUsers)="foundUsers($event)"></app-user-typeahead></li>
 </ul>
+<div *ngIf="userToAdd">
+  <label for="addUser">{{userToAdd.firstName}} {{userToAdd.lastName}}</label>
+  <select id="addUser" #addUserSelect (change)="selectRole($event.target.value)">
+    <option *ngFor="let role of roles" [value]="role.name">{{role.name}}</option>
+  </select>
+  <button class="mdc-button" (click)="addMember(userToAdd, selectedRole)"><mdc-icon style="color: green">person_add</mdc-icon></button>
+</div>
 <div *ngIf="usersFound">
   Found users:
   <ul>
-    <li *ngFor="let user of usersFound">{{user.firstName}} {{user.lastName}} &lt;{{user.email}}&gt;</li>
+    <li *ngFor="let user of usersFound"><a (click)="selectUser(user)">{{user.firstName}} {{user.lastName}} &lt;{{user.email}}&gt;</a></li>
   </ul>
 </div>
 <!--
