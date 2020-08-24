@@ -29,7 +29,7 @@ import { UsersComponent } from './users/users.component';
 import { SingleProjectComponent } from './single-project/single-project.component';
 import { ProjectsComponent } from './projects/projects.component';
 import { LoginComponent } from './login/login.component';
-import { TypeaheadComponent } from './user-typeahead/user-typeahead.component';
+import { TypeaheadComponent } from './typeahead/typeahead.component';
 
 @NgModule({
   declarations: [

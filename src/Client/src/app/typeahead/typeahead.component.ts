@@ -4,8 +4,8 @@ import { map, debounceTime, distinctUntilChanged, switchMap, retry } from 'rxjs/
 
 @Component({
   selector: 'app-typeahead',
-  templateUrl: './user-typeahead.component.html',
-  styleUrls: ['./user-typeahead.component.scss']
+  templateUrl: './typeahead.component.html',
+  styleUrls: ['./typeahead.component.scss']
 })
 export class TypeaheadComponent implements AfterViewInit {
   @Output() foundData = new EventEmitter<any[]>();
