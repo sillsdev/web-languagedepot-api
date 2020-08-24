@@ -20,21 +20,16 @@ export class UserTypeaheadComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    console.log('Input:', this.input);
     fromEvent(this.input.nativeElement, 'input').pipe(
       map((e: KeyboardEvent) => (e.target as HTMLInputElement).value),
       debounceTime(100),
       distinctUntilChanged(),
-      tap(console.log),
-      switchMap(text => this.doTheSearch(text)),
+      switchMap(text => this.searchUsers(text)),
       retry(),
     ).subscribe(users => this.foundUsers.emit(users));
   }
 
-  ngOnInit(): void {
-  }
-
-  doTheSearch(searchText: string): Observable<User[]> {
+  searchUsers(searchText: string): Observable<User[]> {
     return this.users.searchUsers(searchText);
   }
 

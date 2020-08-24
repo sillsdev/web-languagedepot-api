@@ -114,7 +114,6 @@ export class SingleProjectComponent implements OnInit {
 
   selectRole(role: string): void {
     this.selectedRole = role;
-    console.log('selected role', role);
   }
 
   addMember(user: User, role: string): void {

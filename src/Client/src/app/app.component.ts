@@ -43,7 +43,7 @@ export class AppComponent implements OnInit {
       .pipe(
         retry(3),
         )
-      .subscribe(res => { console.log('Got', res); this.active = whichTable; this.dataSource.data = res; });
+      .subscribe(res => { this.active = whichTable; this.dataSource.data = res; });
   }
 
   itemSelected(item: any): void {
