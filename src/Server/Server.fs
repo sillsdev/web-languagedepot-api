@@ -160,7 +160,7 @@ let extraJsonCoders =
 
 let jsonSerializer =
     let options = JsonSerializerOptions()
-    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.Untagged))
+    options.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.FSharpLuLike))
     SystemTextJsonSerializer(options)
 
 let app = application {
