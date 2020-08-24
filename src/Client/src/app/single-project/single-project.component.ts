@@ -3,6 +3,13 @@ import { Project } from '../models/project.model';
 import { ProjectsService } from '../services/projects.service';
 import { ActivatedRoute } from '@angular/router';
 
+const fakeProject = {
+  code: 'demo',
+  name: 'Demo project',
+  description: 'line1\nline2',
+  membership: [{username: 'rmunn', role: 'Manager'}, {username: 'rhood', role: 'Contributor'}],
+} as Project;
+
 @Component({
   selector: 'app-single-project',
   templateUrl: './single-project.component.html',
@@ -15,7 +22,8 @@ export class SingleProjectComponent implements OnInit {
 
   ngOnInit(): void {
     const params = this.route.snapshot.paramMap;
-    this.projects.getProject(params.get('id')).subscribe(project => this.project = project);
+    // this.projects.getProject(params.get('id')).subscribe(project => this.project = project);
+    this.project = fakeProject;
   }
 
 }
