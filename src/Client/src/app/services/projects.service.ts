@@ -31,4 +31,10 @@ constructor(private readonly jsonApi: JsonApiService) { }
   public removeUser(projectCode: string, username: string): Observable<any> {
     return this.jsonApi.delete<any>(`/api/projects/${projectCode}/user/${username}`);
   }
+
+  public searchProjects(searchText: string): Observable<Project[]> {
+    return this.jsonApi.call<ApiProject[]>(`/api/searchProjects/${searchText}`).pipe(
+      map(apiProjects => apiProjects.map(proj => toProject(proj)))
+    );
+  }
 }

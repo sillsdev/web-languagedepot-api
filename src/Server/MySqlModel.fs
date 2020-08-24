@@ -245,6 +245,24 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return result
             }
 
+        member this.SearchProjectsLoose (searchTerm : string) =
+            task {
+                let sql = this.baseProjectQuery + " WHERE identifier LIKE @searchTerm OR name LIKE @searchTerm OR description LIKE @searchTerm"
+                let escapedSearchTerm = "%" + searchTerm.Replace(@"\", @"\\").Replace("%", @"\%") + "%"
+                // TODO: Test whether that works, or whether we need to write something like "LIKE %@searchTerm%" instead
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("searchTerm", escapedSearchTerm) |> ignore
+                let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
+                return result
+            }
+
+        member this.SearchProjectsExact (searchTerm : string) =
+            task {
+                let sql = this.baseProjectQuery + " WHERE identifier = @searchTerm OR name = @searchTerm OR description = @searchTerm"
+                let! result = fetchDataWithParams connString sql (fun cmd -> cmd.Parameters.AddWithValue("searchTerm", searchTerm) |> ignore) this.convertProjectRow
+                return result
+            }
+
         member this.ListProjects (limit : int option) (offset : int option) =
             task {
                 let sql = this.baseProjectQuery

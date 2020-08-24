@@ -149,6 +149,26 @@ type MemoryModel() =
                 |> Array.ofSeq
         }
 
+        member this.SearchProjectsExact searchText = task {
+            return
+                MemoryStorage.projectStorage.Values
+                |> Seq.filter (fun project ->
+                    project.code = searchText ||
+                    project.name = searchText ||
+                    project.description = searchText)
+                |> Array.ofSeq
+        }
+
+        member this.SearchProjectsLoose (searchText : string) = task {
+            return
+                MemoryStorage.projectStorage.Values
+                |> Seq.filter (fun project ->
+                    project.code.Contains(searchText) ||
+                    project.name.Contains(searchText) ||
+                    project.description.Contains(searchText))
+                |> Array.ofSeq
+        }
+
         member this.GetUser username = task {
             return
                 match MemoryStorage.userStorage.TryGetValue username with

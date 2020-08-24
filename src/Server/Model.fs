@@ -12,6 +12,9 @@ type IModel =
     abstract SearchUsersExact : string -> Task<Dto.UserList>
     abstract SearchUsersLoose : string -> Task<Dto.UserList>
 
+    abstract SearchProjectsExact : string -> Task<Dto.ProjectDetails []>
+    abstract SearchProjectsLoose : string -> Task<Dto.ProjectDetails []>
+
     abstract GetUser : string -> Task<Dto.UserDetails option>
     abstract GetProject : string -> Task<Dto.ProjectDetails option>
     abstract GetProjectWithRoles : string -> Task<Dto.ProjectDetails option>

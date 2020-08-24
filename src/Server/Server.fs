@@ -114,6 +114,8 @@ let securedApp = router {
     post  "/api/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
     post  "/api/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))
 
+    getf "/api/searchProjects/%s" (Controller.searchProjects true)
+
     // Remove this once we're done experimenting
     postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
     get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
