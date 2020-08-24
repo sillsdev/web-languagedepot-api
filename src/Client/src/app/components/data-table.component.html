@@ -7,7 +7,7 @@
         </tr>
       </thead>
       <tbody mdcDataTableContent>
-        <tr mdcDataTableRow *ngFor="let item of data | async">
+        <tr mdcDataTableRow *ngFor="let item of data | async; index as i" (click)="clickRow(i)">
           <td mdcDataTableCell *ngFor="let key of columnKeys">{{item[key]}}</td>
         </tr>
       </tbody>

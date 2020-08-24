@@ -38,8 +38,7 @@ export class SingleProjectComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const params = this.route.snapshot.paramMap;
-    this.getProject(params.get('id'));
+    this.route.paramMap.subscribe(params => this.getProject(params.get('id')));
     // this.project = fakeProject;
   }
 

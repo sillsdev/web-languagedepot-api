@@ -37,6 +37,7 @@
                     [columns]="columns"
                     [pageSize]="3"
                     [pageSizeOptions]="[1,2,3,5,7,10]"
+                    (itemSelected)="itemSelected($event)"
     ></app-data-table>
 
     <router-outlet></router-outlet>

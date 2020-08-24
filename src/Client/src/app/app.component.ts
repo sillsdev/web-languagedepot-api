@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 import { UsersService } from './services/users.service';
 import { ProjectsService } from './services/projects.service';
 import { Project } from './models/project.model';
+import { Router } from '@angular/router';
 
 type Table = 'Users' | 'Projects' | 'Roles';
 
@@ -29,7 +30,8 @@ export class AppComponent implements OnInit {
 
   constructor(private readonly jsonApi: JsonApiService,
               private readonly usersService: UsersService,
-              private readonly projectsService: ProjectsService) {
+              private readonly projectsService: ProjectsService,
+              private readonly router: Router) {
     this.dataSource = new MatTableDataSource();
   }
   ngOnInit(): void {
@@ -42,6 +44,13 @@ export class AppComponent implements OnInit {
         retry(3),
         )
       .subscribe(res => { console.log('Got', res); this.active = whichTable; this.dataSource.data = res; });
+  }
+
+  itemSelected(item: any): void {
+    if (this.active === 'Projects') {
+      const proj = item as Project;
+      this.router.navigateByUrl(`/admin/projects/${proj.code}`);
+    }
   }
 
   users(): void {
