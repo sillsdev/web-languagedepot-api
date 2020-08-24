@@ -10,7 +10,7 @@
       <a *ngIf="editMode" class="mdc-button" (click)="removeMember(member)"><mdc-icon>person_remove</mdc-icon></a>
   </li>
   <li *ngIf="!showAddPersonBox"><a class="mdc-button" (click)="toggleAddPerson()"><mdc-icon style="color: green">person_add</mdc-icon></a></li>
-  <li *ngIf="showAddPersonBox"><app-user-typeahead (foundUsers)="foundUsers($event)"></app-user-typeahead></li>
+  <li *ngIf="showAddPersonBox"><app-typeahead (foundData)="foundUsers($event)" [getData]="searchUsers.bind(this)"></app-typeahead></li>
   <li *ngIf="!editMode"><a class="mdc-button" (click)="enterEditMode()"><mdc-icon style="color: green">edit</mdc-icon></a></li>
 </ul>
 <div *ngIf="userToAdd">

@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { UsersService } from '../services/users.service';
-import { BehaviorSubject } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
+import { ProjectsService } from '../services/projects.service';
+import { Project } from '../models/project.model';
 
 @Component({
   selector: 'app-single-user',
@@ -12,8 +14,9 @@ import { map, switchMap, tap } from 'rxjs/operators';
 })
 export class SingleUserComponent implements OnInit {
   user = new BehaviorSubject<User>(null);
+  projects: Project[];
 
-  constructor(private route: ActivatedRoute, private users: UsersService) { }
+  constructor(private route: ActivatedRoute, private users: UsersService, private projectsService: ProjectsService) { }
 
   ngOnInit(): void {
     this.route.paramMap.pipe(
@@ -21,5 +24,13 @@ export class SingleUserComponent implements OnInit {
       // switchMap(this.users.getUser),  // WRONG! "this.jsonApi is undefined" because "this" is a SwitchMapSubscriber instance
       switchMap(username => this.users.getUser(username)),  // RIGHT! This makes "this" be a UsersService instance
     ).subscribe(this.user);
+  }
+
+  searchProjects(searchText: string): Observable<Project[]> {
+    return this.projectsService.searchProjects(searchText);
+  }
+
+  foundProjects(projects: Project[]) {
+    this.projects = projects;
   }
 }

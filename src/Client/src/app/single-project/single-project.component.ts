@@ -7,6 +7,7 @@ import { User } from '../models/user.model';
 import { Role } from '../models/role.model';
 import { tap } from 'rxjs/operators';
 import { of, Observable, forkJoin } from 'rxjs';
+import { UsersService } from '../services/users.service';
 
 const fakeProject = {
   code: 'demo',
@@ -32,6 +33,7 @@ export class SingleProjectComponent implements OnInit {
 
   constructor(private route: ActivatedRoute,
               private readonly projects: ProjectsService,
+              private readonly users: UsersService,
               private readonly rolesService: RolesService)
   {
     this.rolesService.roles.subscribe(roles => this.roles = roles);
@@ -102,6 +104,10 @@ export class SingleProjectComponent implements OnInit {
 
   toggleAddPerson(): void {
     this.showAddPersonBox = !this.showAddPersonBox;
+  }
+
+  searchUsers(searchText: string): Observable<User[]> {
+    return this.users.searchUsers(searchText);
   }
 
   foundUsers(users: User[]): void {

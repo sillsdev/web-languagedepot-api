@@ -1,36 +1,27 @@
-import { Component, OnInit, Input, Output, EventEmitter, ViewChild, AfterViewChecked, AfterViewInit, ElementRef } from '@angular/core';
-import { UsersService } from '../services/users.service';
-import { User } from '../models/user.model';
+import { Component, Input, Output, EventEmitter, ViewChild, AfterViewInit, ElementRef } from '@angular/core';
 import { Observable, fromEvent } from 'rxjs';
-import { tap, map, debounceTime, distinctUntilChanged, switchMap, catchError, retry } from 'rxjs/operators';
+import { map, debounceTime, distinctUntilChanged, switchMap, retry } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-user-typeahead',
+  selector: 'app-typeahead',
   templateUrl: './user-typeahead.component.html',
   styleUrls: ['./user-typeahead.component.scss']
 })
-export class UserTypeaheadComponent implements AfterViewInit {
-  @Output() foundUsers = new EventEmitter<User[]>();
+export class TypeaheadComponent implements AfterViewInit {
+  @Output() foundData = new EventEmitter<any[]>();
+  @Input() getData: (text: string) => Observable<any[]>;
   @ViewChild('input') input: ElementRef;
 
-  keyboardInput: Observable<any>;
-
-  constructor(private users: UsersService) {
-    this.keyboardInput = new Observable<any>();
-  }
+  constructor() { }
 
   ngAfterViewInit(): void {
+    console.log(this.getData);
     fromEvent(this.input.nativeElement, 'input').pipe(
       map((e: KeyboardEvent) => (e.target as HTMLInputElement).value),
       debounceTime(100),
       distinctUntilChanged(),
-      switchMap(text => this.searchUsers(text)),
+      switchMap(text => this.getData(text)),
       retry(),
-    ).subscribe(users => this.foundUsers.emit(users));
+    ).subscribe(this.foundData);
   }
-
-  searchUsers(searchText: string): Observable<User[]> {
-    return this.users.searchUsers(searchText);
-  }
-
 }
