@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { Role } from '../models/role.model';
 import { tap } from 'rxjs/operators';
+import { of, Observable, forkJoin } from 'rxjs';
 
 const fakeProject = {
   code: 'demo',
@@ -26,13 +27,14 @@ export class SingleProjectComponent implements OnInit {
   userToAdd: User;
   roles: Role[];
   selectedRole: string;
+  editMode = false;
+  edits: any[] = [];
 
   constructor(private route: ActivatedRoute,
               private readonly projects: ProjectsService,
               private readonly rolesService: RolesService)
   {
     this.rolesService.roles.subscribe(roles => this.roles = roles);
-    this.rolesService.roles.subscribe(console.log);
   }
 
   ngOnInit(): void {
@@ -43,6 +45,60 @@ export class SingleProjectComponent implements OnInit {
 
   getProject(code: string): void {
     this.projects.getProject(code).subscribe(project => this.project = project);
+  }
+
+  enterEditMode(): void {
+    this.editMode = true;
+  }
+
+  resetEdits(): void {
+    this.editMode = false;
+    this.edits = [];
+  }
+
+  saveEdits(): void {
+    const editResults = (this.edits ?? []).map(edit => this.applyEdit(edit));
+    forkJoin(editResults).subscribe(() => {
+      this.resetEdits();
+      this.resetUserSearch();
+      this.getProject(this.project.code);
+    });
+  }
+
+  isPendingDelete(username: string): boolean {
+    return (this.edits ?? []).findIndex(edit => edit.action === 'removeUser' && edit.username === username) >= 0;
+  }
+
+  arrayReplace<T>(arr: T[], index: number, newItem: T): T[] {
+    // Like arr.splice(index, 1, newItem), but returns new array rather than modifying in-place
+    return arr.map((item, idx) => idx === index ? newItem : item);
+  }
+
+  arrayRemoveIdx<T>(arr: T[], index: number): T[] {
+    // Like arr.splice(index, 1), but returns new array rather than modifying in-place
+    return arr.filter((item, idx) => idx !== index);
+  }
+
+  arrayPush<T>(arr: T[], newItem: T): T[] {
+    // Like arr.push(newItem), but returns new array rather than modifying in-place
+    return [...arr, newItem];
+  }
+
+  editRoleForMember(username: string, oldRole: string, newRole: string): void {
+    this.edits = this.edits ?? [];
+    const oldRemove = this.edits.findIndex(edit => edit.action === 'removeUser' && edit.username === username);
+    if (oldRemove >= 0) {
+      // Editing a user will cancel any pending removal
+      this.edits = this.arrayRemoveIdx(this.edits, oldRemove);
+    }
+    const oldEdit = this.edits.findIndex(edit => edit.action === 'editRole' && edit.username === username);
+    if (oldEdit < 0) {
+      this.edits = this.arrayPush(this.edits, {action: 'editRole', username, oldRole, newRole});
+    } else if (oldRole === newRole) {
+      this.edits = this.arrayRemoveIdx(this.edits, oldEdit);  // Remove old edit and don't add new one
+    } else {
+      this.edits = this.arrayReplace(this.edits, oldEdit, {action: 'editRole', username, oldRole, newRole});
+    }
   }
 
   toggleAddPerson(): void {
@@ -63,30 +119,109 @@ export class SingleProjectComponent implements OnInit {
   }
 
   addMember(user: User, role: string): void {
-    console.log('Will add', user, 'with role', role);
-    this.projects.addUserWithRole(this.project.code, user, role).subscribe(() => {
-      this.success(this.project.code, user, role);
+    this.edits = this.edits ?? [];
+    if (user?.username && role) {
+      const oldRemove = this.edits.findIndex(edit => edit.action === 'removeUser' && edit.username === user.username);
+      if (oldRemove >= 0) {
+        // Adding a pending-removal member cancels the removal
+        this.edits = this.arrayRemoveIdx(this.edits, oldRemove);
+      }
+      const oldAdd = this.edits.findIndex(edit => edit.action === 'addMember' && edit.username === user.username);
+      if (oldAdd < 0) {
+        this.edits = this.arrayPush(this.edits, {action: 'addMember', username: user.username, role});
+      } else if (this.edits[oldAdd].role !== role) {
+        this.edits = this.arrayReplace(this.edits, oldAdd, {action: 'addMember', username: user.username, role});
+      }
       this.resetUserSearch();
-      this.getProject(this.project.code);
-    });
-  }
-
-  success(code: string, user: User, role: string): void {
-    console.log('Successfully added', user, 'to', code, 'with role', role);
+    }
   }
 
   resetUserSearch(): void {
     this.userToAdd = undefined;
     this.selectedRole = undefined;
     this.usersFound = undefined;
+    this.showAddPersonBox = false;
   }
 
   removeMember(member: Membership): void {
-    if (this?.project?.code && member?.username) {
-      this.projects.removeUser(this.project.code, member.username).pipe(
-        tap(res => console.log('Removing member', member, 'returned result', res))
-      )
-      .subscribe(result => this.getProject(this.project.code));
+    if (member?.username) {
+      this.edits = this.edits ?? [];
+      const oldAdd = this.edits.findIndex(edit => edit.action === 'addMember' && edit.username === member.username);
+      if (oldAdd >= 0) {
+        // Removing a member cancels all pending adds
+        this.edits = this.arrayRemoveIdx(this.edits, oldAdd);
+      }
+      const oldEdit = this.edits.findIndex(edit => edit.action === 'editRole' && edit.username === member.username);
+      if (oldEdit >= 0) {
+        // Removing a member cancels all pending editss
+        this.edits = this.arrayRemoveIdx(this.edits, oldEdit);
+      }
+      const oldRemove = this.edits.findIndex(edit => edit.action === 'removeUser' && edit.username === member.username);
+      if (oldRemove < 0) {
+        this.edits = this.arrayPush(this.edits, {action: 'removeUser', username: member.username});
+      }
     }
   }
+
+  describeEdit(edit: any): string {
+    switch (edit.action) {
+      case 'removeUser':
+        return `Will remove ${edit.username}`;
+      case 'addMember':
+        return `Will add ${edit.username} with role ${edit.role}`;
+      case 'editRole':
+        return `Will change ${edit.username} from ${edit.oldRole} to ${edit.newRole}`;
+      default:
+        return `Unknown edit type ${edit.action}: ${edit}`;
+    }
+  }
+
+  applyEdit(edit: any): Observable<any> {
+    switch (edit.action) {
+      case 'removeUser':
+        return this.applyRemoveMember(edit.username);
+      case 'addMember':
+        return this.applyAddMember(edit.username, edit.role);
+      case 'editRole':
+        return this.applyEditRoleForMember(edit.username, edit.oldRole, edit.newRole);
+      default:
+        return of(null);
+    }
+  }
+
+  applyRemoveMember(member: Membership): Observable<any> {
+    if (this?.project?.code && member?.username) {
+      console.log('Will remove', member.username, 'from project', this.project.code);
+      return this.projects.removeUser(this.project.code, member.username).pipe(
+        tap(res => console.log('Removing member', member, 'returned result', res))
+      );
+    } else {
+      return of(null);
+    }
+  }
+
+  applyAddMember(username: string, role: string): Observable<any> {
+    if (this?.project?.code && username && role) {
+      console.log('Will add', username, 'with role', role);
+      return this.projects.addUserWithRole(this.project.code, username, role).pipe(
+      tap(() => {
+        console.log('Successfully added', username, 'to', this.project.code, 'with role', role);
+      }));
+    } else {
+      return of(null);
+    }
+  }
+
+  applyEditRoleForMember(username: string, oldRole: string, newRole: string): Observable<any> {
+    if (this?.project?.code && username && newRole) {
+      console.log('Will change', username, 'from', oldRole ?? '(no previous role)', 'to', newRole);
+      return this.projects.addUserWithRole(this.project.code, username, newRole).pipe(
+      tap(() => {
+        console.log('Successfully changed role of', username, 'in', this.project.code, 'to', newRole);
+      }));
+    } else {
+      return of(null);
+    }
+  }
+
 }
