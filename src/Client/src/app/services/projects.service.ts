@@ -24,7 +24,11 @@ constructor(private readonly jsonApi: JsonApiService) { }
     );
   }
 
-  public addUserWithRole(projectCode: string, user: User, role: string) {
+  public addUserWithRole(projectCode: string, user: User, role: string): Observable<any> {
     return this.jsonApi.post<any>(`/api/projects/${projectCode}/user/${user.username}/withRole/${role}`, {});
+  }
+
+  public removeUser(projectCode: string, username: string): Observable<any> {
+    return this.jsonApi.delete<any>(`/api/projects/${projectCode}/user/${username}`);
   }
 }

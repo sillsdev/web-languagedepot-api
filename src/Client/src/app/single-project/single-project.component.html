@@ -2,7 +2,7 @@
 <p style="white-space: pre-wrap;">{{project?.description}}</p>
 <span style="font-size: large; font-weight: bold;">Members</span><br/>
 <ul>
-  <li *ngFor="let member of project?.membership">{{member.username}}: {{member.role}}</li>
+  <li *ngFor="let member of project?.membership">{{member.username}}: {{member.role}} <a class="mdc-button" (click)="removeMember(member)"><mdc-icon>person_remove</mdc-icon></a></li>
   <li *ngIf="!showAddPersonBox"><a class="mdc-button" (click)="toggleAddPerson()"><mdc-icon style="color: green">person_add</mdc-icon></a></li>
   <li *ngIf="showAddPersonBox"><app-user-typeahead (foundUsers)="foundUsers($event)"></app-user-typeahead></li>
 </ul>

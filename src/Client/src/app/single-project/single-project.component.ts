@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
-import { Project } from '../models/project.model';
+import { Project, Membership } from '../models/project.model';
 import { ProjectsService } from '../services/projects.service';
 import { RolesService } from '../services/roles.service';
 import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { Role } from '../models/role.model';
+import { tap } from 'rxjs/operators';
 
 const fakeProject = {
   code: 'demo',
@@ -78,5 +79,14 @@ export class SingleProjectComponent implements OnInit {
     this.userToAdd = undefined;
     this.selectedRole = undefined;
     this.usersFound = undefined;
+  }
+
+  removeMember(member: Membership): void {
+    if (this?.project?.code && member?.username) {
+      this.projects.removeUser(this.project.code, member.username).pipe(
+        tap(res => console.log('Removing member', member, 'returned result', res))
+      )
+      .subscribe(result => this.getProject(this.project.code));
+    }
   }
 }
