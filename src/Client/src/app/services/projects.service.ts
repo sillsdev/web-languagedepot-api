@@ -3,7 +3,6 @@ import { Observable } from 'rxjs';
 import { JsonApiService } from './json-api.service';
 import { Project, toProject, ApiProject } from '../models/project.model';
 import { map } from 'rxjs/operators';
-import { User } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root'

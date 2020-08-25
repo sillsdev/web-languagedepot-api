@@ -9,10 +9,8 @@
       <mdc-top-app-bar-section align="start">
         <span class="menu-spacer"></span>
         <div>
-          <a mat-button [routerLink]="'/admin/users'"> Users (WIP) </a>
-          <a mat-button [routerLink]="'/admin/users/rhood'"> Single User (demo) </a>
-          <a mat-button [routerLink]="'/admin/projects'"> Projects (WIP) </a>
-          <a mat-button [routerLink]="'/admin/projects/tha-food'"> Single Project (demo) </a>
+          <a mat-button [routerLink]="'/admin/users'"> Users </a>
+          <a mat-button [routerLink]="'/admin/projects'"> Projects </a>
         </div>
       </mdc-top-app-bar-section>
       <mdc-top-app-bar-section align="end">
@@ -21,25 +19,6 @@
     </mdc-top-app-bar-row>
   </mdc-top-app-bar>
   <div #fixedContent mdcTopAppBarFixedAdjust>
-    <div class="buttons">
-      <button mat-button (click)="users()">Users</button>
-      <button mat-button (click)="projects()">Projects</button>
-      <button mat-button (click)="roles()">Roles</button>
-      <button mat-button (click)="createUser()">Create User</button>
-      <button mat-button (click)="editUser()">Edit User</button>
-      <button mat-button (click)="editUserSample()">Sample Edit</button>
-      <button mat-button (click)="projectExists()">Project that exists</button>
-      <button mat-button (click)="projectDoesNotExist()">Project that does NOT exist</button>
-      <button mat-button (click)="getProject()">Get Project</button>
-    </div>
-
-    <app-data-table [dataSource]="dataSource"
-                    [columns]="columns"
-                    [pageSize]="3"
-                    [pageSizeOptions]="[1,2,3,5,7,10]"
-                    (itemSelected)="itemSelected($event)"
-    ></app-data-table>
-
     <router-outlet></router-outlet>
   </div>
 </div>

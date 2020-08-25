@@ -9,13 +9,6 @@ import { tap } from 'rxjs/operators';
 import { of, Observable, forkJoin } from 'rxjs';
 import { UsersService } from '../services/users.service';
 
-const fakeProject = {
-  code: 'demo',
-  name: 'Demo project',
-  description: 'line1\nline2',
-  membership: [{username: 'rmunn', role: 'Manager'}, {username: 'rhood', role: 'Contributor'}],
-} as Project;
-
 @Component({
   selector: 'app-single-project',
   templateUrl: './single-project.component.html',

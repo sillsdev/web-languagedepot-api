@@ -6,6 +6,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ProjectsService } from '../services/projects.service';
 import { Project } from '../models/project.model';
+import { JsonApiService } from '../services/json-api.service';
 
 @Component({
   selector: 'app-single-user',
@@ -16,7 +17,8 @@ export class SingleUserComponent implements OnInit {
   user = new BehaviorSubject<User>(null);
   projects: Project[];
 
-  constructor(private route: ActivatedRoute, private users: UsersService, private projectsService: ProjectsService) { }
+  constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
+              private users: UsersService, private projectsService: ProjectsService) { }
 
   ngOnInit(): void {
     this.route.paramMap.pipe(
@@ -32,5 +34,29 @@ export class SingleUserComponent implements OnInit {
 
   foundProjects(projects: Project[]) {
     this.projects = projects;
+  }
+
+  editUser(): void {
+    const body = {
+      login: { username: 'rhood', password: 'y' },
+      // removeUser: 'rhood',
+      // remove: [{username: 'rhood', role: 'Contributor'}],
+      add: [{username: 'rhood', role: 'Contributor'}],
+    };
+    this.jsonApi.addRemoveUserExp<any>(body).subscribe();
+  }
+
+  createUser(): void {
+    const body = {
+      login: { username: 'x', password: 'y' },
+      username: 'x',
+      password: 'y',
+      mustChangePassword: false,
+      firstName: 'Joe',
+      lastNames: 'Test',
+      // language: (not provided, let's see what happens)
+      emailAddresses: 'joe_test@example.com'
+    };
+    this.jsonApi.createUserExp<any>(body).subscribe();
   }
 }
