@@ -437,22 +437,35 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
-            return Array.zip projects roles
+            // BUG: This fails when a user has more than one role in a project
+            // return Array.zip projects roles
+            // That's not *supposed* to happen, but the database structure allows for it so we need to be prepared to handle it
+            let projectsByCode = projects |> Array.map (fun proj -> proj.code, proj) |> Map.ofArray
+            return projectsAndRoles |> Array.choose (fun (projCode,role) ->
+                projectsByCode
+                |> Map.tryFind projCode
+                |> Option.map (fun proj -> (proj,role)))
         }
 
         member this.LegacyProjectsAndRolesByUser username = task {
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
-            let legacyProjects = (projects, roles) ||> Array.zip |> Array.map (fun (proj,role) ->
-                let result : Dto.LegacyProjectDetails = {
-                    identifier = proj.code
-                    name = proj.name
-                    repository = "http://public.languagedepot.org"
-                    role = role.ToLowerInvariant()
-                }
-                result
-            )
+            let projectsByCode = projects |> Array.map (fun proj -> proj.code, proj) |> Map.ofArray
+            let legacyProjects : Dto.LegacyProjectDetails[] =
+                (projectCodes, roles)
+                ||> Array.zip
+                |> Array.choose (fun (projCode,role) ->
+                    projectsByCode
+                    |> Map.tryFind projCode
+                    |> Option.map (fun proj ->
+                    {
+                        identifier = proj.code
+                        name = proj.name
+                        repository = "http://public.languagedepot.org"
+                        role = role.ToLowerInvariant()
+                    }
+                ))
             return legacyProjects
         }
 
@@ -460,7 +473,11 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             let! projectsAndRoles = this.projectsAndRolesByUserImpl username
             let projectCodes, roles = projectsAndRoles |> Array.filter (fun (proj, role) -> role = roleName) |> Array.unzip
             let! projects = this.getProjectDetails projectCodes
-            return Array.zip projects roles
+            let projectsByCode = projects |> Array.map (fun proj -> proj.code, proj) |> Map.ofArray
+            return (projectCodes, roles) ||> Array.zip |> Array.choose (fun (projCode,role) ->
+                projectsByCode
+                |> Map.tryFind projCode
+                |> Option.map (fun proj -> (proj,role)))
         }
 
         member this.ProjectsByUserRole username (roleName : string) = task {
