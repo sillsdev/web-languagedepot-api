@@ -15,7 +15,6 @@ export class TypeaheadComponent implements AfterViewInit {
   constructor() { }
 
   ngAfterViewInit(): void {
-    console.log(this.getData);
     fromEvent(this.input.nativeElement, 'input').pipe(
       map((e: KeyboardEvent) => (e.target as HTMLInputElement).value),
       debounceTime(100),

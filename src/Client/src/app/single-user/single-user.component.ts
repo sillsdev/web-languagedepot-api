@@ -18,9 +18,11 @@ import { JsonApiService } from '../services/json-api.service';
   styleUrls: ['./single-user.component.scss']
 })
 export class SingleUserComponent implements OnInit {
-  user = new ReplaySubject<User>(1);
+  user$ = new ReplaySubject<User>(1);
+  user: User & {fullName: string};
   foundProjects: Project[];
   memberOf: [Project, string][];
+  editMode = false;
 
   constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
               private users: UsersService, private projectsService: ProjectsService) { }
@@ -29,14 +31,16 @@ export class SingleUserComponent implements OnInit {
     this.route.paramMap.pipe(
       map(params => params.get('id')),
       switchMap(username => this.users.getUser(username)),
-    ).subscribe(this.user);
+    ).subscribe(this.user$);
     // When user changes, get list of new user's projects
-    this.user.pipe(
+    this.user$.pipe(
       distinctUntilChanged()
     ).subscribe(newUser => {
-      console.log('Looking up projects for', newUser);
+      console.log('Looking up projects for', newUser.username);
       this.users.getProjectsForUser(newUser.username).subscribe(projects => this.memberOf = projects);
     });
+    // Also keep a record of the current user in a non-observable for the template to use
+    this.user$.subscribe(user => this.user = {...user, fullName: user.firstName + ' ' + user.lastName});
   }
 
   searchProjects(searchText: string): Observable<Project[]> {
