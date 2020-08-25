@@ -12,6 +12,11 @@ Email: {{user?.email}} <br/>
     <li *ngFor="let project of foundProjects">{{project.code}}: {{project.name}}</li>
   </ul>
 </div>
+<div *ngIf="changePasswordMode; else changePasswordLink">
+  <app-change-password-form [showOldPasswordField]="false">
+  </app-change-password-form>
+</div>
+<ng-template #changePasswordLink><a (click)="changePasswordMode = !changePasswordMode">Change password</a></ng-template>
 <div *ngIf="memberOf">
   Member of: <ng-container *ngIf="memberOf?.length &lt;= 0">(no projects)</ng-container>
   <ul>

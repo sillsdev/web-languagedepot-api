@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { NgModule } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -30,6 +31,7 @@ import { SingleProjectComponent } from './single-project/single-project.componen
 import { ProjectsComponent } from './projects/projects.component';
 import { LoginComponent } from './login/login.component';
 import { TypeaheadComponent } from './typeahead/typeahead.component';
+import { ChangePasswordFormComponent } from './change-password-form/change-password-form.component';
 
 @NgModule({
   declarations: [
@@ -42,10 +44,12 @@ import { TypeaheadComponent } from './typeahead/typeahead.component';
     ProjectsComponent,
     LoginComponent,
     TypeaheadComponent,
+    ChangePasswordFormComponent,
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
+    ReactiveFormsModule,
     AppRoutingModule,
     MatButtonModule,
     MatTableModule,

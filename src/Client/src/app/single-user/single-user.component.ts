@@ -23,6 +23,7 @@ export class SingleUserComponent implements OnInit {
   foundProjects: Project[];
   memberOf: [Project, string][];
   editMode = false;
+  changePasswordMode = false;
 
   constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
               private users: UsersService, private projectsService: ProjectsService) { }
