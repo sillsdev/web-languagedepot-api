@@ -22,6 +22,6 @@
 <div *ngIf="memberOf">
   Member of:
   <ul>
-    <li *ngFor="let projectAndRole of memberOf"><a [routerLink]="'/admin/projects/' + projectAndRole[0].code">{{projectAndRole[0].name}}</a>: {{projectAndRole[1]}}</li>
+    <li *ngFor="let projectAndRole of memberOf"><a [routerLink]="['/admin', 'projects', projectAndRole[0].code]">{{projectAndRole[0].name}}</a>: {{projectAndRole[1]}}</li>
   </ul>
 </div>
