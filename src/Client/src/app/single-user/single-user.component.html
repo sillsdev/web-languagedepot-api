@@ -11,10 +11,17 @@
        could use the approach from single-project.component.ts, where we have a subscription to the
        projects.getProject() result that puts its result into `this.project`. There these asyncs
        are not necessary, and we still only subscribe to the Observable once. -->
-  Project search: <app-typeahead (foundData)="foundProjects($event)" [getData]="searchProjects.bind(this)"></app-typeahead>
+  Project search: <app-typeahead (foundData)="onFoundProjects($event)" [getData]="searchProjects.bind(this)"></app-typeahead>
 </div>
-<div *ngIf="projects">
+<div *ngIf="foundProjects">
+  Found projects:
   <ul>
-    <li *ngFor="let project of projects">{{project.code}}: {{project.name}}</li>
+    <li *ngFor="let project of foundProjects">{{project.code}}: {{project.name}}</li>
+  </ul>
+</div>
+<div *ngIf="memberOf">
+  Member of:
+  <ul>
+    <li *ngFor="let projectAndRole of memberOf"><a [routerLink]="'/admin/projects/' + projectAndRole[0].code">{{projectAndRole[0].name}}</a>: {{projectAndRole[1]}}</li>
   </ul>
 </div>

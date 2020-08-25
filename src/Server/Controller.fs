@@ -174,6 +174,9 @@ let listProjectsAndRoles isPublic : HttpHandler = fun next ctx -> task {
         return! withModel isPublic (fun model -> model.ListProjectsAndRoles limit offset) next ctx
     }
 
+let projectsAndRolesByUserWithoutLogin isPublic username : HttpHandler =
+    withModel isPublic (fun model -> model.ProjectsAndRolesByUser username)
+
 let projectsAndRolesByUser isPublic username : HttpHandler =
     withLoggedInModel isPublic (fun model -> model.ProjectsAndRolesByUser username)
 

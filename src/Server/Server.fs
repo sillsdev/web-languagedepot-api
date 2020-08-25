@@ -96,7 +96,7 @@ let usersRouter isPublic = router {
     // deletef "/%s" (Controller.deleteUser isPublic) // TODO: Implement
     // getf   "/exists/%s" (Controller.userExists true)  // No need, can just send HEAD request to /%s instead of GET request
 
-    postf  "/%s/projects" (Controller.projectsAndRolesByUser isPublic)
+    getf   "/%s/projects" (Controller.projectsAndRolesByUserWithoutLogin isPublic)
     postf  "/%s/projects/withRole/%s" (Controller.projectsAndRolesByUserRole isPublic)
 }
 

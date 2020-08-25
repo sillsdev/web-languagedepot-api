@@ -2,7 +2,7 @@
 <p style="white-space: pre-wrap;">{{project?.description}}</p>
 <span style="font-size: large; font-weight: bold;">Members</span><br/>
 <ul>
-  <li *ngFor="let member of project?.membership"><span [style.text-decoration]="isPendingDelete(member.username) ? 'line-through' : null">{{member.username}}</span>:
+  <li *ngFor="let member of project?.membership"><a [routerLink]="'/admin/users/' + member.username"><span [style.text-decoration]="isPendingDelete(member.username) ? 'line-through' : null">{{member.username}}</span></a>:
     <ng-container *ngIf="!editMode">{{member.role}}</ng-container>
     <select *ngIf="editMode" (change)="editRoleForMember(member.username, member.role, $event.target.value)">
       <option *ngFor="let role of roles" [value]="role.name" [selected]="member.role === role.name">{{role.name}}</option>

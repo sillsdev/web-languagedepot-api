@@ -9,6 +9,10 @@ import { tap } from 'rxjs/operators';
 import { of, Observable, forkJoin } from 'rxjs';
 import { UsersService } from '../services/users.service';
 
+// TODO: Edit project name and/or description
+// TODO: Consider dumping the "pending edits" system, as it doesn't add enough value for the UI complexity
+// TODO: Consider editing project code, though the backend will need to support repo renaming before that's a good idea
+
 @Component({
   selector: 'app-single-project',
   templateUrl: './single-project.component.html',
@@ -141,6 +145,7 @@ export class SingleProjectComponent implements OnInit {
   }
 
   removeMember(member: Membership): void {
+    // TODO: Consider a confirmation dialog when removing the last manager of a project
     if (member?.username) {
       this.edits = this.edits ?? [];
       const oldAdd = this.edits.findIndex(edit => edit.action === 'addMember' && edit.username === member.username);

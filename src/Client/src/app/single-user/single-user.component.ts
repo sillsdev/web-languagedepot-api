@@ -2,11 +2,15 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { UsersService } from '../services/users.service';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { Observable, ReplaySubject } from 'rxjs';
+import { map, switchMap, distinctUntilChanged } from 'rxjs/operators';
 import { ProjectsService } from '../services/projects.service';
 import { Project } from '../models/project.model';
 import { JsonApiService } from '../services/json-api.service';
+
+// TODO: Should be able to edit name, change password, edit email address (might need thinking about issues there)
+// TODO: Projects search has checkboxes for joining multiple projects at once with the same role in each project being joined
+// TODO: List projects this user belongs to, with role in those projects
 
 @Component({
   selector: 'app-single-user',
@@ -14,8 +18,9 @@ import { JsonApiService } from '../services/json-api.service';
   styleUrls: ['./single-user.component.scss']
 })
 export class SingleUserComponent implements OnInit {
-  user = new BehaviorSubject<User>(null);
-  projects: Project[];
+  user = new ReplaySubject<User>(1);
+  foundProjects: Project[];
+  memberOf: [Project, string][];
 
   constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
               private users: UsersService, private projectsService: ProjectsService) { }
@@ -23,17 +28,23 @@ export class SingleUserComponent implements OnInit {
   ngOnInit(): void {
     this.route.paramMap.pipe(
       map(params => params.get('id')),
-      // switchMap(this.users.getUser),  // WRONG! "this.jsonApi is undefined" because "this" is a SwitchMapSubscriber instance
-      switchMap(username => this.users.getUser(username)),  // RIGHT! This makes "this" be a UsersService instance
+      switchMap(username => this.users.getUser(username)),
     ).subscribe(this.user);
+    // When user changes, get list of new user's projects
+    this.user.pipe(
+      distinctUntilChanged()
+    ).subscribe(newUser => {
+      console.log('Looking up projects for', newUser);
+      this.users.getProjectsForUser(newUser.username).subscribe(projects => this.memberOf = projects);
+    });
   }
 
   searchProjects(searchText: string): Observable<Project[]> {
     return this.projectsService.searchProjects(searchText);
   }
 
-  foundProjects(projects: Project[]) {
-    this.projects = projects;
+  onFoundProjects(projects: Project[]) {
+    this.foundProjects = projects;
   }
 
   editUser(): void {
