@@ -17,7 +17,7 @@ export class ChangePasswordFormComponent implements OnInit {
     const password1 = control.get('newPasswordControl');
     const password2 = control.get('confirmNewPasswordControl');
 
-    return password1 === password2 ? null : { confirmMismatch: true };
+    return password1.value === password2.value ? null : { confirmMismatch: true };
   }
 
   ngOnInit(): void {
@@ -31,5 +31,9 @@ export class ChangePasswordFormComponent implements OnInit {
         confirmNewPasswordControl: new FormControl(''),
       };
     this.formControl = new FormGroup(fields, { validators: [this.passwordsMustMatch] });
+  }
+
+  onSubmit(): void {
+    console.log('Password change request would be submitted with new password:', this.formControl.get('newPasswordControl').value);
   }
 }
