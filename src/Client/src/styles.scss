@@ -39,5 +39,9 @@
 @use '@material/snackbar/mdc-snackbar';
 @use '@material/snackbar/_index' as snackbar;
 
+// MDC Checkbox
+@use '@material/checkbox/mdc-checkbox';
+@use '@material/checkbox/_index' as checkbox;
+
 // Angular MDC
 @use '@angular-mdc/theme/material';

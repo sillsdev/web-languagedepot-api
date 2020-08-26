@@ -20,6 +20,7 @@ import { MdcMenuModule } from '@angular-mdc/web/menu';
 import { MdcTopAppBarModule } from '@angular-mdc/web/top-app-bar';
 import { MdcDialogModule } from '@angular-mdc/web/dialog';
 import { MdcSnackbarModule } from '@angular-mdc/web/snackbar';
+import { MdcCheckboxModule } from '@angular-mdc/web/checkbox';
 
 // Angular Material (phase this out unless MDC doesn't have something we need)
 import { MatGridListModule } from '@angular/material/grid-list';
@@ -70,6 +71,7 @@ import { ChangePasswordFormComponent } from './change-password-form/change-passw
     MdcTopAppBarModule,
     MdcDialogModule,
     MdcSnackbarModule,
+    MdcCheckboxModule,
     LayoutModule
   ],
   providers: [],

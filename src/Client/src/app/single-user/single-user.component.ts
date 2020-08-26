@@ -2,16 +2,16 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { User } from '../models/user.model';
 import { UsersService } from '../services/users.service';
-import { Observable, ReplaySubject } from 'rxjs';
+import { Observable, ReplaySubject, forkJoin } from 'rxjs';
 import { map, switchMap, distinctUntilChanged } from 'rxjs/operators';
 import { ProjectsService } from '../services/projects.service';
 import { Project } from '../models/project.model';
 import { JsonApiService } from '../services/json-api.service';
 import { NoticeService } from '../services/notice.service';
+import { RolesService } from '../services/roles.service';
+import { Role } from '../models/role.model';
 
 // TODO: Should be able to edit name, change password, edit email address (might need thinking about issues there)
-// TODO: Projects search has checkboxes for joining multiple projects at once with the same role in each project being joined
-// TODO: List projects this user belongs to, with role in those projects
 
 @Component({
   selector: 'app-single-user',
@@ -21,14 +21,20 @@ import { NoticeService } from '../services/notice.service';
 export class SingleUserComponent implements OnInit {
   user$ = new ReplaySubject<User>(1);
   user: User & {fullName: string};
-  foundProjects: Project[];
+  foundProjects: [Project, boolean][];
   memberOf: [Project, string][];
-  editMode = false;
+  roles: Role[];
+  selectedRole: string;
   changePasswordMode = false;
+  addProjectsMode = false;
 
   constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
               private users: UsersService, private projectsService: ProjectsService,
-              private readonly notice: NoticeService) { }
+              private readonly notice: NoticeService,
+              private readonly rolesService: RolesService)
+  {
+    this.rolesService.roles.subscribe(roles => this.roles = roles);
+  }
 
   ngOnInit(): void {
     this.route.paramMap.pipe(
@@ -62,7 +68,7 @@ export class SingleUserComponent implements OnInit {
   }
 
   onFoundProjects(projects: Project[]): void {
-    this.foundProjects = projects;
+    this.foundProjects = projects.map(proj => [proj, false]);
   }
 
   editUser(): void {
@@ -87,5 +93,26 @@ export class SingleUserComponent implements OnInit {
       emailAddresses: 'joe_test@example.com'
     };
     this.jsonApi.createUserExp<any>(body).subscribe();
+  }
+
+  addProjects(): void {
+    this.addProjectsMode = true;
+  }
+
+  toggleProjectSelection(i: number): void {
+    if (i >= 0 && this.foundProjects?.length > i) {
+      this.foundProjects[i][1] = !this.foundProjects[i][1];
+    }
+  }
+
+  addToProjects(): void {
+    if (this.selectedRole && this.foundProjects && this.foundProjects.length > 0) {
+      const projectCodes = this.foundProjects.filter(([proj, chosen]) => chosen).map((([proj, _]) => proj.code));
+      forkJoin(projectCodes.map(code => this.projectsService.addUserWithRole(code, this.user.username, this.selectedRole)))
+        .subscribe(() => {
+          this.notice.show('Added user successfully');
+          this.users.getProjectsForUser(this.user.username).subscribe(projects => this.memberOf = projects);
+      });
+    }
   }
 }
