@@ -7,6 +7,7 @@ import { map, switchMap, distinctUntilChanged } from 'rxjs/operators';
 import { ProjectsService } from '../services/projects.service';
 import { Project } from '../models/project.model';
 import { JsonApiService } from '../services/json-api.service';
+import { NoticeService } from '../services/notice.service';
 
 // TODO: Should be able to edit name, change password, edit email address (might need thinking about issues there)
 // TODO: Projects search has checkboxes for joining multiple projects at once with the same role in each project being joined
@@ -26,7 +27,8 @@ export class SingleUserComponent implements OnInit {
   changePasswordMode = false;
 
   constructor(private route: ActivatedRoute, private jsonApi: JsonApiService,
-              private users: UsersService, private projectsService: ProjectsService) { }
+              private users: UsersService, private projectsService: ProjectsService,
+              private readonly notice: NoticeService) { }
 
   ngOnInit(): void {
     this.route.paramMap.pipe(
@@ -44,11 +46,22 @@ export class SingleUserComponent implements OnInit {
     this.user$.subscribe(user => this.user = {...user, fullName: user.firstName + ' ' + user.lastName});
   }
 
+  changePassword([oldPw, newPw]: [string, string]): void {
+    this.changePasswordMode = false;
+    const msg = oldPw == null
+      ? `Password would be changed to ${newPw} (old password not required when logged in as an admin)`
+      : `Password would be changed from ${oldPw} to ${newPw}`;
+    // To show a brief notification that doesn't require interaction:
+    // this.notice.show(msg);
+    // To show a notification that requires clicking on the "Dismiss" button:
+    this.notice.showMessageDialog(() => msg);
+  }
+
   searchProjects(searchText: string): Observable<Project[]> {
     return this.projectsService.searchProjects(searchText);
   }
 
-  onFoundProjects(projects: Project[]) {
+  onFoundProjects(projects: Project[]): void {
     this.foundProjects = projects;
   }
 

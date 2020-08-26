@@ -13,7 +13,7 @@ Email: {{user?.email}} <br/>
   </ul>
 </div>
 <div *ngIf="changePasswordMode; else changePasswordLink">
-  <app-change-password-form [showOldPasswordField]="false">
+  <app-change-password-form [showOldPasswordField]="false" (changePasswordEvent)="changePassword($event)">
   </app-change-password-form>
 </div>
 <ng-template #changePasswordLink><a (click)="changePasswordMode = !changePasswordMode">Change password</a></ng-template>
