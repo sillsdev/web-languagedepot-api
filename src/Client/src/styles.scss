@@ -33,5 +33,11 @@
 @use '@material/icon-button/mdc-icon-button';
 @use '@material/icon-button/_index' as icon-button;
 
+// MDC Dialogs
+@use '@material/dialog/mdc-dialog';
+@use '@material/dialog/_index' as dialog;
+@use '@material/snackbar/mdc-snackbar';
+@use '@material/snackbar/_index' as snackbar;
+
 // Angular MDC
 @use '@angular-mdc/theme/material';

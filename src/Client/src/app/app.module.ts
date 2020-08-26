@@ -18,6 +18,8 @@ import { MDCDataTableModule } from '@angular-mdc/web/data-table';
 import { MdcIconModule } from '@angular-mdc/web/icon';
 import { MdcMenuModule } from '@angular-mdc/web/menu';
 import { MdcTopAppBarModule } from '@angular-mdc/web/top-app-bar';
+import { MdcDialogModule } from '@angular-mdc/web/dialog';
+import { MdcSnackbarModule } from '@angular-mdc/web/snackbar';
 
 // Angular Material (phase this out unless MDC doesn't have something we need)
 import { MatGridListModule } from '@angular/material/grid-list';
@@ -31,6 +33,7 @@ import { SingleProjectComponent } from './single-project/single-project.componen
 import { ProjectsComponent } from './projects/projects.component';
 import { LoginComponent } from './login/login.component';
 import { TypeaheadComponent } from './typeahead/typeahead.component';
+import { MessageDialogComponent } from './message-dialog/message-dialog.component';
 import { ChangePasswordFormComponent } from './change-password-form/change-password-form.component';
 
 @NgModule({
@@ -45,6 +48,7 @@ import { ChangePasswordFormComponent } from './change-password-form/change-passw
     LoginComponent,
     TypeaheadComponent,
     ChangePasswordFormComponent,
+    MessageDialogComponent,
   ],
   imports: [
     BrowserModule,
@@ -64,9 +68,12 @@ import { ChangePasswordFormComponent } from './change-password-form/change-passw
     MdcMenuModule,
     MdcIconModule,
     MdcTopAppBarModule,
+    MdcDialogModule,
+    MdcSnackbarModule,
     LayoutModule
   ],
   providers: [],
+  entryComponents: [MessageDialogComponent],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

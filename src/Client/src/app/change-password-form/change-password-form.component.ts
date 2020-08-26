@@ -1,5 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { FormControl, FormGroup, ValidatorFn, ValidationErrors } from '@angular/forms';
+import { NoticeService } from '../services/notice.service';
 
 @Component({
   selector: 'app-change-password-form',
@@ -11,7 +12,7 @@ export class ChangePasswordFormComponent implements OnInit {
   showOldPasswordField = true;
   formControl: FormGroup;
 
-  constructor() { }
+  constructor(private readonly notice: NoticeService) { }
 
   passwordsMustMatch: ValidatorFn = (control: FormGroup): ValidationErrors | null => {
     const password1 = control.get('newPasswordControl');
@@ -34,6 +35,10 @@ export class ChangePasswordFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    console.log('Password change request would be submitted with new password:', this.formControl.get('newPasswordControl').value);
+    const msg = 'Password change request would be submitted with new password: ' + this.formControl.get('newPasswordControl').value;
+    // To show a brief notification that doesn't require interaction:
+    // this.notice.show(msg);
+    // To show a notification that requires clicking on the "Dismiss" button:
+    this.notice.showMessageDialog(() => msg);
   }
 }
