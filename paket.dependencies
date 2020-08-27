@@ -17,25 +17,6 @@ group Sql
     storage: packages
     nuget MySqlConnector
 
-group Client
-    source https://api.nuget.org/v3/index.json
-    framework: netstandard2.0
-    storage: none
-
-    nuget Fable.Core ~> 3
-    nuget Fable.Elmish ~> 3
-    nuget Fable.Elmish.Debugger ~> 3
-    nuget Fable.Elmish.HMR ~> 4
-    nuget Fable.Elmish.React ~> 3
-    nuget Thoth.Fetch ~> 1
-    nuget Thoth.Elmish.Toast ~> 2
-    nuget Thoth.Elmish.FormBuilder
-    nuget Thoth.Elmish.FormBuilder.BasicFields
-    nuget Fable.React ~> 5
-    nuget Fulma ~> 2
-    nuget Fable.FontAwesome.Free ~> 2
-    nuget Feliz.Router
-
 group Build
     source https://api.nuget.org/v3/index.json
     framework: netstandard2.0
