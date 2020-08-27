@@ -1,6 +1,6 @@
 <span style="font-size: large; font-weight: bold;">{{user?.fullName}}</span>
 <span style="font-size: medium;"> (<code>{{user?.username}}</code>)</span>
-<a class="mdc-button" (click)="editMode = !editMode"><mdc-icon>edit</mdc-icon></a>
+<a class="mdc-button" (click)="toggleEditMode()"><mdc-icon>edit</mdc-icon></a>
 <br/>
 Email: {{user?.email}} <br/>
 <div *ngIf="changePasswordMode; else changePasswordLink">
@@ -11,7 +11,7 @@ Email: {{user?.email}} <br/>
 <div *ngIf="memberOf">
   Member of: <ng-container *ngIf="memberOf?.length &lt;= 0">(no projects)</ng-container>
   <ul>
-    <li *ngFor="let projectAndRole of memberOf"><a [routerLink]="['/admin', 'projects', projectAndRole[0].code]">{{projectAndRole[0].name}}</a>: {{projectAndRole[1]}}</li>
+    <li *ngFor="let projectAndRole of memberOf"><a [routerLink]="['/admin', 'projects', projectAndRole[0].code]">{{projectAndRole[0].name}}</a>: {{projectAndRole[1]}} <a class="mdc-button" (click)="removeFromProject(projectAndRole[0].code)"><mdc-icon>highlight_off</mdc-icon></a></li>
   </ul>
 </div>
 <a class="mdc-button" (click)="addProjectsMode = !addProjectsMode"><mdc-icon>add</mdc-icon></a>

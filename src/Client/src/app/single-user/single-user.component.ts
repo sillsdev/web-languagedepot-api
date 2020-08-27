@@ -25,6 +25,7 @@ export class SingleUserComponent implements OnInit {
   memberOf: [Project, string][];
   roles: Role[];
   selectedRole: string;
+  editMode = false;
   changePasswordMode = false;
   addProjectsMode = false;
 
@@ -46,10 +47,14 @@ export class SingleUserComponent implements OnInit {
       distinctUntilChanged()
     ).subscribe(newUser => {
       console.log('Looking up projects for', newUser.username);
-      this.users.getProjectsForUser(newUser.username).subscribe(projects => this.memberOf = projects);
+      this.refreshProjectsList(newUser.username);
     });
     // Also keep a record of the current user in a non-observable for the template to use
     this.user$.subscribe(user => this.user = {...user, fullName: user.firstName + ' ' + user.lastName});
+  }
+
+  refreshProjectsList(username: string): void {
+    this.users.getProjectsForUser(username).subscribe(projects => this.memberOf = projects);
   }
 
   changePassword([oldPw, newPw]: [string, string]): void {
@@ -81,6 +86,10 @@ export class SingleUserComponent implements OnInit {
     this.jsonApi.addRemoveUserExp<any>(body).subscribe();
   }
 
+  toggleEditMode(): void {
+    this.notice.show('Editing username, real name, and email address not yet implemented');
+  }
+
   createUser(): void {
     const body = {
       login: { username: 'x', password: 'y' },
@@ -110,8 +119,18 @@ export class SingleUserComponent implements OnInit {
       const projectCodes = this.foundProjects.filter(([proj, chosen]) => chosen).map((([proj, _]) => proj.code));
       forkJoin(projectCodes.map(code => this.projectsService.addUserWithRole(code, this.user.username, this.selectedRole)))
         .subscribe(() => {
-          this.notice.show('Added user successfully');
-          this.users.getProjectsForUser(this.user.username).subscribe(projects => this.memberOf = projects);
+          this.notice.show(`Successfully added ${this.user.username} to ${projectCodes.length} project(s).`);
+          this.refreshProjectsList(this.user.username);
+      });
+    }
+  }
+
+  removeFromProject(projectCode): void {
+    if (projectCode && this.user?.username) {
+      this.projectsService.removeUser(projectCode, this.user.username)
+      .subscribe(() => {
+        this.notice.show(`Successfully removed ${this.user.username} from ${projectCode}.`);
+        this.refreshProjectsList(this.user.username);
       });
     }
   }
