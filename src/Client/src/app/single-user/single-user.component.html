@@ -4,10 +4,10 @@
 <br/>
 Email: {{user?.email}} <br/>
 <div *ngIf="changePasswordMode; else changePasswordLink">
-  <app-change-password-form [showOldPasswordField]="false" (changePasswordEvent)="changePassword($event)">
+  <app-change-password-form [showOldPasswordField]="false" (changePasswordEvent)="changePassword($event)" (cancelEvent)="cancelChangePassword()">
   </app-change-password-form>
 </div>
-<ng-template #changePasswordLink><a (click)="changePasswordMode = !changePasswordMode">Change password</a></ng-template>
+<ng-template #changePasswordLink><a (click)="changePasswordMode = !changePasswordMode" style="cursor: pointer;">Change password</a></ng-template>
 <div *ngIf="memberOf">
   Member of: <ng-container *ngIf="memberOf?.length &lt;= 0">(no projects)</ng-container>
   <ul>

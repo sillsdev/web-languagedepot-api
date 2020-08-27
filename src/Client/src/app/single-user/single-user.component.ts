@@ -68,6 +68,10 @@ export class SingleUserComponent implements OnInit {
     this.notice.showMessageDialog(() => msg);
   }
 
+  cancelChangePassword(): void {
+    this.changePasswordMode = false;
+  }
+
   searchProjects(searchText: string): Observable<Project[]> {
     return this.projectsService.searchProjects(searchText);
   }

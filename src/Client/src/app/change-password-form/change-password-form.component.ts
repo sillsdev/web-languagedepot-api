@@ -14,6 +14,9 @@ export class ChangePasswordFormComponent implements OnInit {
   @Output()
   changePasswordEvent = new EventEmitter<[string, string]>();
 
+  @Output()
+  cancelEvent = new EventEmitter<void>();
+
   constructor() { }
 
   passwordsMustMatch: ValidatorFn = (control: FormGroup): ValidationErrors | null => {
@@ -40,5 +43,9 @@ export class ChangePasswordFormComponent implements OnInit {
     const oldPw = this.formControl?.get('oldPasswordControl')?.value;
     const newPw = this.formControl?.get('newPasswordControl')?.value;
     this.changePasswordEvent.emit([oldPw, newPw]);
+  }
+
+  onCancel(): void {
+    this.cancelEvent.emit();
   }
 }
