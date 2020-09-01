@@ -321,7 +321,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
 
         member this.IsAdmin username =
             task {
-                let sql = "SELECT is_admin FROM users WHERE login = @username"
+                let sql = "SELECT admin FROM users WHERE login = @username"
                 let setParams (cmd : MySqlCommand) =
                     cmd.Parameters.AddWithValue("username", username) |> ignore
                 let convertRow (reader : MySqlDataReader) = reader.GetBoolean(0)
@@ -374,11 +374,11 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
         member this.UpdateUser (login : string) (updatedUser : Api.CreateUser) =
             task {
                 // Everyone may change their own data, but only admins may change some else's data
-                let sql = "SELECT is_admin, login FROM users WHERE login = @login"
+                let sql = "SELECT admin, login FROM users WHERE login = @login"
                 let setParams (cmd : MySqlCommand) =
                     cmd.Parameters.AddWithValue("login", updatedUser.login.username) |> ignore
                     // TODO: Once we move "is this allowed?" logic into controller, verify password as well
-                let! result = fetchDataWithParams connString sql setParams (fun row -> row.GetBoolean("is_admin"), row.GetString("login"))
+                let! result = fetchDataWithParams connString sql setParams (fun row -> row.GetBoolean("admin"), row.GetString("login"))
                 if result.Length = 0 then
                     // TODO: Edit to return a Result<unit, errorDU> so we can indicate why this may fail (e.g., "Invalid login" or whatever). In this case, login user not found
                     // That errorDU should live in ErrorCodes.fs
