@@ -11,8 +11,6 @@ import { NoticeService } from '../services/notice.service';
 import { RolesService } from '../services/roles.service';
 import { Role } from '../models/role.model';
 
-// TODO: Should be able to edit name, change password, edit email address (might need thinking about issues there)
-
 @Component({
   selector: 'app-single-user',
   templateUrl: './single-user.component.html',
@@ -20,7 +18,7 @@ import { Role } from '../models/role.model';
 })
 export class SingleUserComponent implements OnInit {
   user$ = new ReplaySubject<User>(1);
-  user: User & {fullName: string};
+  user: User;
   foundProjects: [Project, boolean][];
   memberOf: [Project, string][];
   roles: Role[];
@@ -50,7 +48,20 @@ export class SingleUserComponent implements OnInit {
       this.refreshProjectsList(newUser.username);
     });
     // Also keep a record of the current user in a non-observable for the template to use
-    this.user$.subscribe(user => this.user = {...user, fullName: user.firstName + ' ' + user.lastName});
+    this.user$.subscribe(user => this.user = user);
+  }
+
+  resetUserEditForm(): void {
+    ;
+  }
+
+  onEditUser(user: User): void {
+    console.log('onEditUser', user);
+    if (user) {
+      this.user$.next(user);
+      this.users.modifyUser(user).subscribe(() => this.notice.show('User data edited successfully'));
+    }
+    this.editMode = false;
   }
 
   refreshProjectsList(username: string): void {
@@ -91,7 +102,7 @@ export class SingleUserComponent implements OnInit {
   }
 
   toggleEditMode(): void {
-    this.notice.show('Editing username, real name, and email address not yet implemented');
+    this.editMode = !this.editMode;
   }
 
   createUser(): void {

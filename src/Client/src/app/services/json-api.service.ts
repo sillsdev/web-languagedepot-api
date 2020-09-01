@@ -34,6 +34,12 @@ export class JsonApiService {
       .pipe(map(res => { if (res.ok) { return res.data; } else { throw new Error(res.message); }}));
   }
 
+  public put<T>(url: string, body: any): Observable<T> {
+    return this.http
+      .put<JsonResult<T>>(url, body)
+      .pipe(map(res => { if (res.ok) { return res.data; } else { throw new Error(res.message); }}));
+  }
+
   public delete<T>(url: string): Observable<T> {
     return this.http
       .delete<JsonResult<T>>(url)

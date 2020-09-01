@@ -36,6 +36,7 @@ import { LoginComponent } from './login/login.component';
 import { TypeaheadComponent } from './typeahead/typeahead.component';
 import { MessageDialogComponent } from './message-dialog/message-dialog.component';
 import { ChangePasswordFormComponent } from './change-password-form/change-password-form.component';
+import { UserDetailsFormComponent } from './user-details-form/user-details-form.component';
 
 @NgModule({
   declarations: [
@@ -50,6 +51,7 @@ import { ChangePasswordFormComponent } from './change-password-form/change-passw
     TypeaheadComponent,
     ChangePasswordFormComponent,
     MessageDialogComponent,
+    UserDetailsFormComponent,
   ],
   imports: [
     BrowserModule,

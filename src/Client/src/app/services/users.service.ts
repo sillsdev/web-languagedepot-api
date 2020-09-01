@@ -20,6 +20,21 @@ constructor(private readonly jsonApi: JsonApiService) { }
     return this.jsonApi.call(`/api/users/${username}`);
   }
 
+  public modifyUser(user: User): Observable<User> {
+    const loginInfo = { username: user.username, password: '' };
+    const body = {
+      login: loginInfo,
+      username: user.username,
+      password: '', // Password changes are a different API call
+      mustChangePassword: false,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      language: user.language,
+      emailAddresses: user.email,  // TODO: Change "emailAddresses" to "email" in API, because we now allow only one address
+    };
+    return this.jsonApi.put(`/api/users/${user.username}`, body);
+  }
+
   public createUser(body: any): Observable<User> {
     return this.jsonApi.createUserExp<User>(body);
   }

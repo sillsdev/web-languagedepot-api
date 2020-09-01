@@ -1,8 +1,13 @@
-<span style="font-size: large; font-weight: bold;">{{user?.fullName}}</span>
+<div *ngIf="editMode && user; else fieldDisplay">
+  <app-user-details-form [user]="user" (formSubmitted)="onEditUser($event)"></app-user-details-form>
+</div>
+<ng-template #fieldDisplay>
+<span style="font-size: large; font-weight: bold;">{{user?.firstName}} {{user?.lastName}}</span>
 <span style="font-size: medium;"> (<code>{{user?.username}}</code>)</span>
 <a class="mdc-button" (click)="toggleEditMode()"><mdc-icon>edit</mdc-icon></a>
 <br/>
 Email: {{user?.email}} <br/>
+</ng-template>
 <div *ngIf="changePasswordMode; else changePasswordLink">
   <app-change-password-form [showOldPasswordField]="false" (changePasswordEvent)="changePassword($event)" (cancelEvent)="cancelChangePassword()">
   </app-change-password-form>
