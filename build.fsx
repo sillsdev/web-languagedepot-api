@@ -68,6 +68,9 @@ let clientDeployPath = Path.combine clientPath "deploy"
 let deployDir = Path.getFullName "./deploy"
 let bundleDir = Path.combine deployDir "server"
 
+let serverPort = Environment.environVarOrDefault "SERVER_PROXY_PORT" "8085"
+let clientPort = Environment.environVarOrDefault "ANGULAR_SERVE_PORT" "4200"
+
 let testSqlPath = Path.getFullName "./testlanguagedepot.sql"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
@@ -84,10 +87,15 @@ let platformTool tool winTool =
         failwith errorMsg
 
 let nodeTool = platformTool "node" "node.exe"
+let npmTool = platformTool "npm" "npm.cmd"
+let npxTool = platformTool "npx" "npx.cmd"
+let ngTool =
+    let basename = if Environment.isUnix then "ng" else "ng.cmd"
+    clientPath </> "node_modules" </> "@angular" </> "cli" </> "bin" </> basename
 // let yarnTool = platformTool "yarn" "yarn.cmd"
 
 let runTool cmd arguments workingDir =
-    Command.RawCommand (cmd, arguments)
+    Command.RawCommand (cmd, arguments |> Arguments.OfArgs)
     |> CreateProcess.fromCommand
     |> CreateProcess.withWorkingDirectory workingDir
     |> CreateProcess.ensureExitCode
@@ -95,7 +103,7 @@ let runTool cmd arguments workingDir =
     |> ignore
 
 let runToolSimple cmd args workingDir =
-    let arguments = args |> String.split ' ' |> Arguments.OfArgs
+    let arguments = args |> String.split ' '
     runTool cmd arguments workingDir
 
 let runDotNet cmd workingDir =
@@ -123,9 +131,9 @@ Target.create "Clean" (fun _ ->
 Target.create "InstallClient" (fun _ ->
     printfn "Node version:"
     runToolSimple nodeTool "--version" __SOURCE_DIRECTORY__
-    // printfn "Yarn version:"
-    // runToolSimple yarnTool "--version" __SOURCE_DIRECTORY__
-    // runToolSimple yarnTool "install --frozen-lockfile" __SOURCE_DIRECTORY__
+    printfn "Npm version:"
+    runToolSimple npmTool "--version"  __SOURCE_DIRECTORY__
+    runToolSimple npmTool "install" clientPath
 )
 
 Target.create "SetApiToken" (fun _ ->
@@ -156,7 +164,7 @@ Target.create "Build" (fun _ ->
     //    ("let app = \"" + release.NugetVersion + "\"")
     //     System.Text.Encoding.UTF8
     //     (Path.combine clientPath "Version.fs")
-    // runToolSimple yarnTool "webpack-cli -p" __SOURCE_DIRECTORY__
+    runToolSimple ngTool "build" clientPath
 )
 
 Target.create "BuildServerOnly" (fun _ ->
@@ -167,21 +175,17 @@ Target.create "Run" (fun _ ->
     let server = async {
         runDotNet "watch run" serverPath
     }
-    // let client = async {
-    //     runToolSimple yarnTool "webpack-dev-server" __SOURCE_DIRECTORY__
-    // }
-    let browser = async {
-        do! Async.Sleep 5000
-        openBrowser "http://localhost:8080"
-    }
 
     let vsCodeSession = Environment.hasEnvironVar "vsCodeSession"
     let safeClientOnly = Environment.hasEnvironVar "safeClientOnly"
 
+    let client = async {
+        runTool ngTool ["serve"; "--port"; clientPort; "--proxy-config"; "proxy.conf.json"; if not vsCodeSession then "--open"] clientPath
+    }
+
     let tasks =
         [ if not safeClientOnly then yield server
-        //   yield client
-          if not vsCodeSession then yield browser ]
+          yield client ]
 
     tasks
     |> Async.Parallel

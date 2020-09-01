@@ -1,8 +1,11 @@
 group Server
     FSharp.Core
     Saturn
+    Giraffe
     Thoth.Json.Giraffe
+    FSharp.SystemTextJson
     BCrypt.Net-Next
+    Microsoft.AspNetCore.Authentication.JwtBearer
 
 group Sql
     MySqlConnector

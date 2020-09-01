@@ -1,39 +1,21 @@
 group Server
     source https://api.nuget.org/v3/index.json
-    framework: netcoreapp3.0
+    framework: netcoreapp3.1
     storage: none
 
     nuget FSharp.Core
-    nuget Saturn
-    # For some reason, Microsoft.AspNetCore.Authentication.JwtBearer 3.1 is packaged for netcoreapp3.1 only
-    nuget Microsoft.AspNetCore.Authentication.JwtBearer >= 3.0 < 3.1
+    nuget Saturn 0.15.0-preview01
+    nuget Microsoft.AspNetCore.Authentication.JwtBearer
+    nuget Giraffe 5.0.0-alpha-002
     nuget Thoth.Json.Giraffe
+    nuget FSharp.SystemTextJson
     nuget BCrypt.Net-Next
 
 group Sql
     source https://api.nuget.org/v3/index.json
-    framework: netcoreapp3.0
+    framework: netcoreapp3.1
     storage: packages
     nuget MySqlConnector
-
-group Client
-    source https://api.nuget.org/v3/index.json
-    framework: netstandard2.0
-    storage: none
-
-    nuget Fable.Core ~> 3
-    nuget Fable.Elmish ~> 3
-    nuget Fable.Elmish.Debugger ~> 3
-    nuget Fable.Elmish.HMR ~> 4
-    nuget Fable.Elmish.React ~> 3
-    nuget Thoth.Fetch ~> 1
-    nuget Thoth.Elmish.Toast ~> 2
-    nuget Thoth.Elmish.FormBuilder
-    nuget Thoth.Elmish.FormBuilder.BasicFields
-    nuget Fable.React ~> 5
-    nuget Fulma ~> 2
-    nuget Fable.FontAwesome.Free ~> 2
-    nuget Feliz.Router
 
 group Build
     source https://api.nuget.org/v3/index.json

@@ -1,5 +1,7 @@
 namespace Shared
 
+open System.Text.Json.Serialization
+
 type JsonResult<'a> = {
     ok : bool
     data : 'a
@@ -157,15 +159,22 @@ module Api =
         removeUser : string option
     }
 
-    type EditProjectMembershipInternalDetails =
-        | AddUserRoles of MembershipRecordInternal list
-        | RemoveUserRoles of MembershipRecordInternal list
-        | RemoveUserEntirely of string
-
-    type EditProjectMembershipInternal = {
+    type AddProjectMembershipApiCall = {
         login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        projectCode : string
-        details : EditProjectMembershipInternalDetails
+        // projectCode : string  // Not needed; the URL provides this
+        add : MembershipRecordApiCall list
+    }
+
+    type RemoveProjectMembershipApiCall = {
+        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
+        // projectCode : string  // Not needed; the URL provides this
+        remove : MembershipRecordApiCall list
+    }
+
+    type RemoveUserProjectMembershipApiCall = {
+        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
+        // projectCode : string  // Not needed; the URL provides this
+        removeUser : string
     }
 
     type ChangeUserActiveStatus = {
