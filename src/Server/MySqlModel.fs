@@ -406,7 +406,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                             "UPDATE users SET login = @username, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
                             " WHERE login = @loggedInUser"
                     let setParams (cmd : MySqlCommand) =
-                        cmd.Parameters.AddWithValue("login", updatedUser.username) |> ignore
+                        cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
                         if isPasswordChange then
                             cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
                         cmd.Parameters.AddWithValue("mustChangePassword", updatedUser.mustChangePassword) |> ignore
