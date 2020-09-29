@@ -371,52 +371,34 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                       "VALUES (@login, @firstname, @lastname, @hashedPassword, @salt, @status, NOW(), NOW())"
             this.createUserImpl user sql
 
-        member this.UpdateUser (login : string) (updatedUser : Api.CreateUser) =
+        member this.UpdateUser (usernameToUpdate : string) (updatedUser : Api.CreateUser) =
             task {
-                // Everyone may change their own data, but only admins may change some else's data
-                let sql = "SELECT admin, login FROM users WHERE login = @login"
-                let setParams (cmd : MySqlCommand) =
-                    cmd.Parameters.AddWithValue("login", updatedUser.login.username) |> ignore
-                    // TODO: Once we move "is this allowed?" logic into controller, verify password as well
-                let! result = fetchDataWithParams connString sql setParams (fun row -> row.GetBoolean("admin"), row.GetString("login"))
-                if result.Length = 0 then
-                    // TODO: Edit to return a Result<unit, errorDU> so we can indicate why this may fail (e.g., "Invalid login" or whatever). In this case, login user not found
-                    // That errorDU should live in ErrorCodes.fs
-                    return ()
-                let isAdmin, loggedInUser = result.[0]
-                // TODO: Move "is this allowed?" logic into the controller, not here
-                // TODO: Once we move "is this allowed?" logic into controller, verify password as well
-                let allowed = isAdmin || loggedInUser = updatedUser.username
-                if not allowed then
-                    // Return error indicating 403 forbidden
-                    return 0
-                else
-                    let! salt =
-                        let sql = "SELECT salt FROM users where login = @username"
-                        let setParams (cmd : MySqlCommand) =
-                            cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
-                        doScalarQueryWithParams connString sql setParams
-                    let isPasswordChange = not (String.IsNullOrEmpty updatedUser.password)
-                    let hashedPassword = if isPasswordChange then PasswordHashing.hashPassword salt updatedUser.password else ""
-                    let sql =
-                        if isPasswordChange then
-                            "UPDATE users SET login = @username, hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
-                            " WHERE login = @loggedInUser"
-                        else
-                            "UPDATE users SET login = @username, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
-                            " WHERE login = @loggedInUser"
+                let! salt =
+                    let sql = "SELECT salt FROM users where login = @username"
                     let setParams (cmd : MySqlCommand) =
-                        cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
-                        if isPasswordChange then
-                            cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
-                        cmd.Parameters.AddWithValue("mustChangePassword", updatedUser.mustChangePassword) |> ignore
-                        cmd.Parameters.AddWithValue("firstName", updatedUser.firstName) |> ignore
-                        cmd.Parameters.AddWithValue("lastName", updatedUser.lastName) |> ignore
-                        cmd.Parameters.AddWithValue("language", updatedUser.language |> Option.defaultValue "en") |> ignore
-                        cmd.Parameters.AddWithValue("loggedInUser", loggedInUser) |> ignore
-                    let! changedRows = doNonQueryWithParams connString sql setParams
-                    // TODO: Detect changeRows being 0 and return an error code
-                    return changedRows
+                        cmd.Parameters.AddWithValue("username", usernameToUpdate) |> ignore
+                    doScalarQueryWithParams connString sql setParams
+                let isPasswordChange = not (String.IsNullOrEmpty updatedUser.password)
+                let sql =
+                    if isPasswordChange then
+                        "UPDATE users SET login = @username, hashed_password = @hashedPassword, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
+                        " WHERE login = @usernameToUpdate"
+                    else
+                        "UPDATE users SET login = @username, must_change_passwd = @mustChangePassword, firstname = @firstName, lastname = @lastName, language = @language" +
+                        " WHERE login = @usernameToUpdate"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("username", updatedUser.username) |> ignore
+                    if isPasswordChange then
+                        let hashedPassword = PasswordHashing.hashPassword salt updatedUser.password
+                        cmd.Parameters.AddWithValue("hashedPassword", hashedPassword) |> ignore
+                    cmd.Parameters.AddWithValue("mustChangePassword", updatedUser.mustChangePassword) |> ignore
+                    cmd.Parameters.AddWithValue("firstName", updatedUser.firstName) |> ignore
+                    cmd.Parameters.AddWithValue("lastName", updatedUser.lastName) |> ignore
+                    cmd.Parameters.AddWithValue("language", updatedUser.language |> Option.defaultValue "en") |> ignore
+                    cmd.Parameters.AddWithValue("usernameToUpdate", usernameToUpdate) |> ignore  // Or take from the "login" parameter??
+                let! changedRows = doNonQueryWithParams connString sql setParams
+                // TODO: Detect changeRows being 0 and return an error code
+                return changedRows
             }
 
         member this.UpsertUser login updatedUser =

@@ -63,6 +63,23 @@ let requireAdmin : HttpHandler = fun next ctx -> task {
         // E.g., if it said "Only admins are allowed to do that", would that be an information leak?
 }
 
+let requireIp (ips : string[]) : HttpHandler = fun next ctx -> task {
+    let req = ctx.Request
+    let clientIps =
+        match ctx.Request.Headers.TryGetValue("X-Forwarded-For") with
+        | true, clientIps -> clientIps.ToArray()
+        | false, _ ->
+            match req.Headers.TryGetValue("Origin") with
+            | true, clientIps -> clientIps.ToArray()
+            | false, _ -> ctx.Connection.RemoteIpAddress.ToString() |> Array.singleton
+    if clientIps |> Array.isEmpty then
+        return! (setStatusCode 404 >=> Controller.jsonError "No client IP found") next ctx
+    elif clientIps |> Array.exists (fun ip -> ips |> Array.contains ip) then
+        return! next ctx
+    else
+        return! (setStatusCode 403 >=> Controller.jsonError "Unauthorized") next ctx
+}
+
 let head (handler : string -> HttpHandler) (next : HttpFunc) (ctx : HttpContext) =
     if HttpMethods.IsHead ctx.Request.Method then
         routef "/%s" handler next ctx
@@ -102,6 +119,7 @@ let usersRouter isPublic = router {
 
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
+    // pipe_through (requireIp [|"127.0.0.1"|])  // TODO: Let the allowed IPs be in the app config so it's easy to edit at need
 
     forward "/api/projects" (projectRouter true)
     forward "/api/privateProjects" (projectRouter false)
