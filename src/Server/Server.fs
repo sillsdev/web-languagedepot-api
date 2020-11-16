@@ -120,6 +120,8 @@ let usersRouter isPublic = router {
 let securedApp = router {
     pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     // pipe_through (requireIp [|"127.0.0.1"|])  // TODO: Let the allowed IPs be in the app config so it's easy to edit at need
+    // Do not allow CloudFlare to cache API responses
+    pipe_through (setHttpHeader "Cache-Control" "no-store")
 
     forward "/api/projects" (projectRouter true)
     forward "/api/privateProjects" (projectRouter false)
@@ -140,6 +142,8 @@ let securedApp = router {
 }
 
 let publicWebApp = router {
+    // Do not allow CloudFlare to cache API responses
+    pipe_through (setHttpHeader "Cache-Control" "no-store")
     // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
     get "/api/count/users" (Controller.countUsers true)
     get "/api/count/projects" (Controller.countProjects true)
