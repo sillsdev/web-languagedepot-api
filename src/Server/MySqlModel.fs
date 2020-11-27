@@ -531,23 +531,25 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 let! reader = cmd.ExecuteReaderAsync()  // NOT use! because we want to explicitly release the reader later
                 let! memberRowIds = reader :?> MySqlDataReader |> getSqlResult (fun reader -> reader.GetInt32(0))
                 do! reader.DisposeAsync()  // Releases the connection so we can reuse it in the DELETE statements below
-                // Also have to delete from member_roles table
-                let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
-                let safeWhereClause = if String.IsNullOrEmpty whereClause then "" else " WHERE " + whereClause
-                let sql = "DELETE FROM member_roles" + safeWhereClause
-                use cmd = new MySqlCommand(sql, conn, transaction)
-                for idx, code in memberRowIds |> Seq.indexed do
-                    cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
-                let! _ = cmd.ExecuteNonQueryAsync()
-                let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
-                let safeWhereClause = if String.IsNullOrEmpty whereClause then "" else " WHERE " + whereClause
-                let sql = "DELETE FROM members" + safeWhereClause
-                use cmd = new MySqlCommand(sql, conn, transaction)
-                for idx, code in memberRowIds |> Seq.indexed do
-                    cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
-                let! _ = cmd.ExecuteNonQueryAsync()
-                do! transaction.CommitAsync()
-                return true
+                // If no results found, user wasn't a member so do nothing
+                if (memberRowIds |> Array.isEmpty) then
+                    return true  // Removing a non-member is not considered an error, because the desired state is already achieved
+                else
+                    // Also have to delete from member_roles table
+                    let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "member_id = @var%d" idx) |> String.concat " OR "
+                    let sql = "DELETE FROM member_roles WHERE " + whereClause
+                    use cmd = new MySqlCommand(sql, conn, transaction)
+                    for idx, code in memberRowIds |> Seq.indexed do
+                        cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
+                    let! _ = cmd.ExecuteNonQueryAsync()
+                    let whereClause = memberRowIds |> Seq.mapi (fun idx _ -> sprintf "id = @var%d" idx) |> String.concat " OR "
+                    let sql = "DELETE FROM members WHERE " + whereClause
+                    use cmd = new MySqlCommand(sql, conn, transaction)
+                    for idx, code in memberRowIds |> Seq.indexed do
+                        cmd.Parameters.AddWithValue(sprintf "var%d" idx, code) |> ignore
+                    let! _ = cmd.ExecuteNonQueryAsync()
+                    do! transaction.CommitAsync()
+                    return true
             }
 
         member this.AddMembership (username : string) (projectCode : string) (roleName : string) =
