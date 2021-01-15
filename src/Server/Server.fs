@@ -120,7 +120,7 @@ let usersRouter isPublic = router {
 }
 
 let securedApp = router {
-    pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
+    // pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     // pipe_through (requireIp [|"127.0.0.1"|])  // TODO: Let the allowed IPs be in the app config so it's easy to edit at need
     // Do not allow CloudFlare to cache API responses
     pipe_through (setHttpHeader "Cache-Control" "no-store")
