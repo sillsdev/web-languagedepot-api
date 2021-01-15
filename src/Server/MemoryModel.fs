@@ -185,6 +185,20 @@ type MemoryModel() =
 
         member this.GetProjectWithRoles projectCode = (this :> Model.IModel).GetProject projectCode
 
+        member this.GetProjectWithRolesAndUserDetails projectCode = task {
+            let! project = (this :> Model.IModel).GetProject projectCode
+            match project with
+            | None -> return None
+            | Some proj ->
+                let projectDto : Dto.ProjectDto = {
+                    code = proj.code
+                    name = proj.name
+                    description = proj.description
+                    membership = Array.empty
+                }
+                return Some projectDto
+        }
+
         member this.CreateProject (createProjectApiData : Api.CreateProject) = task {
             let proj : Dto.ProjectDetails = {
                 code = createProjectApiData.code

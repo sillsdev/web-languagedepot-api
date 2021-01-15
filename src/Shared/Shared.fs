@@ -98,6 +98,14 @@ module Dto =
         membership : Map<string,string>  // Keys are usernames, values are role names. Only supplied if we asked for it in the request API, otherwise it's empty.
     }
 
+    type ProjectDto = {
+        code : string
+        name : string
+        description : string
+        // ``type`` : ProjectType  // TODO: Decide if we want this one or not
+        membership : (UserDetails * string)[]  // The string here is a role name
+    }
+
     type LegacyProjectDetails = {
         // {"identifier":"shu-flex","name":"Chadian Arabic FLEx","repository":"http:\/\/public.languagedepot.org","role":"manager","repoClarification":"","isLinked":true}
         identifier : string

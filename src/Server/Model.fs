@@ -18,6 +18,7 @@ type IModel =
     abstract GetUser : string -> Task<Dto.UserDetails option>
     abstract GetProject : string -> Task<Dto.ProjectDetails option>
     abstract GetProjectWithRoles : string -> Task<Dto.ProjectDetails option>
+    abstract GetProjectWithRolesAndUserDetails : string -> Task<Dto.ProjectDto option>
 
     abstract CountUsers : unit -> Task<int64>
     abstract CountProjects : unit -> Task<int64>

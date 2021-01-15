@@ -138,6 +138,11 @@ let getProjectWithRoles isPublic projectCode : HttpHandler =
         (fun model -> model.GetProjectWithRoles projectCode)
         (sprintf "Project code %s not found" projectCode)
 
+let getProjectDto isPublic projectCode : HttpHandler =
+    withModelReturningOption isPublic
+        (fun model -> model.GetProjectWithRolesAndUserDetails projectCode)
+        (sprintf "Project code %s not found" projectCode)
+
 let searchUsers isPublic searchText (loginCredentials : Api.LoginCredentials) : HttpHandler =
     fun (next : HttpFunc) (ctx : HttpContext) -> task {
         let model = ctx |> getModel isPublic

@@ -51,7 +51,10 @@ let doScalarQueryWithParams<'result> (connString : string) (sql : string) (setPa
     use cmd = new MySqlCommand(sql, conn)
     setParams cmd
     let! boxedResult = cmd.ExecuteScalarAsync()
-    return (unbox<'result> boxedResult)
+    if isNull boxedResult then
+        return Unchecked.defaultof<'result>
+    else
+        return (unbox<'result> boxedResult)
 }
 
 let doScalarQuery<'result> connString sql =
@@ -86,6 +89,11 @@ let convertUserRow (reader : MySqlDataReader) =
         Dto.UserDetails.email = if reader.IsDBNull(4) then None else Some (reader.GetString(4))
     }
 
+let convertUserAndRole (reader : MySqlDataReader) =
+    let user = convertUserRow reader
+    let role = reader.GetString(5)
+    user, role
+
 let baseUsersQuery = "SELECT login, firstname, lastname, language, address FROM users LEFT JOIN email_addresses ON users.id = email_addresses.user_id"
 
 type MySqlModel(config : IConfiguration, isPublic : bool) =
@@ -102,6 +110,13 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
             Dto.ProjectDetails.name = reader.GetString("name")
             Dto.ProjectDetails.description = reader.GetString("description")
             Dto.ProjectDetails.membership = reader.GetString("user_roles") |> this.decode  // TODO: Handle case where we don't want the complete membership list
+        }
+
+    member this.convertProjectDto (reader : MySqlDataReader) = {
+            Dto.ProjectDto.code = reader.GetString("identifier")
+            Dto.ProjectDto.name = reader.GetString("name")
+            Dto.ProjectDto.description = reader.GetString("description")
+            Dto.ProjectDto.membership = Array.empty
         }
 
     member this.baseProjectQuery = "SELECT identifier, name, description, \"{}\" AS user_roles FROM projects"
@@ -346,6 +361,33 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                     cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
                 let! result = fetchDataWithParams connString sql setParams this.convertProjectRow
                 if result.Length = 0 then return None else return Some result.[0]
+            }
+
+        member this.GetProjectWithRolesAndUserDetails projectCode =
+            let membersQuery =
+                "SELECT users.login, users.firstname, users.lastname, users.language, email_addresses.address, roles.name" +
+                " FROM projects" +
+                " JOIN members ON members.project_id = projects.id" +
+                " JOIN member_roles ON member_roles.member_id = members.id" +
+                " JOIN roles ON roles.id = member_roles.role_id" +
+                " JOIN users ON members.user_id = users.id" +
+                " LEFT JOIN email_addresses ON users.id = email_addresses.user_id"
+            let whereClause = " WHERE projects.identifier = @projectCode"
+            task {
+                let sql = this.baseProjectQuery + whereClause // " WHERE identifier = @projectCode"
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                let! result = fetchDataWithParams connString sql setParams this.convertProjectDto
+                if result.Length = 0
+                then return None
+                else
+                    let project = result.[0]
+                    let sql = membersQuery + whereClause
+                    let setParams (cmd : MySqlCommand) =
+                        cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                    let! usersAndRoles = fetchDataWithParams connString sql setParams convertUserAndRole
+                    printfn "Users and roles: %A" usersAndRoles
+                    return Some { project with membership = usersAndRoles }
             }
 
         member this.CreateProject (project : Api.CreateProject) =

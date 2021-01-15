@@ -92,7 +92,7 @@ let projectRouter isPublic = router {
     get     "/" (Controller.listProjectsAndRoles isPublic)
     post    "" (Controller.createProject isPublic)
     post    "/" (Controller.createProject isPublic)
-    getf    "/%s" (Controller.getProjectWithRoles isPublic)
+    getf    "/%s" (Controller.getProjectDto isPublic)
     patchf  "/%s" (Controller.addOrRemoveUserFromProject isPublic)
     deletef "/%s" (Controller.archiveProject isPublic)
     postf   "/%s/user/%s/withRole/%s" (Controller.addUserToProjectWithRole isPublic)
