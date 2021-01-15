@@ -125,35 +125,37 @@ let securedApp = router {
     // Do not allow CloudFlare to cache API responses
     pipe_through (setHttpHeader "Cache-Control" "no-store")
 
-    forward "/api/projects" (projectRouter true)
-    forward "/api/privateProjects" (projectRouter false)
-    forward "/api/users" (usersRouter true)
-    forward "/api/privateUsers" (usersRouter false)
+    forward "/api/v2/projects" (projectRouter true)
+    forward "/api/v2/privateProjects" (projectRouter false)
+    forward "/api/v2/users" (usersRouter true)
+    forward "/api/v2/privateUsers" (usersRouter false)
 
-    getf "/api/searchUsers/%s" (Controller.searchUsersWithoutLogin true)
-    // postf "/api/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
-    postf "/api/searchPrivateUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers false searchText))
-    post  "/api/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
-    post  "/api/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))
+    getf "/api/v2/searchUsers/%s" (Controller.searchUsersWithoutLogin true)
+    // postf "/api/v2/searchUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers true searchText))
+    postf "/api/v2/searchPrivateUsers/%s" (fun searchText -> bindJson<Api.LoginCredentials> (Controller.searchUsers false searchText))
+    post  "/api/v2/verify-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword true))
+    post  "/api/v2/verify-private-password" (bindJson<Api.LoginCredentials> (Controller.verifyPassword false))
 
-    getf "/api/searchProjects/%s" (Controller.searchProjects true)
+    getf "/api/v2/searchProjects/%s" (Controller.searchProjects true)
 
     // Remove this once we're done experimenting
-    postf  "/api/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
-    get    "/api/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
+    postf  "/api/v2/experimental/addRemoveUsers/%s" (Controller.addOrRemoveUserFromProject true)
+    get    "/api/v2/experimental/addRemoveUsersSample" (Controller.addOrRemoveUserFromProjectSample true)
 }
 
 let publicWebApp = router {
     // Do not allow CloudFlare to cache API responses
     pipe_through (setHttpHeader "Cache-Control" "no-store")
-    // Backwards compatibility (old API used /api/user/{username}/projects with just the password in JSON)
-    get "/api/count/users" (Controller.countUsers true)
-    get "/api/count/projects" (Controller.countProjects true)
-    get "/api/count/non-test-projects" (Controller.countRealProjects true)
-    postf "/api/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser true username))
-    get "/api/roles" (Controller.getAllRoles true)
-    // Rejected API: POST /api/project/{projId}/add-user/{username}
-    getf "/api/isAdmin/%s" (Controller.emailIsAdmin true)
+    // Backwards compatibility (old API used /api/v2/user/{username}/projects with just the password in JSON)
+    get "/api/v2/count/users" (Controller.countUsers true)
+    get "/api/v2/count/projects" (Controller.countProjects true)
+    get "/api/v2/count/non-test-projects" (Controller.countRealProjects true)
+    postf "/api/v2/user/%s/projects" (fun username -> bindJson<Api.LegacyLoginCredentials> (Controller.legacyProjectsAndRolesByUser true username))
+    // TODO: Must handle form-encoded as well!!
+    // TODO: /api/v2 everywhere, and have old /api NOT be forwarded
+    get "/api/v2/roles" (Controller.getAllRoles true)
+    // Rejected API: POST /api/v2/project/{projId}/add-user/{username}
+    getf "/api/v2/isAdmin/%s" (Controller.emailIsAdmin true)
 }
 
 let webApp = choose [ publicWebApp; securedApp ]
