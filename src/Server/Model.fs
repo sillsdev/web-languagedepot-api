@@ -44,6 +44,7 @@ type IModel =
 
     abstract IsAdmin : string -> Task<bool>
     abstract EmailIsAdmin : string -> Task<bool>
+    abstract IsUserManagerOfProject : string -> string -> Task<bool>
     abstract VerifyLoginInfo : Api.LoginCredentials -> Task<bool>
     abstract ArchiveProject : string -> Task<bool>
 

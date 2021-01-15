@@ -183,6 +183,9 @@ let projectsAndRolesByUser isPublic username : HttpHandler =
 let projectsAndRolesByUserRole isPublic (username, roleName) : HttpHandler =
     withLoggedInModel isPublic (fun model -> model.ProjectsAndRolesByUserRole username roleName)
 
+let isUserManagerOfProject isPublic (username, projectCode) : HttpHandler =
+    withModel isPublic (fun model -> model.IsUserManagerOfProject username projectCode)
+
 let legacyProjectsAndRolesByUser isPublic username (legacyLoginCredentials : Api.LegacyLoginCredentials) (next : HttpFunc) (ctx : HttpContext) = task {
     let model = ctx |> getModel isPublic
     let! goodLogin = model.VerifyLoginInfo { username = username; password = legacyLoginCredentials.password }

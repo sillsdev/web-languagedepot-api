@@ -663,6 +663,25 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 // This is by design, because this is a publicly-accessible API endpoint and we don't want to leak info about real email addresses.
             }
 
+        member this.IsUserManagerOfProject username projectCode =
+            task {
+                let sql =
+                    "SELECT COUNT(member_roles.role_id) FROM member_roles" +
+                    " JOIN members ON member_roles.member_id = members.id" +
+                    " JOIN users ON users.id = members.user_id" +
+                    " JOIN projects ON projects.id = members.project_id" +
+                    " WHERE users.login = @username AND projects.identifier = @projectCode AND (member_roles.role_id = @managerId OR member_roles.role_id = @developerId)"
+                let managerId = RoleType.Manager.ToNumericId()
+                let developerId = RoleType.Programmer.ToNumericId()
+                let setParams (cmd : MySqlCommand) =
+                    cmd.Parameters.AddWithValue("username", username) |> ignore
+                    cmd.Parameters.AddWithValue("projectCode", projectCode) |> ignore
+                    cmd.Parameters.AddWithValue("managerId", managerId) |> ignore
+                    cmd.Parameters.AddWithValue("developerId", developerId) |> ignore
+                let! count = doCountQueryWithParams connString sql setParams
+                return (count > 0L)
+            }
+
 type MySqlPublicModel(config : IConfiguration) =
     inherit MySqlModel(config, true)
 

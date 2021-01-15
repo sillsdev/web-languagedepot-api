@@ -280,6 +280,8 @@ type MemoryModel() =
 
         member this.EmailIsAdmin email = task { return adminEmails |> List.contains email }
 
+        member this.IsUserManagerOfProject username projectCode = task { return true }
+
 module ModelRegistration =
     open Microsoft.Extensions.DependencyInjection
     open Microsoft.Extensions.DependencyInjection.Extensions

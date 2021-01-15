@@ -115,6 +115,8 @@ let usersRouter isPublic = router {
 
     getf   "/%s/projects" (Controller.projectsAndRolesByUserWithoutLogin isPublic)
     postf  "/%s/projects/withRole/%s" (Controller.projectsAndRolesByUserRole isPublic)
+    getf   "/%s/isManagerOfProject/%s" (Controller.isUserManagerOfProject isPublic)
+    // TODO: Need another API call like isManagerOfProject but with a user's email address specified
 }
 
 let securedApp = router {
