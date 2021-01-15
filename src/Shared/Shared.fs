@@ -132,20 +132,18 @@ module Api =
     }
 
     type CreateProject = {
-        login : LoginCredentials // TODO : Use "username" rather than "login" for login field in Redmine's users table
+        owner : string  // Must be a username that already exists, or else API call will be rejected
         code : string
         name : string
         description : string option
-        initialMembers : Map<string,string>
+        initialMembers : Map<string,string>  // Owning user will automatically be given Manager role
     }
 
     type ArchiveProject = {
-        login : LoginCredentials
         code : string
     }
 
     type DeleteProject = {
-        login : LoginCredentials
         code : string
     }
 
@@ -160,44 +158,33 @@ module Api =
     }
 
     type EditProjectMembershipApiCall = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        // projectCode : string  // Not needed; the URL provides this
         add : MembershipRecordApiCall list option
         remove : MembershipRecordApiCall list option
         removeUser : string option
     }
 
     type AddProjectMembershipApiCall = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        // projectCode : string  // Not needed; the URL provides this
         add : MembershipRecordApiCall list
     }
 
     type RemoveProjectMembershipApiCall = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        // projectCode : string  // Not needed; the URL provides this
         remove : MembershipRecordApiCall list
     }
 
     type RemoveUserProjectMembershipApiCall = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
-        // projectCode : string  // Not needed; the URL provides this
         removeUser : string
     }
 
     type ChangeUserActiveStatus = {
-        login : LoginCredentials // (the login credentials of an existing admin account, or the one being changed)
         username : string
         active : bool  // Suspended = false, active = true
     }
 
     type DeleteUser = {
-        login : LoginCredentials // (the login credentials of an existing admin account, or the one being deleted)
         username : string
     }
 
     type CreateUser = {
-        login : LoginCredentials // (the login credentials of the admin creating the account)
         username : string // (required)
         password : string // (required, cleartext - will be hashed by the server)
         mustChangePassword : bool // (admin can choose for this to be false, but box is checked by default)
@@ -208,8 +195,7 @@ module Api =
     }
 
     type EditUser = {
-        login : LoginCredentials // (the login credentials of the person editing the account : must either be same user as the account we're editing, or must be admin)
-        username : string // (required, cannot be changed in this API endpoint. A separate API endpoint exists for changing username)
+        username : string
         // NOT password : string option (We'll use a separate API endpoint to change the password.)
         firstName : string option
         lastName : string option
@@ -218,36 +204,25 @@ module Api =
     }
 
     type ChangePassword = {
-        login : LoginCredentials // (the login credentials of the person changing the password : must either be same user as the account we're editing, or must be admin)
         username : string
         password : string
         mustChangePassword : bool option // (option so it can be omitted : should be omitted/None if user is changing own password. If admin changing someone else's password, required.)
     }
 
-    type ChangeUsername = {
-        login : LoginCredentials // (the login credentials of the person changing the username : must either be same user as the account we're editing, or must be admin)
-        oldUsername : string // (required even if we're logging in as that user, for API consistency)
-        newUsername : string
-    }
-
     type PromoteUserToAdmin = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being promoted)
         username : string
     }
 
     type DemoteAdminToNormalUser = {
-        login : LoginCredentials // (the login credentials of an existing admin account, not the one being demoted)
         username : string
     }
 
     type ShowProjectsUserBelongsTo = {
-        login : LoginCredentials // (the login credentials of an admin account, or the user account whose username is specified below)
         username : string
         role : string option  // (if unspecified, return all projects user is a member of, else show projects where username holds this role)
     }
 
     type SearchProjects = {
-        login : LoginCredentials // (the login credentials of the user doing the search)
         searchText : string option  // Search by either name or project code, but not(?) description
         // If searchText is omitted, will return all projects ONLY if login account is admin. Otherwise will return all public projects.
         offset : int option // If specified, used for paging
@@ -255,7 +230,6 @@ module Api =
     }
 
     type SearchUsers = {
-        login : LoginCredentials // (the login credentials of the user doing the search)
         emailSearch : string option // If specified, must be exact match (though case-insensitive (in invariant culture) so not "exact" by that standard)
         nameSearch : string option // If specified, will do "LIKE '%str%'", so beware SQL injection here.
         // If both email and name are specified, will do an AND. If an OR is desired, submit two API calls, one with emailSearch and one with nameSearch, and frontend can join them together while removing overlapping usernames

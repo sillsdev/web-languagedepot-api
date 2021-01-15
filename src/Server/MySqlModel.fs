@@ -443,7 +443,7 @@ type MySqlModel(config : IConfiguration, isPublic : bool) =
                 return changedRows
             }
 
-        member this.UpsertUser login updatedUser =
+        member this.UpsertUser login (updatedUser : Api.CreateUser) =
             task {
                 let! shouldUpdate = (this :> Model.IModel).UserExists updatedUser.username
                 if not shouldUpdate then

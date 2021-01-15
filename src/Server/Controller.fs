@@ -346,15 +346,14 @@ let addOrRemoveUserFromProject isPublic projectCode =
     ]
 
 let addOrRemoveUserFromProjectSample isPublic =
-    let login : Api.LoginCredentials = { username = "x"; password = "y" }
     withModel isPublic (fun model -> task {
-        // let foo : Api.RemoveUserProjectMembershipApiCall = { login = login; removeUser = "x" }
+        // let foo : Api.RemoveUserProjectMembershipApiCall = { removeUser = "x" }
         // let foo = Api.EditProjectMembershipApiCall.RemoveUser (login, "x")
-        // let foo : Api.AddProjectMembershipApiCall = { login = login; add = [{
+        // let foo : Api.AddProjectMembershipApiCall = { add = [{
         //     username = "foo"
         //     role = "Contributor"
         // }]}
-        let foo : Api.RemoveProjectMembershipApiCall = { login = login; remove = [{
+        let foo : Api.RemoveProjectMembershipApiCall = { remove = [{
             username = "foo"
             role = "Contributor"
         }]}
