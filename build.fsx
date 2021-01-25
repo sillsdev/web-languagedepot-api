@@ -106,11 +106,13 @@ let runToolSimple cmd args workingDir =
     let arguments = args |> String.split ' '
     runTool cmd arguments workingDir
 
+let withVerbosity v (x : DotNet.Options) = { x with Verbosity = Some v }
+
 let runDotNet cmd workingDir =
     // Process.setEnvironmentVariable "ASPNETCORE_ENVIRONMENT" "Development"
     Environment.setEnvironVar "ASPNETCORE_ENVIRONMENT" "Development"  // TODO: Set this from some external variable, or in TeamCity, or something
     let result =
-        DotNet.exec (DotNet.Options.withWorkingDirectory workingDir) cmd ""
+        DotNet.exec (DotNet.Options.withWorkingDirectory workingDir >> withVerbosity DotNet.Verbosity.Detailed) cmd ""
     if result.ExitCode <> 0 then failwithf "'dotnet %s' failed in %s" cmd workingDir
 
 let openBrowser url =
