@@ -18,6 +18,7 @@
 	},
 	"dependencies": {
 		"knex": "^0.21.16",
+		"mysql2": "^2.2.5",
 		"objection": "^2.2.12"
 	}
 }
