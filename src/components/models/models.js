@@ -52,7 +52,7 @@ class Project extends Model {
             }
         },
     });
-    static jsonSchema = () => ({
+    static jsonSchema = {
         type: 'object',
         required: ['identifier', 'name'],
         properties: {
@@ -60,7 +60,7 @@ class Project extends Model {
             name: { type: 'string', minLength: 1, maxLength: 255 },
             description: { type: 'string' },
         }
-    });
+    };
     $formatJson(json) {
         // Called when we're about to return JSON to the outside world
         console.log('Project class about to format', json);
