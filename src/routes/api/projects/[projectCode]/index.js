@@ -1,20 +1,20 @@
-import { User } from '$components/models/models';
+import { Project } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
 import { withoutKey } from '$utils/withoutKey';
 
 export async function get({ params }) {
-    if (!params.username) {
-        return { status: 500, body: { description: 'No username specified', code: 'missing_username' }};
+    if (!params.projectCode) {
+        return { status: 500, body: { description: 'No project code specified', code: 'missing_projectCode' }};
     }
     try {
-        const users = await User.query(dbs.private).where('login', params.username);
-        if (users.length < 1) {
-            return { status: 500, body: { description: 'No such user', code: 'unknown_username' }};
-        } else if (users.length > 1) {
-            return { status: 500, body: { description: 'Duplicate username', code: 'duplicate_username' }};
+        const projects = await Project.query(dbs.private).where('identifier', params.projectCode);
+        if (projects.length < 1) {
+            return { status: 500, body: { description: 'No such project', code: 'unknown_projectCode' }};
+        } else if (projects.length > 1) {
+            return { status: 500, body: { description: 'Duplicate projectCode', code: 'duplicate_projectCode' }};
         }
-        console.log('Users result:', users);
-        return { status: 200, body: users[0] };
+        console.log('Projects result:', projects);
+        return { status: 200, body: projects[0] };
     } catch (error) {
         return { status: 500, body: { error, code: 'sql_error' } };
     }
