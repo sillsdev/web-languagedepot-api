@@ -34,11 +34,11 @@ class Membership extends Model {
                 to: 'users.id'
             }
         }
-    })
+    });
 }
 
 class Project extends Model {
-    static tableName = 'projects'
+    static tableName = 'projects';
     static relationMappings = () => ({
         members: {
             relation: Model.HasManyRelation,
@@ -48,7 +48,7 @@ class Project extends Model {
                 to: 'members.project_id'
             }
         },
-    })
+    });
 }
 
 class User extends Model {
@@ -74,7 +74,7 @@ class User extends Model {
                 to: 'members.user_id'
             }
         }
-    })
+    });
 }
 
 export { Membership, Project, User };
