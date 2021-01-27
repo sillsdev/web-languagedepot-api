@@ -53,31 +53,28 @@ class Project extends Model {
 
 class User extends Model {
     static tableName = 'users';
-
-    static get relationMappings() {
-        return {
-            projects: {
-                relation: Model.ManyToManyRelation,
-                modelClass: Project,
-                join: {
-                    from: 'users.id',
-                    through: {
-                        from: 'members.user_id',
-                        to: 'members.project_id'
-                    },
-                    to: 'projects.id'
-                }
-            },
-            memberships: {
-                relation: Model.HasManyRelation,
-                modelClass: Membership,
-                join: {
-                    from: 'users.id',
-                    to: 'members.user_id'
-                }
+    static relationMappings = () => ({
+        projects: {
+            relation: Model.ManyToManyRelation,
+            modelClass: Project,
+            join: {
+                from: 'users.id',
+                through: {
+                    from: 'members.user_id',
+                    to: 'members.project_id'
+                },
+                to: 'projects.id'
             }
-        };
-    }
+        },
+        memberships: {
+            relation: Model.HasManyRelation,
+            modelClass: Membership,
+            join: {
+                from: 'users.id',
+                to: 'members.user_id'
+            }
+        }
+    })
 }
 
 export { Membership, Project, User };
