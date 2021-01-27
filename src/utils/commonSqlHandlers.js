@@ -4,29 +4,42 @@ function catchSqlError(callback) {
     try {
         return callback();
     } catch (error) {
+        console.log('SQL error', error);
         return sqlError(error);
     }
 }
 
 // TODO: Change "items" to "query" here and in atMostOne, and wrap in catchSqlError for the query as well
 
-function onlyOne(items, itemKey, itemName, callback) {
-    if (items.length < 1) {
-        return notFound(itemKey, itemName);
-    } else if (items.length > 1) {
-        return duplicateKeyError(itemKey, itemName);
-    } else {
-        return catchSqlError(() => callback(items[0]));
+function onlyOne(query, itemKey, itemName, callback) {
+    try {
+        const items = await query;
+        if (items.length < 1) {
+            return notFound(itemKey, itemName);
+        } else if (items.length > 1) {
+            return duplicateKeyError(itemKey, itemName);
+        } else {
+            return callback(items[0]);
+        }
+    } catch (error) {
+        console.log('SQL error', error);
+        return sqlError(error);
     }
 }
 
-function atMostOne(items, itemKey, itemName, ifNone, ifOne) {
-    if (items.length < 1) {
-        return catchSqlError(() => ifNone());
-    } else if (items.length > 1) {
-        return duplicateKeyError(itemKey, itemName);
-    } else {
-        return catchSqlError(() => ifOne(items[0]));
+function atMostOne(query, itemKey, itemName, ifNone, ifOne) {
+    try {
+        const items = await query;
+        if (items.length < 1) {
+            return ifNone();
+        } else if (items.length > 1) {
+            return duplicateKeyError(itemKey, itemName);
+        } else {
+            return ifOne(items[0]);
+        }
+    } catch (error) {
+        console.log('SQL error', error);
+        return sqlError(error);
     }
 }
 

@@ -7,10 +7,8 @@ export async function get({ params, path }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
-    catchSqlError(async () => {
-        const projects = await Project.query(dbs.public).where('identifier', params.projectCode);
-        return onlyOne(projects, 'projectCode', 'project code', project => ({ status: 200, body: project }));
-    });
+    const query = Project.query(dbs.public).where('identifier', params.projectCode);
+    return onlyOne(query, 'projectCode', 'project code', project => ({ status: 200, body: project }));
 }
 
 // TODO: Return Content-Location where appropriate
@@ -31,8 +29,8 @@ export async function head({ params }) {
 export async function put({ path, params, body }) {
     console.log(`PUT /api/projects/${params.projectCode} received:`, body);
     // TODO: Transaction
-    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
-    return atMostOne(projects, 'projectCode', 'project code',
+    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(query, 'projectCode', 'project code',
     async () => {
         const result = await Project.query(dbs.public).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };
@@ -49,8 +47,8 @@ export async function patch({ path, params, body }) {
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
-    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
-    return atMostOne(projects, 'projectCode', 'project code',
+    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(query, 'projectCode', 'project code',
     () => {
         return cannotUpdateMissing(params.projectCode, 'project');
     },
@@ -63,8 +61,8 @@ export async function patch({ path, params, body }) {
 export async function del({ params }) {
     console.log(`DELETE /api/projects/${params.projectCode} received:`, params);
     // TODO: Transaction
-    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
-    return atMostOne(projects, 'projectCode', 'project code',
+    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(query, 'projectCode', 'project code',
     async () => {
         // Deleting a non-existent item is not an error
         return { status: 204, body: {} };

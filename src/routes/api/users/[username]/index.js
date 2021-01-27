@@ -7,10 +7,8 @@ export async function get({ params, path }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
-    catchSqlError(async () => {
-        const users = await User.query(dbs.public).where('login', params.username);
-        return onlyOne(users, 'username', 'username', user => ({ status: 200, body: user }));
-    });
+    const query = User.query(dbs.public).where('login', params.username);
+    return onlyOne(query, 'username', 'username', user => ({ status: 200, body: user }));
 }
 
 // TODO: Return Content-Location where appropriate
@@ -31,8 +29,8 @@ export async function head({ params }) {
 export async function put({ path, params, body }) {
     console.log(`PUT /api/users/${params.username} received:`, body);
     // TODO: Transaction
-    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(users, 'username', 'user code',
+    const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(query, 'username', 'user code',
     async () => {
         const result = await User.query(dbs.public).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };
@@ -49,8 +47,8 @@ export async function patch({ path, params, body }) {
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
-    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(users, 'username', 'user code',
+    const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(query, 'username', 'user code',
     () => {
         return cannotUpdateMissing(params.projectCode, 'project');
     },
@@ -63,8 +61,8 @@ export async function patch({ path, params, body }) {
 export async function del({ params }) {
     console.log(`DELETE /api/users/${params.username} received:`, params);
     // TODO: Transaction
-    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(users, 'username', 'user code',
+    const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(query, 'username', 'user code',
     () => {
         // Deleting a non-existent item is not an error
         return { status: 204, body: {} };

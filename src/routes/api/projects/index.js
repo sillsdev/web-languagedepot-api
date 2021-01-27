@@ -27,8 +27,8 @@ export async function post({ path, body }) {
         return missingRequiredParam('projectCode', 'body of POST request');
     }
     const projectCode = body.projectCode;
-    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', projectCode);
-    return atMostOne(projects, 'projectCode', 'project code',
+    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', projectCode);
+    return atMostOne(query, 'projectCode', 'project code',
     async () => {
         const result = await Project.query(dbs.public).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };

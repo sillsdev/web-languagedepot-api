@@ -28,8 +28,8 @@ export async function post({ path, body }) {
     }
     // TODO: Password needs special handling
     const username = body.username;
-    const users = await User.query(dbs.public).select('id').forUpdate().where('login', username);
-    return atMostOne(users, 'username', 'username',
+    const query = User.query(dbs.public).select('id').forUpdate().where('login', username);
+    return atMostOne(query, 'username', 'username',
     async () => {
         const result = await User.query(dbs.public).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };
