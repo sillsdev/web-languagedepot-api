@@ -24,4 +24,4 @@ function cannotUpdateMissing(itemKey, itemName) {
     return { status: 404, body: { description: `${itemName} ${itemKey} not found; cannot update a missing ${itemName}`, code: `unknown_${itemKey}` }};
 }
 
-export { missingRequiredParam, sqlError, duplicateKeyError, notFound, jsonRequired };
+export { missingRequiredParam, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };

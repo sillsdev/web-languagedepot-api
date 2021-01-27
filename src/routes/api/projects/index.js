@@ -1,19 +1,23 @@
 import { Project } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
 import { jsonRequired, cannotUpdateMissing, missingRequiredParam } from '$utils/commonErrors';
-import { atMostOne } from '$utils/commonSqlHandlers';
+import { atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
 export async function get() {
-    try {
+    return catchSqlError(async () => {
         const projects = await Project.query(dbs.public);
         console.log('Projects result:', projects);
         return { status: 200, body: projects };
-    } catch (error) {
-        return { status: 500, body: { error, code: 'sql_error' } };
-    }
+    });
 }
 
-export async function post({ path, params, body }) {  // { params, path, body }
+// TODO: Handle HEAD, which should either return 200 if there are projects, 404 if there are none, or 403 Unauthorized if you're supposed to be logged in to access this
+// export async function head({ path }) {
+//     console.log(`HEAD ${path} called`);
+//     return { status: 204, body: {} }
+// }
+
+export async function post({ path, body }) {
     console.log(`POST /api/projects received:`, body);
     // TODO: Transaction
     if (typeof body !== 'object') {
@@ -26,10 +30,11 @@ export async function post({ path, params, body }) {  // { params, path, body }
     const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', projectCode);
     return atMostOne(projects, 'projectCode', 'project code',
     async () => {
-        return cannotUpdateMissing(projectCode, 'project');
+        const result = await Project.query(dbs.public).insertAndFetch(body);
+        return { status: 201, body: result, headers: { location: path } };
     },
     async (project) => {
         const result = await Project.query(dbs.public).updateAndFetchById(project.id, body);
-        return { status: 201, body: result, headers: { location: `${path}/${projectCode}`} };
+        return { status: 200, body: result, headers: { location: `${path}/${projectCode}`} };
     });
 }

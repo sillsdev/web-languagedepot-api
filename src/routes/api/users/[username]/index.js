@@ -1,37 +1,77 @@
 import { User } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
-import { withoutKey } from '$utils/withoutKey';
+import { jsonRequired, cannotUpdateMissing, missingRequiredParam } from '$utils/commonErrors';
+import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
-export async function get({ params }) {
+export async function get({ params, path }) {
     if (!params.username) {
-        return { status: 500, body: { description: 'No username specified', code: 'missing_username' }};
+        return missingRequiredParam('username', path);
+    }
+    catchSqlError(async () => {
+        const users = await User.query(dbs.public).where('login', params.username);
+        return onlyOne(users, 'username', 'username', user => ({ status: 200, body: user }));
+    });
+}
+
+// TODO: Return Content-Location where appropriate
+
+export async function head({ params }) {
+    if (!params.username) {
+        return { status: 400, body: {} };
     }
     try {
-        const users = await User.query(dbs.public).where('login', params.username);
-        if (users.length < 1) {
-            return { status: 500, body: { description: 'No such user', code: 'unknown_username' }};
-        } else if (users.length > 1) {
-            return { status: 500, body: { description: 'Duplicate username', code: 'duplicate_username' }};
-        }
-        console.log('Users result:', users);
-        return { status: 200, body: users[0] };
+        const userCount = await User.query(dbs.public).count().where('login', params.username);
+        const status = userCount < 1 ? 404 : userCount > 1 ? 500 : 200;
+        return { status, body: {} };
     } catch (error) {
-        return { status: 500, body: { error, code: 'sql_error' } };
+        return { status: 500, body: {} };
     }
 }
-// TODO: Build a library of standard errors and reference them here (functions or just looked up by code)
 
-export async function post({ params }) {
-    console.log('TODO: Create user with POST')
-    return { status: 200, body: "Post user\n" };
+export async function put({ path, params, body }) {
+    console.log(`PUT /api/users/${params.username} received:`, body);
+    // TODO: Transaction
+    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(users, 'username', 'user code',
+    async () => {
+        const result = await User.query(dbs.public).insertAndFetch(body);
+        return { status: 201, body: result, headers: { location: path } };
+    },
+    async (user) => {
+        const result = await User.query(dbs.public).updateAndFetchById(user.id, body);
+        return { status: 200, body: result };
+    });
 }
 
-export async function put({ params }) {
-    console.log('TODO: Create user with PUT');
-    return { status: 200, body: "Put user\n" };
+export async function patch({ path, params, body }) {
+    console.log(`PATCH /api/users/${params.username} received:`, body);
+    // TODO: Transaction
+    if (typeof body !== 'object') {
+        return jsonRequired('PATCH', path);
+    }
+    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(users, 'username', 'user code',
+    () => {
+        return cannotUpdateMissing(params.projectCode, 'project');
+    },
+    async (user) => {
+        const result = await User.query(dbs.public).patchAndFetchById(user.id, body);
+        return { status: 200, body: result };
+    });
 }
 
 export async function del({ params }) {
-    console.log('TODO: Delete user');
-    return { status: 200, body: "Delete user\n" };
+    console.log(`DELETE /api/users/${params.username} received:`, params);
+    // TODO: Transaction
+    const users = await User.query(dbs.public).select('id').forUpdate().where('username', params.username);
+    return atMostOne(users, 'username', 'user code',
+    () => {
+        // Deleting a non-existent item is not an error
+        return { status: 204, body: {} };
+    },
+    async (user) => {
+        await User.query(dbs.public).deleteById(user.id);
+        return { status: 204, body: {} };
+    });
+
 }

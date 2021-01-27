@@ -8,6 +8,8 @@ function catchSqlError(callback) {
     }
 }
 
+// TODO: Change "items" to "query" here and in atMostOne, and wrap in catchSqlError for the query as well
+
 function onlyOne(items, itemKey, itemName, callback) {
     if (items.length < 1) {
         return notFound(itemKey, itemName);
