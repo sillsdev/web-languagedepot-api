@@ -1,7 +1,7 @@
 import { Model } from 'objection';
 
 class Role extends Model {
-    static get tableName() { return 'roles'; }
+    static tableName = 'roles';
 }
 
 export default Role;
