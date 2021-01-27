@@ -7,7 +7,7 @@ export async function get({ params }) {
         return { status: 500, body: { description: 'No username specified', code: 'missing_username' }};
     }
     try {
-        const users = await User.query(dbs.private).where('login', params.username);
+        const users = await User.query(dbs.public).where('login', params.username);
         if (users.length < 1) {
             return { status: 500, body: { description: 'No such user', code: 'unknown_username' }};
         } else if (users.length > 1) {

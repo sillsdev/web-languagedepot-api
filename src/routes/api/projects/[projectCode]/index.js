@@ -1,37 +1,63 @@
 import { Project } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
-import { withoutKey } from '$utils/withoutKey';
+import { missingRequiredParam } from '$utils/commonErrors';
+import { catchSqlError, onlyOne, atMostOne } from '$utils/commonSqlHandlers';
 
-export async function get({ params }) {
+export async function get({ params, path }) {
     if (!params.projectCode) {
-        return { status: 500, body: { description: 'No project code specified', code: 'missing_projectCode' }};
+        return missingRequiredParam('projectCode', path);
     }
-    try {
-        const projects = await Project.query(dbs.private).where('identifier', params.projectCode);
-        if (projects.length < 1) {
-            return { status: 500, body: { description: 'No such project', code: 'unknown_projectCode' }};
-        } else if (projects.length > 1) {
-            return { status: 500, body: { description: 'Duplicate projectCode', code: 'duplicate_projectCode' }};
-        }
-        console.log('Projects result:', projects);
-        return { status: 200, body: projects[0] };
-    } catch (error) {
-        return { status: 500, body: { error, code: 'sql_error' } };
-    }
-}
-// TODO: Build a library of standard errors and reference them here (functions or just looked up by code)
-
-export async function post({ params }) {
-    console.log('TODO: Create user with POST')
-    return { status: 200, body: "Post user\n" };
+    catchSqlError(async () => {
+        const projects = await Project.query(dbs.public).where('identifier', params.projectCode);
+        return onlyOne(projects, 'projectCode', 'project code', project => ({ status: 200, body: project }));
+    });
 }
 
-export async function put({ params }) {
-    console.log('TODO: Create user with PUT');
-    return { status: 200, body: "Put user\n" };
+export async function put({ path, params, body }) {
+    console.log(`PUT /api/projects/${params.projectCode} received:`, body);
+    // TODO: Transaction
+    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(projects, 'projectCode', 'project code',
+    async () => {
+        const result = await Project.query(dbs.public).insertAndFetch(body);
+        return { status: 201, body: result, headers: { location: path } };
+    },
+    async (project) => {
+        const result = await Project.query(dbs.public).updateAndFetchById(project.id, body);
+        return { status: 200, body: result };
+    });
+}
+
+export async function patch({ path, params, body }) {
+    console.log(`PATCH /api/projects/${params.projectCode} received:`, body);
+    // TODO: Transaction
+    if (typeof body !== 'object') {
+        return jsonRequired('PATCH', path);
+    }
+    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(projects, 'projectCode', 'project code',
+    async () => {
+        const result = await Project.query(dbs.public).patch(body);
+        return { status: 201, body: result, headers: { location: path } };
+    },
+    async (project) => {
+        const result = await Project.query(dbs.public).updateAndFetchById(project.id, body);
+        return { status: 200, body: result };
+    });
 }
 
 export async function del({ params }) {
-    console.log('TODO: Delete user');
-    return { status: 200, body: "Delete user\n" };
+    console.log(`DELETE /api/projects/${params.projectCode} received:`, params);
+    // TODO: Transaction
+    const projects = await Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
+    return atMostOne(projects, 'projectCode', 'project code',
+    async () => {
+        // Deleting a non-existent item is not an error
+        return { status: 204, body: {} };
+    },
+    async (project) => {
+        await Project.query(dbs.public).deleteById(project.id);
+        return { status: 204, body: {} };
+    });
+
 }

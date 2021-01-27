@@ -4,7 +4,7 @@ import { withoutKey } from '$utils/withoutKey';
 
 export async function get() {
     try {
-        const users = await User.query(dbs.private);
+        const users = await User.query(dbs.public);
         const result = users.map(withoutKey('hashed_password'));
         return { status: 200, body: result };
     } catch (error) {
