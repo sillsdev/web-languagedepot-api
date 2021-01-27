@@ -1,5 +1,4 @@
 import Knex from 'knex';
-import { Model as objection } from 'objection';
 
 import dotenv from 'dotenv';
 dotenv.config()
@@ -38,7 +37,4 @@ const dbs = {
     }
 }
 
-// I don't understand why this is necessary, but import { Model } and then export { Model } isn't working. 2021-01 RM
-const Model = objection;
-
-export { dbs, Model };
+export { dbs };
