@@ -1,9 +1,10 @@
 import { User } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
 
-export async function get() {
+export async function get({ query }) {
+    const db = query.private ? dbs.private : dbs.public;
     try {
-        const users = await User.query(dbs.public)
+        const users = await User.query(db)
             .withGraphJoined('memberships.[project, role]')
         const result = users.map(user => ({
             username: user.login,

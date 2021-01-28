@@ -2,7 +2,7 @@ import { missingRequiredParam } from '$utils/commonErrors';
 import { addUserWithRole } from '$utils/db/usersAndRoles';
 import { dbs } from '$components/models/dbsetup';
 
-export async function post({ params, path }) {
+export async function post({ params, path, query }) {
     // console.log(`POST /api/users received:`, body);
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
@@ -13,5 +13,6 @@ export async function post({ params, path }) {
     if (!params.rolename) {
         return missingRequiredParam('rolename', path);
     }
-    return addUserWithRole(params.projectCode, params.username, params.rolename, dbs.public);
+    const db = query.private ? dbs.private : dbs.public;
+    return addUserWithRole(params.projectCode, params.username, params.rolename, db);
 }

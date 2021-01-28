@@ -1,11 +1,19 @@
 import { User } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
-import { jsonRequired, cannotUpdateMissing, missingRequiredParam } from '$utils/commonErrors';
-import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
-export async function get() {
+export async function get({ query }) {
+    const db = query.private ? dbs.private : dbs.public;
     return catchSqlError(async () => {
-        const users = await User.query(dbs.public);
+        const search = User.query(db);
+        if (typeof query.limit === 'number') {
+            search = search.limit(query.limit);
+        }
+        if (typeof query.offset === 'number') {
+            search = search.offset(query.offset);
+        }
+        const users = await search;
         console.log('Users result:', users);
         return { status: 200, body: users };
     });
@@ -17,7 +25,7 @@ export async function get() {
 //     return { status: 204, body: {} }
 // }
 
-export async function post({ path, body }) {
+export async function post({ path, body, query }) {
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);
     }
@@ -26,7 +34,8 @@ export async function post({ path, body }) {
     }
     // TODO: Password needs special handling
     const username = body.username;
-    const trx = Project.startTransaction(dbs.public);
+    const db = query.private ? dbs.private : dbs.public;
+    const trx = Project.startTransaction(db);
     const query = User.query(trx).select('id').forUpdate().where('login', username);
     const result = await atMostOne(query, 'username', 'username',
     async () => {

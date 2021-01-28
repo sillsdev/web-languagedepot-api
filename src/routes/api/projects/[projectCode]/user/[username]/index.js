@@ -6,7 +6,7 @@ import { addUserWithRole } from '$utils/db/usersAndRoles';
 import { removeUserFromProject } from '../../../../../../utils/db/usersAndRoles';
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
-export async function get({ params }) {
+export async function get({ params, query }) {
     console.log('GET', params);
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
@@ -14,11 +14,12 @@ export async function get({ params }) {
     if (!params || !params.username) {
         return missingRequiredParam('username', 'URL');
     }
-    const query = Project.query(dbs.public)
+    const db = query.private ? dbs.private : dbs.public;
+    const dbQuery = Project.query(db)
         .where('identifier', params.projectCode)
         .withGraphJoined('members.[user, role]')
         ;
-    return onlyOne(query, 'projectCode', 'project code',
+    return onlyOne(dbQuery, 'projectCode', 'project code',
     async (project) => {
         users = project.members.filter(member => member.user.login === params.username && member.role && member.role.name);
         // return onlyOne(users, 'username', 'username', (member) => ({ status: 200, body: member.role.name }));
@@ -33,17 +34,18 @@ export async function get({ params }) {
 // }
 
 // DELETE /api/projects/{projectCode}/user/{username} - remove user from project
-export async function del({ params }) {
+export async function del({ params, query }) {
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
     }
     if (!params || !params.username) {
         return missingRequiredParam('username', 'URL');
     }
-    return removeUserFromProject(params.projectCode, params.username, dbs.public);
+    const db = query.private ? dbs.private : dbs.public;
+    return removeUserFromProject(params.projectCode, params.username, db);
 }
 
-export async function post({ params, path, body }) {
+export async function post({ params, path, body, query }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
@@ -58,5 +60,6 @@ export async function post({ params, path, body }) {
     } else {
         roleName = defaultRoleName;
     }
-    return addUserWithRole(params.projectCode, params.username, roleName, dbs.public);
+    const db = query.private ? dbs.private : dbs.public;
+    return addUserWithRole(params.projectCode, params.username, roleName, db);
 }

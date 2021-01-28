@@ -3,22 +3,24 @@ import { Project, projectStatus } from '$components/models/models';
 import { missingRequiredParam, cannotUpdateMissing } from '$utils/commonErrors';
 import { onlyOne, atMostOne } from '$utils/commonSqlHandlers';
 
-export async function get({ params, path }) {
+export async function get({ params, path, query }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
-    const query = Project.query(dbs.public).where('identifier', params.projectCode);
-    return onlyOne(query, 'projectCode', 'project code', project => ({ status: 200, body: project }));
+    const db = query.private ? dbs.private : dbs.public;
+    const dbQuery = Project.query(db).where('identifier', params.projectCode);
+    return onlyOne(dbQuery, 'projectCode', 'project code', project => ({ status: 200, body: project }));
 }
 
 // TODO: Return Content-Location where appropriate
 
-export async function head({ params }) {
+export async function head({ params, query }) {
     if (!params.projectCode) {
         return { status: 400, body: {} };
     }
+    const db = query.private ? dbs.private : dbs.public;
     try {
-        const projectCount = await Project.query(dbs.public).count().where('identifier', params.projectCode);
+        const projectCount = await Project.query(db).where('identifier', params.projectCode).resultSize();
         const status = projectCount < 1 ? 404 : projectCount > 1 ? 500 : 200;
         return { status, body: {} };
     } catch (error) {
@@ -26,17 +28,17 @@ export async function head({ params }) {
     }
 }
 
-export async function put({ path, params, body }) {
-    console.log(`PUT /api/projects/${params.projectCode} received:`, body);
-    const trx = Project.startTransaction(dbs.public);
-    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(query, 'projectCode', 'project code',
+export async function put({ path, params, body, query }) {
+    const db = query.private ? dbs.private : dbs.public;
+    const trx = Project.startTransaction(db);
+    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
+    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
-        const result = await Project.query(dbs.public).insertAndFetch(body);
+        const result = await Project.query(trx).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };
     },
     async (project) => {
-        const result = await Project.query(dbs.public).updateAndFetchById(project.id, body);
+        const result = await Project.query(trx).updateAndFetchById(project.id, body);
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
@@ -47,14 +49,15 @@ export async function put({ path, params, body }) {
     return result;
 }
 
-export async function patch({ path, params, body }) {
+export async function patch({ path, params, body, query }) {
     // TODO: Passwords need special handling
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
-    const trx = Project.startTransaction(dbs.public);
-    const query = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(query, 'projectCode', 'project code',
+    const db = query.private ? dbs.private : dbs.public;
+    const trx = Project.startTransaction(db);
+    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
+    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     () => {
         return cannotUpdateMissing(params.projectCode, 'project');
     },
@@ -70,10 +73,11 @@ export async function patch({ path, params, body }) {
     return result;
 }
 
-export async function del({ params }) {
-    const trx = Project.startTransaction(dbs.public);
-    const query = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(query, 'projectCode', 'project code',
+export async function del({ params, query }) {
+    const db = query.private ? dbs.private : dbs.public;
+    const trx = Project.startTransaction(db);
+    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
+    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
         // Deleting a non-existent item is not an error
         return { status: 204, body: {} };

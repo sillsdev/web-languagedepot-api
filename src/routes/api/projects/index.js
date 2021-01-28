@@ -1,11 +1,19 @@
 import { Project } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
-import { jsonRequired, cannotUpdateMissing, missingRequiredParam } from '$utils/commonErrors';
+import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
 import { atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
-export async function get() {
+export async function get({ query }) {
+    const db = query.private ? dbs.private : dbs.public;
     return catchSqlError(async () => {
-        const projects = await Project.query(dbs.public);
+        const search = Project.query(db);
+        if (typeof query.limit === 'number') {
+            search = search.limit(query.limit);
+        }
+        if (typeof query.offset === 'number') {
+            search = search.offset(query.offset);
+        }
+        const projects = await search;
         console.log('Projects result:', projects);
         return { status: 200, body: projects };
     });
@@ -17,7 +25,7 @@ export async function get() {
 //     return { status: 204, body: {} }
 // }
 
-export async function post({ path, body }) {
+export async function post({ path, body, query }) {
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);
     }
@@ -25,9 +33,10 @@ export async function post({ path, body }) {
         return missingRequiredParam('projectCode', `body of POST request to ${path}`);
     }
     const projectCode = body.projectCode;
-    const trx = Project.startTransaction(dbs.public);
-    const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
-    const result = await atMostOne(query, 'projectCode', 'project code',
+    const db = query.private ? dbs.private : dbs.public;
+    const trx = Project.startTransaction(db);
+    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
+    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
         const result = await Project.query(trx).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: `${path}/${projectCode}`} };
