@@ -4,7 +4,6 @@ function catchSqlError(callback) {
     try {
         return callback();
     } catch (error) {
-        console.log('SQL error', error);
         return sqlError(error);
     }
 }
@@ -22,7 +21,6 @@ function onlyOne(query, itemKey, itemName, callback) {
             return callback(items[0]);
         }
     } catch (error) {
-        console.log('SQL error', error);
         return sqlError(error);
     }
 }
@@ -38,7 +36,6 @@ function atMostOne(query, itemKey, itemName, ifNone, ifOne) {
             return ifOne(items[0]);
         }
     } catch (error) {
-        console.log('SQL error', error);
         return sqlError(error);
     }
 }
