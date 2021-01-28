@@ -4,4 +4,6 @@ class Role extends Model {
     static tableName = 'roles';
 }
 
-export default Role;
+const defaultRoleName = 'Contributer';
+
+export { Role as default, defaultRoleName };

@@ -27,42 +27,52 @@ export async function head({ params }) {
 }
 
 export async function put({ path, params, body }) {
-    console.log(`PUT /api/users/${params.username} received:`, body);
-    // TODO: Transaction
-    const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(query, 'username', 'user code',
+    const trx = User.startTransaction(dbs.public);
+    const query = User.query(trx).select('id').forUpdate().where('username', params.username);
+    const result = await atMostOne(query, 'username', 'user code',
     async () => {
-        const result = await User.query(dbs.public).insertAndFetch(body);
+        const result = await User.query(trx).insertAndFetch(body);
         return { status: 201, body: result, headers: { location: path } };
     },
     async (user) => {
-        const result = await User.query(dbs.public).updateAndFetchById(user.id, body);
+        const result = await User.query(trx).updateAndFetchById(user.id, body);
         return { status: 200, body: result };
     });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        trx.commit();
+    } else {
+        trx.rollback();
+    }
+    return result;
 }
 
 export async function patch({ path, params, body }) {
-    console.log(`PATCH /api/users/${params.username} received:`, body);
-    // TODO: Transaction
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
-    const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(query, 'username', 'user code',
+    const trx = User.startTransaction(dbs.public);
+    const query = User.query(trx).select('id').forUpdate().where('username', params.username);
+    const result = await atMostOne(query, 'username', 'user code',
     () => {
         return cannotUpdateMissing(params.projectCode, 'project');
     },
     async (user) => {
-        const result = await User.query(dbs.public).patchAndFetchById(user.id, body);
+        const result = await User.query(trx).patchAndFetchById(user.id, body);
         return { status: 200, body: result };
     });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        trx.commit();
+    } else {
+        trx.rollback();
+    }
+    return result;
 }
 
 export async function del({ params }) {
     console.log(`DELETE /api/users/${params.username} received:`, params);
-    // TODO: Transaction
+    const trx = User.startTransaction(dbs.public);
     const query = User.query(dbs.public).select('id').forUpdate().where('username', params.username);
-    return atMostOne(query, 'username', 'user code',
+    const result = await atMostOne(query, 'username', 'user code',
     () => {
         // Deleting a non-existent item is not an error
         return { status: 204, body: {} };
@@ -71,5 +81,10 @@ export async function del({ params }) {
         await User.query(dbs.public).deleteById(user.id);
         return { status: 204, body: {} };
     });
-
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        trx.commit();
+    } else {
+        trx.rollback();
+    }
+    return result;
 }

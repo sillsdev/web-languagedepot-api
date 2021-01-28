@@ -8,8 +8,6 @@ function catchSqlError(callback) {
     }
 }
 
-// TODO: Change "items" to "query" here and in atMostOne, and wrap in catchSqlError for the query as well
-
 async function onlyOne(query, itemKey, itemName, callback) {
     try {
         const items = await query;

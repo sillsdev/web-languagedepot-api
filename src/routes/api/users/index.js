@@ -18,8 +18,6 @@ export async function get() {
 // }
 
 export async function post({ path, body }) {
-    console.log(`POST /api/users received:`, body);
-    // TODO: Transaction
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);
     }
@@ -28,14 +26,21 @@ export async function post({ path, body }) {
     }
     // TODO: Password needs special handling
     const username = body.username;
-    const query = User.query(dbs.public).select('id').forUpdate().where('login', username);
-    return atMostOne(query, 'username', 'username',
+    const trx = Project.startTransaction(dbs.public);
+    const query = User.query(trx).select('id').forUpdate().where('login', username);
+    const result = await atMostOne(query, 'username', 'username',
     async () => {
-        const result = await User.query(dbs.public).insertAndFetch(body);
-        return { status: 201, body: result, headers: { location: path } };
+        const result = await User.query(trx).insertAndFetch(body);
+        return { status: 201, body: result, headers: { location: `${path}/${username}`} };
     },
     async (user) => {
-        const result = await User.query(dbs.public).updateAndFetchById(user.id, body);
+        const result = await User.query(trx).updateAndFetchById(user.id, body);
         return { status: 200, body: result, headers: { location: `${path}/${username}`} };
     });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        trx.commit();
+    } else {
+        trx.rollback();
+    }
+    return result;
 }

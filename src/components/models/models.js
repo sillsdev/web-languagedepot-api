@@ -2,7 +2,7 @@ import { Model } from 'objection';
 import { withoutKey } from '../../utils/withoutKey';
 import { renameKey } from '../../utils/renameKey';
 import { applyAll } from '../../utils/applyAll';
-import Role from './Role';
+// import Role from './Role';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 
@@ -38,6 +38,39 @@ class Membership extends Model {
             }
         }
     });
+    $beforeInsert(context) {
+        super.$beforeInsert(context);
+        if (!this.created_on) {
+            this.created_on = new Date().toISOString().replace('Z', '');  // MySQL doesn't like the trailing Z
+        }
+    }
+}
+
+class MemberRole extends Model {
+    // Only used for advanced membership manipulation
+    static tableName = 'member_roles';
+    static relationMappings = () => ({
+        role: {
+            relation: Model.HasOneRelation,
+            modelClass: Role,
+            join: {
+                from: 'member_roles.role_id',
+                to: 'roles.id'
+            }
+        },
+        user: {
+            relation: Model.HasOneThroughRelation,
+            modelClass: User,
+            join: {
+                from: 'member_roles.member_id',
+                through: {
+                    from: 'members.id',
+                    to: 'members.user_id'
+                },
+                to: 'users.id'
+            }
+        }
+    });
 }
 
 class Project extends Model {
@@ -48,7 +81,19 @@ class Project extends Model {
             modelClass: Membership,
             join: {
                 from: 'projects.id',
-                to: 'members.project_id'
+                to: 'members.project_id',
+            }
+        },
+        memberRoles: {
+            relation: Model.HasManyRelation,
+            modelClass: MemberRole,
+            join: {
+                from: 'projects.id',
+                through: {
+                    from: 'members.project_id',
+                    to: 'members.id'
+                },
+                to: 'member_roles.member_id'
             }
         },
     });
@@ -134,4 +179,25 @@ class User extends Model {
     }
 }
 
-export { Membership, Project, User };
+class Role extends Model {
+    static tableName = 'roles';
+}
+
+const defaultRoleName = 'Contributer';
+
+const projectStatus = {
+    // Values copied from Redmine source
+    active: 1,
+    closed: 5,
+    archived: 9,
+}
+
+const userStatus = {
+    // Values copied from Redmine source
+    anonymous: 0,
+    active: 1,
+    registered: 2,
+    locked: 3,
+}
+
+export { Membership, MemberRole, Project, Role, User, defaultRoleName, projectStatus, userStatus };

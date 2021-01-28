@@ -18,23 +18,28 @@ export async function get() {
 // }
 
 export async function post({ path, body }) {
-    console.log(`POST /api/projects received:`, body);
-    // TODO: Transaction
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);
     }
     if (!body || !body.projectCode) {
-        return missingRequiredParam('projectCode', 'body of POST request');
+        return missingRequiredParam('projectCode', `body of POST request to ${path}`);
     }
     const projectCode = body.projectCode;
-    const query = Project.query(dbs.public).select('id').forUpdate().where('identifier', projectCode);
-    return atMostOne(query, 'projectCode', 'project code',
+    const trx = Project.startTransaction(dbs.public);
+    const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
+    const result = await atMostOne(query, 'projectCode', 'project code',
     async () => {
-        const result = await Project.query(dbs.public).insertAndFetch(body);
-        return { status: 201, body: result, headers: { location: path } };
+        const result = await Project.query(trx).insertAndFetch(body);
+        return { status: 201, body: result, headers: { location: `${path}/${projectCode}`} };
     },
     async (project) => {
-        const result = await Project.query(dbs.public).updateAndFetchById(project.id, body);
+        const result = await Project.query(trx).updateAndFetchById(project.id, body);
         return { status: 200, body: result, headers: { location: `${path}/${projectCode}`} };
     });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        trx.commit();
+    } else {
+        trx.rollback();
+    }
+    return result;
 }
