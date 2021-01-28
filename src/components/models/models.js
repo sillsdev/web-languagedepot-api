@@ -128,6 +128,20 @@ class Project extends Model {
     }
 }
 
+class Email extends Model {
+    static tableName = 'email_addresses';
+    static relationMappings = () => ({
+        user: {
+            relation: Model.BelongsToOneRelation,
+            modelClass: User,
+            join: {
+                from: 'email_addresses.user_id',
+                to: 'users.id'
+            }
+        }
+    });
+}
+
 class User extends Model {
     static tableName = 'users';
     static relationMappings = () => ({
@@ -150,7 +164,15 @@ class User extends Model {
                 from: 'users.id',
                 to: 'members.user_id'
             }
-        }
+        },
+        emails: {
+            relation: Model.HasOneRelation,
+            modelClass: Email,
+            join: {
+                from: 'users.id',
+                to: 'email_addresses.user_id'
+            }
+        },
     });
     static jsonSchema = () => ({
         type: 'object',
