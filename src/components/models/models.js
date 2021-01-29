@@ -108,22 +108,18 @@ class Project extends Model {
     };
     $formatJson(json) {
         // Called when we're about to return JSON to the outside world
-        console.log('Project class about to format', json);
         json = super.$formatJson(json);
         const result = applyAll(json,
             renameKey('identifier', 'projectCode'),
         );
-        console.log('Project class format result:', result);
         return result;
     }
     $parseJson(json) {
         // Called when we've received JSON from the outside world
-        console.log('Project class about to parse', json);
         json = super.$parseJson(json);
         const result = applyAll(json,
             renameKey('projectCode', 'identifier')
         );
-        console.log('Project class parse result:', result);
         return result;
     }
 }
