@@ -218,4 +218,4 @@ const userStatus = {
     locked: 3,
 }
 
-export { Membership, MemberRole, Project, Role, User, defaultRoleName, projectStatus, userStatus };
+export { Membership, MemberRole, Project, Role, User, Email, defaultRoleName, projectStatus, userStatus };

@@ -1,18 +1,14 @@
-import { User } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
-import { jsonRequired, cannotUpdateMissing, missingRequiredParam } from '$utils/commonErrors';
-import { onlyOne, atMostOne } from '$utils/commonSqlHandlers';
+import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { getOneUser, oneUserQuery, patchUser, deleteUser } from '$utils/db/users';
 
 export async function get({ params, path, query }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const dbQuery = User.query(db).where('login', params.username);
-    return onlyOne(dbQuery, 'username', 'username', user => ({ status: 200, body: user }));
+    return getOneUser(db, params.username);
 }
-
-// TODO: Return Content-Location where appropriate
 
 export async function head({ params, query }) {
     if (!params.username) {
@@ -20,7 +16,7 @@ export async function head({ params, query }) {
     }
     const db = query.private ? dbs.private : dbs.public;
     try {
-        const userCount = await User.query(db).where('login', params.username).resultSize();
+        const userCount = await oneUserQuery(db, params.username).resultSize();
         const status = userCount < 1 ? 404 : userCount > 1 ? 500 : 200;
         return { status, body: {} };
     } catch (error) {
@@ -29,66 +25,46 @@ export async function head({ params, query }) {
 }
 
 export async function put({ path, params, body, query }) {
+    if (!params.username) {
+        return missingRequiredParam('username', path);
+    }
+    if (typeof body !== 'object') {
+        return jsonRequired('PATCH', path);
+    }
     const db = query.private ? dbs.private : dbs.public;
-    const trx = User.startTransaction(db);
-    const dbQuery = User.query(trx).select('id').forUpdate().where('username', params.username);
-    const result = await atMostOne(dbQuery, 'username', 'user code',
-    async () => {
-        const result = await User.query(trx).insertAndFetch(body);
-        return { status: 201, body: result, headers: { location: path } };
-    },
-    async (user) => {
-        const result = await User.query(trx).updateAndFetchById(user.id, body);
-        return { status: 200, body: result };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
-    } else {
-        trx.rollback();
+    // TODO: Detect password in the update/insert and handle it specially
+    // TODO: Or maybe detect passwords in the User model's $beforeUpdate / $beforeInsert hooks? Think about it.
+    const result = await createUser(db, params.username, body);
+    // Content-Location not strictly needed here, but add it for consistency
+    if (result && result.status && result.status >= 200 && result.status < 300) {
+        result.headers = { ...result.headers, 'Content-Location': `${path}` };
     }
     return result;
 }
 
 export async function patch({ path, params, body, query }) {
+    if (!params.username) {
+        return missingRequiredParam('username', path);
+    }
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const trx = User.startTransaction(db);
-    const dbQuery = User.query(trx).select('id').forUpdate().where('username', params.username);
-    const result = await atMostOne(dbQuery, 'username', 'user code',
-    () => {
-        return cannotUpdateMissing(params.projectCode, 'project');
-    },
-    async (user) => {
-        const result = await User.query(trx).patchAndFetchById(user.id, body);
-        return { status: 200, body: result };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
-    } else {
-        trx.rollback();
+    // TODO: Detect password in the update and handle it specially
+    // TODO: Or maybe detect passwords in the User model's $beforeUpdate / $beforeInsert hooks? Think about it.
+    const result = patchUser(db, params.username, body);
+    // Add Content-Location header on success so client knows where to find the newly-created project
+    if (result && result.status && result.status >= 200 && result.status < 300) {
+        result.headers = { ...result.headers, 'Content-Location': `${path}/${username}` };
     }
     return result;
 }
 
-export async function del({ params, query }) {
-    const db = query.private ? dbs.private : dbs.public;
-    const trx = User.startTransaction(db);
-    const dbQuery = User.query(trx).select('id').forUpdate().where('username', params.username);
-    const result = await atMostOne(dbQuery, 'username', 'user code',
-    () => {
-        // Deleting a non-existent item is not an error
-        return { status: 204, body: {} };
-    },
-    async (user) => {
-        await User.query(trx).deleteById(user.id);
-        return { status: 204, body: {} };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
-    } else {
-        trx.rollback();
+export async function del({ params, path, query }) {
+    if (!params.username) {
+        return missingRequiredParam('username', path);
     }
+    const db = query.private ? dbs.private : dbs.public;
+    const result = await deleteUser(db, params.username);
     return result;
 }
