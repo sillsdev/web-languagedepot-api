@@ -1,29 +1,21 @@
-import { Project } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
-import { atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { getAllProjects, countAllProjectsQuery, createProject } from '$utils/db/projects';
 
-export async function get({ query }) {
+export function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;
-    return catchSqlError(async () => {
-        const search = Project.query(db);
-        if (typeof query.limit === 'number') {
-            search = search.limit(query.limit);
-        }
-        if (typeof query.offset === 'number') {
-            search = search.offset(query.offset);
-        }
-        const projects = await search;
-        console.log('Projects result:', projects);
-        return { status: 200, body: projects };
-    });
+    // URLSearchParams objects don't destructure well, so convert to a POJO
+    const queryParams = Object.fromEntries(query);
+    return getAllProjects(db, queryParams);
 }
 
-// TODO: Handle HEAD, which should either return 200 if there are projects, 404 if there are none, or 403 Unauthorized if you're supposed to be logged in to access this
-// export async function head({ path }) {
-//     console.log(`HEAD ${path} called`);
-//     return { status: 204, body: {} }
-// }
+export async function head({ query }) {
+    const db = query.private ? dbs.private : dbs.public;
+    const queryParams = Object.fromEntries(query);
+    const count = await countAllProjectsQuery(db, queryParams);
+    const status = count > 0 ? 200 : 404;
+    return { status, body: {} };
+}
 
 export async function post({ path, body, query }) {
     if (typeof body !== 'object') {
@@ -34,21 +26,11 @@ export async function post({ path, body, query }) {
     }
     const projectCode = body.projectCode;
     const db = query.private ? dbs.private : dbs.public;
-    const trx = Project.startTransaction(db);
-    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
-    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
-    async () => {
-        const result = await Project.query(trx).insertAndFetch(body);
-        return { status: 201, body: result, headers: { location: `${path}/${projectCode}`} };
-    },
-    async (project) => {
-        const result = await Project.query(trx).updateAndFetchById(project.id, body);
-        return { status: 200, body: result, headers: { location: `${path}/${projectCode}`} };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+    const result = await createProject(db, projectCode, body);
+    // Add Location header on success so client knows where to find the newly-created project
+    if (result && result.status && result.status >= 200 && result.status < 300) {
+        return { ...result, headers: { ...result.headers, location: `${path}/${projectCode}` } };
     } else {
-        trx.rollback();
+        return result;
     }
-    return result;
 }
