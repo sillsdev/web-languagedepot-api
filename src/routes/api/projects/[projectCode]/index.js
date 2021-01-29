@@ -35,11 +35,11 @@ export async function put({ path, params, body, query }) {
     const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
         const result = await Project.query(trx).insertAndFetch(body);
-        return { status: 201, body: result, headers: { location: path } };
+        return { status: 201, body: result, headers: { 'Content-Location': path } };
     },
     async (project) => {
         const result = await Project.query(trx).updateAndFetchById(project.id, body);
-        return { status: 200, body: result };
+        return { status: 200, body: result, headers: { 'Content-Location': path } };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
         await trx.commit();

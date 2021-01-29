@@ -28,10 +28,9 @@ export async function post({ path, body, query }) {
     const username = body.username;
     const db = query.private ? dbs.private : dbs.public;
     const result = await createUser(db, username, body);
-    // Add Location header on success so client knows where to find the newly-created project
+    // Add Content-Location header on success so client knows where to find the newly-created project
     if (result && result.status && result.status >= 200 && result.status < 300) {
-        return { ...result, headers: { ...result.headers, location: `${path}/${username}` } };
-    } else {
-        return result;
+        result.headers = { ...result.headers, 'Content-Location': `${path}/${username}` };
     }
+    return result;
 }
