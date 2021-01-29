@@ -1,6 +1,6 @@
 import { dbs } from '$components/models/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
-import { getAllUsers, countAllUsers, createUser } from '$utils/db/users';
+import { getAllUsers, countAllUsersQuery, createUser } from '$utils/db/users';
 
 export async function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;
@@ -12,7 +12,7 @@ export async function get({ query }) {
 export async function head({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     const queryParams = Object.fromEntries(query);
-    const count = await countAllUsers(db, queryParams);
+    const count = await countAllUsersQuery(db, queryParams);
     const status = count > 0 ? 200 : 404;
     return { status, body: {} };
 }
