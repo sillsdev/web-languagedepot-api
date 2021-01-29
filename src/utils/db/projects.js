@@ -25,7 +25,7 @@ export function getAllProjects(db, params) {
 }
 
 export async function createProject(db, projectCode, newProject) {
-    const trx = Project.startTransaction(db);
+    const trx = await Project.startTransaction(db);
     const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
     const result = await atMostOne(query, 'projectCode', 'project code',
     async () => {
@@ -37,9 +37,9 @@ export async function createProject(db, projectCode, newProject) {
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }

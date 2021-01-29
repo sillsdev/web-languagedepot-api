@@ -23,10 +23,19 @@ export function getAllUsers(db, params) {
     });
 }
 
+export function oneUserQuery(db, username) {
+    return User.query(db).where('login', username);
+}
+
+export function getOneUser(db, username) {
+    const query = oneUserQuery(db, username);
+    return onlyOne(query, 'username', 'username', user => ({ status: 200, body: user }));
+}
+
 export async function createUser(db, username, newUser) {
     // TODO: Decide whether special handling of password needs to belong here, or in API handlers
-    const trx = User.startTransaction(db);
-    const query = User.query(trx).select('id').forUpdate().where('username', username);
+    const trx = await User.startTransaction(db);
+    const query = oneUserQuery(trx, username).select('id').forUpdate();
     const result = await atMostOne(query, 'username', 'username',
     async () => {
         const result = await User.query(trx).insertAndFetch(newUser);
@@ -37,9 +46,9 @@ export async function createUser(db, username, newUser) {
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }

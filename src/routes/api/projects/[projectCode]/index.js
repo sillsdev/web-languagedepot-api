@@ -30,7 +30,7 @@ export async function head({ params, query }) {
 
 export async function put({ path, params, body, query }) {
     const db = query.private ? dbs.private : dbs.public;
-    const trx = Project.startTransaction(db);
+    const trx = await Project.startTransaction(db);
     const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
     const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
@@ -42,9 +42,9 @@ export async function put({ path, params, body, query }) {
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }
@@ -55,7 +55,7 @@ export async function patch({ path, params, body, query }) {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const trx = Project.startTransaction(db);
+    const trx = await Project.startTransaction(db);
     const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
     const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     () => {
@@ -66,16 +66,16 @@ export async function patch({ path, params, body, query }) {
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }
 
 export async function del({ params, query }) {
     const db = query.private ? dbs.private : dbs.public;
-    const trx = Project.startTransaction(db);
+    const trx = await Project.startTransaction(db);
     const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
     const result = await atMostOne(dbQuery, 'projectCode', 'project code',
     async () => {
@@ -87,9 +87,9 @@ export async function del({ params, query }) {
         return { status: 204, body: {} };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }

@@ -30,9 +30,9 @@ async function addUserWithRole(projectCode, username, rolename, db) {
         });
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }
@@ -56,9 +56,9 @@ async function removeUserFromProject(projectCode, username, db) {
         });
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        trx.commit();
+        await trx.commit();
     } else {
-        trx.rollback();
+        await trx.rollback();
     }
     return result;
 }
