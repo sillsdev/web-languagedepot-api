@@ -1,5 +1,5 @@
-import { Project } from '$components/models/models';
-import { atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { Project, projectStatus } from '$components/models/models';
+import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
     let query = Project.query(db);
@@ -19,12 +19,29 @@ export function countAllProjectsQuery(db, params) {
 export function getAllProjects(db, params) {
     return catchSqlError(async () => {
         const projects = await allProjectsQuery(db, params);
-        // console.log('Projects result:', projects);
         return { status: 200, body: projects };
     });
 }
 
-export async function createProject(db, projectCode, newProject) {
+export function oneProjectQuery(db, projectCode) {
+    return Project.query(db).where('identifier', projectCode);
+}
+
+export function getOneProject(db, projectCode) {
+    // Also want to collect and return member data here
+    const query = oneProjectQuery(db, projectCode).withGraphJoined('members.[user, role]');
+    return onlyOne(query, 'projectCode', 'project code', project => {
+        // console.log(project);
+        project.members = project.members.map(m => ({
+            user: m.user,
+            role: m.role.name,
+        }))
+        // console.log('Result:', project);
+        return { status: 200, body: project };
+    });
+}
+
+export async function createOneProject(db, projectCode, newProject) {
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
     const result = await atMostOne(query, 'projectCode', 'project code',
@@ -44,4 +61,40 @@ export async function createProject(db, projectCode, newProject) {
     return result;
 }
 
-// TODO: Reusable functions for project CRUD
+export async function patchOneProject(db, projectCode, updateData) {
+    const trx = await Project.startTransaction(db);
+    const query = oneProjectQuery(trx, projectCode).select('id').forUpdate();
+    const result = await atMostOne(query, 'projectCode', 'project code',
+    () => {
+        return cannotUpdateMissing(projectCode, 'project');
+    },
+    async (project) => {
+        const result = await Project.query(trx).patchAndFetchById(project.id, updateData);
+        return { status: 200, body: result };
+    });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        await trx.commit();
+    } else {
+        await trx.rollback();
+    }
+    return result;
+}
+
+export async function deleteOneProject(db, projectCode) {
+    const trx = await Project.startTransaction(db);
+    const query = oneProjectQuery(trx, projectCode).select('id').forUpdate();
+    const result = await atMostOne(query, 'projectCode', 'project code',
+    () => {
+        return cannotUpdateMissing(projectCode, 'project');
+    },
+    async (project) => {
+        await Project.query(trx).fetchById(project.id).patch({ status: projectStatus.archived });
+        return { status: 204, body: {} };
+    });
+    if (result && result.status && result.status >= 200 && result.status < 400) {
+        await trx.commit();
+    } else {
+        await trx.rollback();
+    }
+    return result;
+}

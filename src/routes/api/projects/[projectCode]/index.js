@@ -1,18 +1,15 @@
 import { dbs } from '$components/models/dbsetup';
-import { Project, projectStatus } from '$components/models/models';
-import { missingRequiredParam, cannotUpdateMissing } from '$utils/commonErrors';
-import { onlyOne, atMostOne } from '$utils/commonSqlHandlers';
+import { Project } from '$components/models/models';
+import { missingRequiredParam } from '$utils/commonErrors';
+import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
 
 export async function get({ params, path, query }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const dbQuery = Project.query(db).where('identifier', params.projectCode);
-    return onlyOne(dbQuery, 'projectCode', 'project code', project => ({ status: 200, body: project }));
+    return getOneProject(db, params.projectCode);
 }
-
-// TODO: Return Content-Location where appropriate
 
 export async function head({ params, query }) {
     if (!params.projectCode) {
@@ -29,67 +26,34 @@ export async function head({ params, query }) {
 }
 
 export async function put({ path, params, body, query }) {
-    const db = query.private ? dbs.private : dbs.public;
-    const trx = await Project.startTransaction(db);
-    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
-    async () => {
-        const result = await Project.query(trx).insertAndFetch(body);
-        return { status: 201, body: result, headers: { 'Content-Location': path } };
-    },
-    async (project) => {
-        const result = await Project.query(trx).updateAndFetchById(project.id, body);
-        return { status: 200, body: result, headers: { 'Content-Location': path } };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        await trx.commit();
-    } else {
-        await trx.rollback();
+    if (typeof body !== 'object') {
+        return jsonRequired('PUT', path);
     }
-    return result;
+    if (!body || !body.projectCode) {
+        return missingRequiredParam('projectCode', `body of PUT request to ${path}`);
+    }
+    const projectCode = body.projectCode;
+    const db = query.private ? dbs.private : dbs.public;
+    return await createOneProject(db, projectCode, body);
+    // Here we don't return Content-Location because the client already knows it
 }
 
 export async function patch({ path, params, body, query }) {
-    // TODO: Passwords need special handling
+    // TODO: Membership records need special handling
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
-    const db = query.private ? dbs.private : dbs.public;
-    const trx = await Project.startTransaction(db);
-    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
-    () => {
-        return cannotUpdateMissing(params.projectCode, 'project');
-    },
-    async (project) => {
-        const result = await Project.query(trx).patchAndFetchById(project.id, body);
-        return { status: 200, body: result };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        await trx.commit();
-    } else {
-        await trx.rollback();
+    if (!params.projectCode) {
+        return missingRequiredParam('projectCode', path);
     }
-    return result;
+    const db = query.private ? dbs.private : dbs.public;
+    return await patchOneProject(db, projectCode, body);
 }
 
-export async function del({ params, query }) {
-    const db = query.private ? dbs.private : dbs.public;
-    const trx = await Project.startTransaction(db);
-    const dbQuery = Project.query(trx).select('id').forUpdate().where('identifier', params.projectCode);
-    const result = await atMostOne(dbQuery, 'projectCode', 'project code',
-    async () => {
-        // Deleting a non-existent item is not an error
-        return { status: 204, body: {} };
-    },
-    async (project) => {
-        await Project.query(trx).fetchById(project.id).patch({status: projectStatus.archived});
-        return { status: 204, body: {} };
-    });
-    if (result && result.status && result.status >= 200 && result.status < 400) {
-        await trx.commit();
-    } else {
-        await trx.rollback();
+export async function del({ path, params, query }) {
+    if (!params.projectCode) {
+        return missingRequiredParam('projectCode', path);
     }
-    return result;
+    const db = query.private ? dbs.private : dbs.public;
+    return await deleteOneProject(db, params.projectCode);
 }
