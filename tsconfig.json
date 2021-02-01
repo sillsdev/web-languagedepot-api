@@ -17,6 +17,7 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"baseUrl": ".",
+		"allowJs": true,
 		"paths": {
 			"$components/*": ["./src/components/*"],
 			"$utils/*": ["./src/utils/*"]
