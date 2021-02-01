@@ -78,9 +78,26 @@ export function makeJwt(username) {
     return token;
 }
 
+// If we move to auth0-provided tokens in the future, we'll want to do something like this:
+// import jwksClient from 'jwks-rsa';
+// var client = jwksClient({
+//   jwksUri: 'https://example.auth0.com/.well-known/jwks.json'
+// });
+// function getKey(header, callback){
+//     client.getSigningKey(header.kid, function(err, key) {
+//         var signingKey = key.publicKey || key.rsaPublicKey;
+//         callback(null, signingKey);
+//     });
+// }
+// jwt.verify(token, getKey, { audience: jwtAudience }, function(err, payload) { ... });
+//
+// Note that Auth0 docs say "We recommend that you cache your signing keys to improve application performance and
+// avoid running into rate limits, but you will want to make sure that if decoding a token fails, you invalidate
+// the cache and retrieve new signing keys before trying only one more time."
+
 export function verifyToken(token) {
     return new Promise((resolve, reject) => {
-        jwt.verify(token, signKey, { audience: jwtAudience }, function(err, payload) {
+        jwt.verify(token, signKey, { audience: jwtAudience, algorithms: ['HS256'] }, function(err, payload) {
             if (err) {
                 reject(err);
             } else {
