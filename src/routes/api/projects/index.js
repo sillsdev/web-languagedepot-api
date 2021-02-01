@@ -1,6 +1,6 @@
 import { dbs } from '$components/models/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
-import { getAllProjects, countAllProjectsQuery, createProject } from '$utils/db/projects';
+import { getAllProjects, countAllProjectsQuery, createOneProject } from '$utils/db/projects';
 
 export function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;
@@ -26,7 +26,7 @@ export async function post({ path, body, query }) {
     }
     const projectCode = body.projectCode;
     const db = query.private ? dbs.private : dbs.public;
-    const result = await createProject(db, projectCode, body);
+    const result = await createOneProject(db, projectCode, body);
     // Add Content-Location header on success so client knows where to find the newly-created project
     if (result && result.status && result.status >= 200 && result.status < 300) {
         return { ...result, headers: { ...result.headers, 'Content-Location': `${path}/${projectCode}` } };
