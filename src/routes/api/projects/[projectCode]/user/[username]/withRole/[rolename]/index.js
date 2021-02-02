@@ -3,7 +3,6 @@ import { addUserWithRole } from '$utils/db/usersAndRoles';
 import { dbs } from '$components/models/dbsetup';
 
 export async function post({ params, path, query }) {
-    // console.log(`POST /api/users received:`, body);
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }

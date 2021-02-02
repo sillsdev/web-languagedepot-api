@@ -7,7 +7,6 @@ import { removeUserFromProject } from '../../../../../../utils/db/usersAndRoles'
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
 export async function get({ params, query }) {
-    console.log('GET', params);
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
     }
@@ -29,7 +28,6 @@ export async function get({ params, query }) {
 
 // TODO: Handle HEAD, which should either return 200 if there are users, 404 if there are none, or 403 Unauthorized if you're supposed to be logged in to access this
 // export async function head({ path }) {
-//     console.log(`HEAD ${path} called`);
 //     return { status: 204, body: {} }
 // }
 

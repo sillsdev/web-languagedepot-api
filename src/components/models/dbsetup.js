@@ -6,7 +6,6 @@ dotenv.config()
 const dbs = {
     get public() {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get#smart_self-overwriting_lazy_getters
-        console.log('Public DB accessed');
         delete this.public;
         return this.public = Knex({
             client: 'mysql2',
@@ -22,7 +21,6 @@ const dbs = {
 
     get private() {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get#smart_self-overwriting_lazy_getters
-        console.log('Private DB accessed');
         delete this.private;
         return this.private = Knex({
             client: 'mysql2',
