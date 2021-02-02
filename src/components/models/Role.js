@@ -6,4 +6,10 @@ class Role extends Model {
 
 const defaultRoleName = 'Contributer';
 
-export { Role as default, defaultRoleName };
+// Hardcoded role IDs for manager and contributor roles
+// Must update these if the DB ever gets updated
+const managerRoleId = 3;
+const contributorRoleId = 4;
+const techSupportRoleId = 6;
+
+export { Role as default, defaultRoleName, managerRoleId, contributorRoleId, techSupportRoleId };
