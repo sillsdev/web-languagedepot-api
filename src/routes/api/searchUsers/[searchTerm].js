@@ -2,8 +2,10 @@ import { User } from '$components/models/models';
 import { dbs } from '$components/models/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { catchSqlError } from '$utils/commonSqlHandlers';
+import { verifyJwtAuth } from '$utils/db/auth';
+import { isAdmin } from '$utils/db/authRules';
 
-export async function get({ params, query, path }) {
+export async function get({ params, query, path, headers }) {
     const db = query.private ? dbs.private : dbs.public;
     if (!params.searchTerm) {
         return missingRequiredParam('searchTerm', path);
@@ -15,8 +17,15 @@ export async function get({ params, query, path }) {
             .orWhere('firstname', 'like', `%${params.searchTerm}%`)
             .orWhere('lastname', 'like', `%${params.searchTerm}%`)
             .orWhere('address', 'like', `%${params.searchTerm}%`)
-            .select('users.*', 'emails.address')
             ;
+
+        // Anyone can search, but only admins get to see email addresses in the result
+        const authUser = await verifyJwtAuth(db, headers);
+        if (isAdmin(authUser)) {
+            search = search.select('users.*', 'emails.address');
+        } else {
+            search = search.select('users.*');
+        }
 
         const limit = query.get('limit');
         if (limit) {
