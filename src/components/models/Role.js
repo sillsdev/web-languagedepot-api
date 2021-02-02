@@ -4,7 +4,7 @@ class Role extends Model {
     static tableName = 'roles';
 }
 
-const defaultRoleName = 'Contributer';
+const defaultRoleName = 'Contributor';
 
 // Hardcoded role IDs for manager and contributor roles
 // Must update these if the DB ever gets updated
