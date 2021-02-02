@@ -17,12 +17,16 @@ export async function get({ params, query, path }) {
             .orWhere('address', 'like', `%${params.searchTerm}%`)
             .select('users.*', 'emails.address')
             ;
-        if (typeof query.limit === 'number') {
-            search = search.limit(query.limit);
+
+        const limit = query.get('limit');
+        if (limit) {
+            search = search.limit(limit);
         }
-        if (typeof query.offset === 'number') {
-            search = search.offset(query.offset);
+        const offset = query.get('offset');
+        if (offset) {
+            search = search.offset(offset);
         }
+
         const users = await search;
         return { status: 200, body: users };
     });

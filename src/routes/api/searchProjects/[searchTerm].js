@@ -14,13 +14,19 @@ export async function get({ params, query, path }) {
             .orWhere('name', 'like', `%${params.searchTerm}%`)
             .orWhere('description', 'like', `%${params.searchTerm}%`)
             ;
-        if (typeof query.limit === 'number') {
-            search = search.limit(query.limit);
+
+        const limit = query.get('limit');
+        if (limit) {
+            search = search.limit(limit);
         }
-        if (typeof query.offset === 'number') {
-            search = search.offset(query.offset);
+        const offset = query.get('offset');
+        if (offset) {
+            search = search.offset(offset);
         }
-        const users = await search;
-        return { status: 200, body: users };
+
+        const projects = await search;
+        return { status: 200, body: projects };
     });
 }
+
+// TODO: Consider adding ?withMembers as a query parameter to return membership records alongside the projects returned by the search
