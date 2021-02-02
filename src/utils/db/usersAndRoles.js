@@ -1,5 +1,5 @@
 import { Project, Role, User, Membership, MemberRole } from '$components/models/models';
-import { onlyOne, atMostOne } from '$utils/commonSqlHandlers';
+import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
 async function addUserWithRole(projectCode, username, rolename, db) {
     const trx = await Project.startTransaction(db);
@@ -63,4 +63,24 @@ async function removeUserFromProject(projectCode, username, db) {
     return result;
 }
 
-export { addUserWithRole, removeUserFromProject };
+function getProjectsForUser(db, { username, rolename } = {}) {
+    return catchSqlError(async () => {
+        let query = User.query(db)
+            .withGraphJoined('memberships.[project, role]')
+            .where('login', username);
+        if (rolename) {
+            query = query.andWhere('memberships:role.name', rolename);
+        }
+        const result = (await query).map(user => ({
+            username: user.login,
+            memberships: user.memberships.map(m => ({
+                projectCode: m.project.identifier,
+                role: m.role.name,
+            }))
+        }));
+        return { status: 200, body: result };
+    });
+}
+
+
+export { addUserWithRole, removeUserFromProject, getProjectsForUser };
