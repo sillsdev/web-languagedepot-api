@@ -3,9 +3,17 @@ function missingRequiredParam(paramName, location) {
     return { status: 400, body: { description: `No ${paramName} specified${where}`, code: `missing_${paramName}` }};
 }
 
+function authTokenRequired() {
+    return { status: 401, body: { description: `Bearer authentication token required; please login to get a token`, code: `auth_token_required` }};
+}
+
+function notAllowed() {
+    return { status: 403, body: { description: `Access denied`, code: `forbidden` }};
+}
+
 function sqlError(error) {
     console.log('SQL error:', error);
-    return { status: 500, body: { error, description: `SQL error; see error property for details`, code: 'sql_error' } };
+    return { status: 500, body: { error, description: `SQL error; see error property for details`, code: 'sql_error' }};
 }
 
 function duplicateKeyError(itemKey, itemName) {
@@ -24,4 +32,4 @@ function cannotUpdateMissing(itemKey, itemName) {
     return { status: 404, body: { description: `${itemName} ${itemKey} not found; cannot update a missing ${itemName}`, code: `unknown_${itemKey}` }};
 }
 
-export { missingRequiredParam, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };
+export { missingRequiredParam, authTokenRequired, notAllowed, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };

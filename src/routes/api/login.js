@@ -1,4 +1,5 @@
 import { dbs } from '$components/models/dbsetup';
+import { authTokenRequired } from '$utils/commonErrors';
 import { verifyBasicAuth, makeJwt } from '$utils/db/auth';
 
 export async function get({ query, headers }) {
@@ -6,8 +7,8 @@ export async function get({ query, headers }) {
     const authUser = await verifyBasicAuth(db, headers);
     if (authUser) {
         var token = makeJwt(authUser.login);
-        return { status: 200, body: token };  // TODO: Make this a JSON structure with "access_token": token-string  (or should access_token be access-token?)
+        return { status: 200, body: { access_token: token, token_type: 'JWT', expires_in: 604800 } };  // 7 days = 604,800 seconds
     } else {
-        return { status: 401, body: { code: 'not_authorized', description: 'Please log in to get a JWT' } };  // TODO: Debug only, in production replace with real error from commonErrors
+        return authTokenRequired();
     }
 }
