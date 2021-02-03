@@ -1,13 +1,24 @@
 import { Project, Role, User, Membership, MemberRole } from '$components/models/models';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
-async function addUserWithRole(projectCode, username, rolename, db) {
+async function addUserWithRole(projectCode, username, roleNameOrId, db) {
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).select('id').forShare().where('identifier', projectCode);
     const result = await onlyOne(query, 'projectCode', 'project code',
     async (project) => {
-        const query = Role.query(trx).select('id').where('name', rolename);
-        return onlyOne(query, 'rolename', 'role name',
+        let query = Role.query(trx).select('id'),
+            itemKey,
+            itemName;
+        if (typeof roleNameOrId === 'number' || /^\d+$/.test(roleNameOrId)) {
+            query = query.where('id', roleNameOrId);
+            itemKey = 'roleId';
+            itemName = 'role ID';
+        } else {
+            query = query.where('name', roleNameOrId);
+            itemKey = 'rolename';
+            itemName = 'role name';
+        }
+        return onlyOne(query, itemKey, itemName,
         async (role) => {
             const query = User.query(trx).select('id').where('login', username);
             return onlyOne(query, 'username', 'username',
