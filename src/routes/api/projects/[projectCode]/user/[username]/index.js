@@ -40,7 +40,7 @@ export async function del({ params, query }) {
         return missingRequiredParam('username', 'URL');
     }
     const db = query.private ? dbs.private : dbs.public;
-    return removeUserFromProject(params.projectCode, params.username, db);
+    return removeUserFromProject(db, params.projectCode, params.username);
 }
 
 export async function post({ params, path, body, query }) {
@@ -59,5 +59,5 @@ export async function post({ params, path, body, query }) {
         roleName = defaultRoleName;
     }
     const db = query.private ? dbs.private : dbs.public;
-    return addUserWithRole(params.projectCode, params.username, roleName, db);
+    return addUserWithRole(db, params.projectCode, params.username, roleName);
 }

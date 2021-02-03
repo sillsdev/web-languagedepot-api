@@ -1,7 +1,7 @@
 import { Project, Role, User, Membership, MemberRole } from '$components/models/models';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
-async function addUserWithRole(projectCode, username, roleNameOrId, db) {
+async function addUserWithRole(db, projectCode, username, roleNameOrId) {
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).select('id').forShare().where('identifier', projectCode);
     const result = await onlyOne(query, 'projectCode', 'project code',
@@ -48,7 +48,7 @@ async function addUserWithRole(projectCode, username, roleNameOrId, db) {
     return result;
 }
 
-async function removeUserFromProject(projectCode, username, db) {
+async function removeUserFromProject(db, projectCode, username) {
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).where('identifier', projectCode).withGraphJoined('members.[user, role]');
     const result = await onlyOne(query, 'projectCode', 'project code',

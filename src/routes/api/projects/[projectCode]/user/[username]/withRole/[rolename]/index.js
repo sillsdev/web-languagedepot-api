@@ -13,5 +13,5 @@ export async function post({ params, path, query }) {
         return missingRequiredParam('rolename', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    return addUserWithRole(params.projectCode, params.username, params.rolename, db);
+    return addUserWithRole(db, params.projectCode, params.username, params.rolename);
 }
