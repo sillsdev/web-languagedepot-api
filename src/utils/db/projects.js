@@ -1,4 +1,5 @@
 import { Project, projectStatus } from '$components/models/models';
+import { cannotModifyPrimaryKey, inconsistentParams } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
@@ -42,6 +43,11 @@ export function getOneProject(db, projectCode) {
 }
 
 export async function createOneProject(db, projectCode, newProject) {
+    if (newProject && newProject.projectCode) {
+        if (projectCode !== newProject.projectCode) {
+            return inconsistentParams('projectCode');
+        }
+    }
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
     const result = await atMostOne(query, 'projectCode', 'project code',
@@ -50,7 +56,7 @@ export async function createOneProject(db, projectCode, newProject) {
         return { status: 201, body: result };
     },
     async (project) => {
-        const result = await Project.query(trx).updateAndFetchById(project.id, body);
+        const result = await Project.query(trx).updateAndFetchById(project.id, newProject);
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
@@ -62,6 +68,11 @@ export async function createOneProject(db, projectCode, newProject) {
 }
 
 export async function patchOneProject(db, projectCode, updateData) {
+    if (updateData && updateData.projectCode) {
+        if (projectCode !== updateData.projectCode) {
+            return cannotModifyPrimaryKey('projectCode', 'project');
+        }
+    }
     const trx = await Project.startTransaction(db);
     const query = oneProjectQuery(trx, projectCode).select('id').forUpdate();
     const result = await atMostOne(query, 'projectCode', 'project code',

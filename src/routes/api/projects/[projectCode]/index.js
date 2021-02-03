@@ -1,6 +1,6 @@
 import { dbs } from '$components/models/dbsetup';
 import { Project } from '$components/models/models';
-import { missingRequiredParam } from '$utils/commonErrors';
+import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams } from '$utils/commonErrors';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
 
 export async function get({ params, path, query }) {
@@ -29,12 +29,18 @@ export async function put({ path, params, body, query }) {
     if (typeof body !== 'object') {
         return jsonRequired('PUT', path);
     }
-    if (!body || !body.projectCode) {
+    if (!params.projectCode) {
+        return missingRequiredParam('projectCode', path);
+    }
+    if (body && body.projectCode) {
+        if (params.projectCode !== body.projectCode) {
+            return inconsistentParams('projectCode');
+        }
+    } else {
         return missingRequiredParam('projectCode', `body of PUT request to ${path}`);
     }
-    const projectCode = body.projectCode;
     const db = query.private ? dbs.private : dbs.public;
-    return await createOneProject(db, projectCode, body);
+    return await createOneProject(db, params.projectCode, body);
     // Here we don't return Content-Location because the client already knows it
 }
 
@@ -46,8 +52,13 @@ export async function patch({ path, params, body, query }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
+    if (body && body.projectCode) {
+        if (params.projectCode !== body.projectCode) {
+            return cannotModifyPrimaryKey('projectCode', 'project');
+        }
+    }
     const db = query.private ? dbs.private : dbs.public;
-    return await patchOneProject(db, projectCode, body);
+    return await patchOneProject(db, params.projectCode, body);
 }
 
 export async function del({ path, params, query }) {

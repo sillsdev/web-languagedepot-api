@@ -3,6 +3,14 @@ function missingRequiredParam(paramName, location) {
     return { status: 400, body: { description: `No ${paramName} specified${where}`, code: `missing_${paramName}` }};
 }
 
+function inconsistentParams(paramName) {
+    return { status: 400, body: { code: `inconsistent_${paramName}`, description: `The ${paramName} values in the body and URL of the request must match` }};
+}
+
+function cannotModifyPrimaryKey(paramName, itemName) {
+    return { status: 409, body: { code: `cannot_modify_${paramName}`, description: `Modifying the ${paramName} of an existing ${itemName} is not yet supported` } }
+}
+
 function authTokenRequired() {
     return { status: 401, body: { description: `Bearer authentication token required; please login to get a token`, code: `auth_token_required` }};
 }
@@ -32,4 +40,4 @@ function cannotUpdateMissing(itemKey, itemName) {
     return { status: 404, body: { description: `${itemName} ${itemKey} not found; cannot update a missing ${itemName}`, code: `unknown_${itemKey}` }};
 }
 
-export { missingRequiredParam, authTokenRequired, notAllowed, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };
+export { missingRequiredParam, inconsistentParams, cannotModifyPrimaryKey, authTokenRequired, notAllowed, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };
