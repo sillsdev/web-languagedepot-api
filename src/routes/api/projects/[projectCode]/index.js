@@ -1,6 +1,7 @@
 import { dbs } from '$components/models/dbsetup';
 import { Project } from '$components/models/models';
-import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams } from '$utils/commonErrors';
+import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired } from '$utils/commonErrors';
+import { verifyJwtAuth } from '$utils/db/auth';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
 
 export async function get({ params, path, query }) {
@@ -40,8 +41,11 @@ export async function put({ path, params, body, query }) {
         return missingRequiredParam('projectCode', `body of PUT request to ${path}`);
     }
     const db = query.private ? dbs.private : dbs.public;
-    // TODO: Extract username from JWT and use that user as initial manager, or else reject request if no user identified
-    return await createOneProject(db, params.projectCode, body);
+    const authUser = await verifyJwtAuth(db, headers);
+    if (!authUser) {
+        return authTokenRequired();
+    }
+    return await createOneProject(db, params.projectCode, body, authUser);
     // Here we don't return Content-Location because the client already knows it
 }
 
