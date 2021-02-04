@@ -99,7 +99,7 @@ export async function deleteOneProject(db, projectCode) {
         return cannotUpdateMissing(projectCode, 'project');
     },
     async (project) => {
-        await Project.query(trx).fetchById(project.id).patch({ status: projectStatus.archived });
+        await Project.query(trx).findById(project.id).patch({ status: projectStatus.archived });
         return { status: 204, body: {} };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
