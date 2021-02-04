@@ -3,7 +3,6 @@ import { withoutKey } from '$utils/withoutKey';
 import { renameKey } from '$utils/renameKey';
 import { applyAll } from '$utils/applyAll';
 import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
-// import Role from './Role';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 
@@ -218,6 +217,12 @@ class Role extends Model {
 
 const defaultRoleName = 'Contributer';
 
+// Hardcoded role IDs for manager and contributor roles
+// Must update these if the DB ever gets updated
+const managerRoleId = 3;
+const contributorRoleId = 4;
+const techSupportRoleId = 6;
+
 const projectStatus = {
     // Values copied from Redmine source
     active: 1,
@@ -233,4 +238,4 @@ const userStatus = {
     locked: 3,
 }
 
-export { Membership, MemberRole, Project, Role, User, Email, defaultRoleName, projectStatus, userStatus };
+export { Membership, MemberRole, Project, Role, User, Email, defaultRoleName, managerRoleId, contributorRoleId, techSupportRoleId, projectStatus, userStatus };

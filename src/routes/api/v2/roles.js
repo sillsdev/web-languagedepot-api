@@ -1,4 +1,4 @@
-import Role from '$db/Role';
+import { Role } from '$db/models';
 import { dbs } from '$db/dbsetup';
 
 export async function get({ query }) {
