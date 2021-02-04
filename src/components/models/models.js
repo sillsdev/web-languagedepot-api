@@ -2,7 +2,7 @@ import { Model } from 'objection';
 import { withoutKey } from '../../utils/withoutKey';
 import { renameKey } from '../../utils/renameKey';
 import { applyAll } from '../../utils/applyAll';
-import { setDateColumnsForCreate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
+import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
 // import Role from './Role';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
@@ -41,9 +41,8 @@ class Membership extends Model {
     });
     $beforeInsert(context) {
         super.$beforeInsert(context);
-        setDateColumnsForCreate(this);
+        setDateColumnsForCreateWithoutUpdate(this);
     }
-    // No updated_on field, so no need for a $beforeUpdate method
 }
 
 class MemberRole extends Model {

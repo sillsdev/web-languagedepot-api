@@ -1,4 +1,4 @@
-import { Project, projectStatus } from '$components/models/models';
+import { MemberRole, Membership, Project, projectStatus } from '$components/models/models';
 import { managerRoleId } from '$components/models/Role';
 import { cannotModifyPrimaryKey, inconsistentParams } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
@@ -58,6 +58,7 @@ export async function createOneProject(db, projectCode, newProject, initialManag
         return { status: 201, body: result };
     },
     async (project) => {
+        // TODO: Should this automatically reactivate a project that's been archived? Or should an archived project's code be permanently retired?
         const result = await Project.query(trx).updateAndFetchById(project.id, newProject);
         return { status: 200, body: result };
     });
@@ -114,7 +115,12 @@ export async function deleteOneProject(db, projectCode) {
         return cannotUpdateMissing(projectCode, 'project');
     },
     async (project) => {
-        await Project.query(trx).findById(project.id).patch({ status: projectStatus.archived });
+        // await Project.query(trx).findById(project.id).patch({ status: projectStatus.archived });
+        // DEBUG: Delete all project memberships and member_roles too, so that we can start over with a fresh slate when testing
+        const membershipIds = (await Membership.query(trx).where({project_id: project.id}).select('id')).map(m => m.id);
+        await MemberRole.query(trx).whereIn('member_id', membershipIds).delete();
+        await Membership.query(trx).whereIn('id', membershipIds).delete();
+        await Project.query(trx).findById(project.id).delete();
         return { status: 204, body: {} };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {

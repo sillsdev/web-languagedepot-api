@@ -15,6 +15,13 @@ function parseDateColumns(data) {
     }
 }
 
+export function setDateColumnsForCreateWithoutUpdate(data) {
+    parseDateColumns(data);
+    if (!data.created_on) {
+        data.created_on = new Date();
+    }
+}
+
 export function setDateColumnsForCreate(data) {
     parseDateColumns(data);
     const now = new Date();
