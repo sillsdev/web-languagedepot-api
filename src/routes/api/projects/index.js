@@ -26,6 +26,7 @@ export async function post({ path, body, query }) {
     }
     const projectCode = body.projectCode;
     const db = query.private ? dbs.private : dbs.public;
+    // TODO: Extract username from JWT and use that user as initial manager, or else reject request if no user identified
     const result = await createOneProject(db, projectCode, body);
     // Add Content-Location header on success so client knows where to find the newly-created project
     if (result && result.status && result.status >= 200 && result.status < 300) {

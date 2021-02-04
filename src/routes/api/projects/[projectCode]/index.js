@@ -40,6 +40,7 @@ export async function put({ path, params, body, query }) {
         return missingRequiredParam('projectCode', `body of PUT request to ${path}`);
     }
     const db = query.private ? dbs.private : dbs.public;
+    // TODO: Extract username from JWT and use that user as initial manager, or else reject request if no user identified
     return await createOneProject(db, params.projectCode, body);
     // Here we don't return Content-Location because the client already knows it
 }

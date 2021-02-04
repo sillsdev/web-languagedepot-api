@@ -1,6 +1,8 @@
 import { Project, projectStatus } from '$components/models/models';
+import { managerRoleId } from '$components/models/Role';
 import { cannotModifyPrimaryKey, inconsistentParams } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { addUserWithRole } from './usersAndRoles';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
     let query = Project.query(db);
@@ -42,7 +44,7 @@ export function getOneProject(db, projectCode) {
     });
 }
 
-export async function createOneProject(db, projectCode, newProject) {
+export async function createOneProject(db, projectCode, newProject, initialManager = undefined) {
     if (newProject && newProject.projectCode) {
         if (projectCode !== newProject.projectCode) {
             return inconsistentParams('projectCode');
@@ -60,7 +62,20 @@ export async function createOneProject(db, projectCode, newProject) {
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        await trx.commit();
+        const initialManagerUsername =
+            initialManager && initialManager.login ? initialManager.login :
+            initialManager && initialManager.username ? initialManager.username :
+            initialManager;
+        if (initialManagerUsername) {
+            const subResult = await addUserWithRole(trx, projectCode, initialManagerUsername, managerRoleId);
+            if (subResult && subResult.status && subResult.status >= 200 && subResult.status < 400) {
+                await trx.commit();
+            } else {
+                await trx.rollback();
+            }
+        } else {
+            await trx.commit();
+        }
     } else {
         await trx.rollback();
     }
