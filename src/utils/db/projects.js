@@ -1,5 +1,5 @@
-import { MemberRole, Membership, Project, projectStatus } from '$components/models/models';
-import { managerRoleId } from '$components/models/Role';
+import { MemberRole, Membership, Project, projectStatus } from '$db/models';
+import { managerRoleId } from '$db/Role';
 import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 import { addUserWithRole } from './usersAndRoles';

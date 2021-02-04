@@ -1,4 +1,4 @@
-import { dbs } from '$components/models/dbsetup';
+import { dbs } from '$db/dbsetup';
 import { isAdmin } from '$utils/db/authRules';
 import { oneUserQuery } from '$utils/db/users';
 

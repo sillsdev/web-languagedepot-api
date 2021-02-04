@@ -1,4 +1,4 @@
-import { dbs } from '$components/models/dbsetup';
+import { dbs } from '$db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
 import { getAllUsers, countAllUsersQuery, createUser } from '$utils/db/users';
 

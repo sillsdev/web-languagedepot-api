@@ -1,4 +1,4 @@
-import { dbs } from '$components/models/dbsetup';
+import { dbs } from '$db/dbsetup';
 import { authTokenRequired, jsonRequired, missingRequiredParam } from '$utils/commonErrors';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getAllProjects, countAllProjectsQuery, createOneProject } from '$utils/db/projects';

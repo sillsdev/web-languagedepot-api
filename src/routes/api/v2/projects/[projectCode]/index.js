@@ -1,5 +1,5 @@
-import { dbs } from '$components/models/dbsetup';
-import { Project } from '$components/models/models';
+import { dbs } from '$db/dbsetup';
+import { Project } from '$db/models';
 import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired } from '$utils/commonErrors';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';

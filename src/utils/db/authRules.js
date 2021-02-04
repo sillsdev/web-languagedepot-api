@@ -1,5 +1,5 @@
-import { Project } from '$components/models/models';
-import { managerRoleId, techSupportRoleId } from '$components/models/Role';
+import { Project } from '$db/models';
+import { managerRoleId, techSupportRoleId } from '$db/Role';
 import { authTokenRequired, notAllowed } from '$utils/commonErrors';
 
 export async function getMemberRoleInProject(db, { projectCode, username } = {}) {

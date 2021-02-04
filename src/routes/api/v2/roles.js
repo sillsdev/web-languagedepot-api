@@ -1,5 +1,5 @@
-import Role from '$components/models/Role';
-import { dbs } from '$components/models/dbsetup';
+import Role from '$db/Role';
+import { dbs } from '$db/dbsetup';
 
 export async function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;

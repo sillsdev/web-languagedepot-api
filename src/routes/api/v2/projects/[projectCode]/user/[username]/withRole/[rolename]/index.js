@@ -1,6 +1,6 @@
 import { missingRequiredParam } from '$utils/commonErrors';
 import { addUserWithRole } from '$utils/db/usersAndRoles';
-import { dbs } from '$components/models/dbsetup';
+import { dbs } from '$db/dbsetup';
 
 export async function post({ params, path, query }) {
     if (!params.projectCode) {

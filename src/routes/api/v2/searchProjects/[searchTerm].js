@@ -1,5 +1,5 @@
-import { Project } from '$components/models/models';
-import { dbs } from '$components/models/dbsetup';
+import { Project } from '$db/models';
+import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { catchSqlError } from '$utils/commonSqlHandlers';
 

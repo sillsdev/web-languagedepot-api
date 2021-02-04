@@ -1,4 +1,4 @@
-import { Project, Role, User, Membership, MemberRole } from '$components/models/models';
+import { Project, Role, User, Membership, MemberRole } from '$db/models';
 import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
 
 async function addUserWithRole(db, projectCode, username, roleNameOrId) {

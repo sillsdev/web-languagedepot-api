@@ -1,5 +1,5 @@
-import { Project, defaultRoleName } from '$components/models/models';
-import { dbs } from '$components/models/dbsetup';
+import { Project, defaultRoleName } from '$db/models';
+import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { onlyOne } from '$utils/commonSqlHandlers';
 import { addUserWithRole } from '$utils/db/usersAndRoles';

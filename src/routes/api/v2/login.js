@@ -1,4 +1,4 @@
-import { dbs } from '$components/models/dbsetup';
+import { dbs } from '$db/dbsetup';
 import { authTokenRequired } from '$utils/commonErrors';
 import { verifyBasicAuth, makeJwt } from '$utils/db/auth';
 

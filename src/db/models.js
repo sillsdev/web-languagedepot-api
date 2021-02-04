@@ -1,7 +1,7 @@
 import { Model } from 'objection';
-import { withoutKey } from '../../utils/withoutKey';
-import { renameKey } from '../../utils/renameKey';
-import { applyAll } from '../../utils/applyAll';
+import { withoutKey } from '$utils/withoutKey';
+import { renameKey } from '$utils/renameKey';
+import { applyAll } from '$utils/applyAll';
 import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
 // import Role from './Role';
 

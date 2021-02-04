@@ -1,4 +1,4 @@
-import { User, Membership, MemberRole, Email } from '$components/models/models';
+import { User, Membership, MemberRole, Email } from '$db/models';
 import { cannotUpdateMissing } from '$utils/commonErrors';
 import { atMostOne, onlyOne, catchSqlError } from '$utils/commonSqlHandlers';
 
