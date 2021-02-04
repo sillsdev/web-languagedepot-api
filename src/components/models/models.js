@@ -2,6 +2,7 @@ import { Model } from 'objection';
 import { withoutKey } from '../../utils/withoutKey';
 import { renameKey } from '../../utils/renameKey';
 import { applyAll } from '../../utils/applyAll';
+import { setDateColumnsForCreate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
 // import Role from './Role';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
@@ -40,10 +41,9 @@ class Membership extends Model {
     });
     $beforeInsert(context) {
         super.$beforeInsert(context);
-        if (!this.created_on) {
-            this.created_on = new Date().toISOString().replace('Z', '');  // MySQL doesn't like the trailing Z
-        }
+        setDateColumnsForCreate(this);
     }
+    // No updated_on field, so no need for a $beforeUpdate method
 }
 
 class MemberRole extends Model {
@@ -122,6 +122,14 @@ class Project extends Model {
         );
         return result;
     }
+    $beforeInsert(context) {
+        super.$beforeInsert(context);
+        setDateColumnsForCreate(this);
+    }
+    $beforeUpdate(context) {
+        super.$beforeUpdate(context);
+        setDateColumnsForUpdate(this);
+    }
 }
 
 class Email extends Model {
@@ -136,6 +144,14 @@ class Email extends Model {
             }
         }
     });
+    $beforeInsert(context) {
+        super.$beforeInsert(context);
+        setDateColumnsForCreate(this);
+    }
+    $beforeUpdate(context) {
+        super.$beforeUpdate(context);
+        setDateColumnsForUpdate(this);
+    }
 }
 
 class User extends Model {
