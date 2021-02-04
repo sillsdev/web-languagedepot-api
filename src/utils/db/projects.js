@@ -112,7 +112,8 @@ export async function deleteOneProject(db, projectCode) {
     const query = oneProjectQuery(trx, projectCode).select('id').forUpdate();
     const result = await atMostOne(query, 'projectCode', 'project code',
     () => {
-        return cannotUpdateMissing(projectCode, 'project');
+        // Deleting a non-existent project is not an error
+        return { status: 204, body: {} };
     },
     async (project) => {
         // await Project.query(trx).findById(project.id).patch({ status: projectStatus.archived });
