@@ -39,8 +39,8 @@ class Membership extends Model {
             }
         }
     });
-    $beforeInsert(context) {
-        super.$beforeInsert(context);
+    $beforeInsert(opt, context) {
+        super.$beforeInsert(opt, context);
         setDateColumnsForCreateWithoutUpdate(this);
     }
 }
@@ -121,12 +121,12 @@ class Project extends Model {
         );
         return result;
     }
-    $beforeInsert(context) {
-        super.$beforeInsert(context);
+    $beforeInsert(opt, context) {
+        super.$beforeInsert(opt, context);
         setDateColumnsForCreate(this);
     }
-    $beforeUpdate(context) {
-        super.$beforeUpdate(context);
+    $beforeUpdate(opt, context) {
+        super.$beforeUpdate(opt, context);
         setDateColumnsForUpdate(this);
     }
 }
@@ -143,12 +143,12 @@ class Email extends Model {
             }
         }
     });
-    $beforeInsert(context) {
-        super.$beforeInsert(context);
+    $beforeInsert(opt, context) {
+        super.$beforeInsert(opt, context);
         setDateColumnsForCreate(this);
     }
-    $beforeUpdate(context) {
-        super.$beforeUpdate(context);
+    $beforeUpdate(opt, context) {
+        super.$beforeUpdate(opt, context);
         setDateColumnsForUpdate(this);
     }
 }
@@ -212,8 +212,8 @@ class User extends Model {
         );
         return result;
     }
-    $beforeInsert(context) {
-        super.$beforeInsert(context);
+    $beforeInsert(opt, context) {
+        super.$beforeInsert(opt, context);
         setDateColumnsForCreate(this);
         if (Object.prototype.hasOwnProperty.call(this, 'password')) {
             const { hashed_password, salt } = hashPasswordForStorage(this.password, undefined);
@@ -222,8 +222,8 @@ class User extends Model {
             delete this.password;
         }
     }
-    $beforeUpdate(context) {
-        super.$beforeUpdate(context);
+    $beforeUpdate(opt, context) {
+        super.$beforeUpdate(opt, context);
         setDateColumnsForUpdate(this);
         if (Object.prototype.hasOwnProperty.call(this, 'password')) {
             if (this.password) { // Empty password in incoming JSON will leave existing password unchanged
