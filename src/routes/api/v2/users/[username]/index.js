@@ -32,8 +32,6 @@ export async function put({ path, params, body, query }) {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    // TODO: Detect password in the update/insert and handle it specially
-    // TODO: Or maybe detect passwords in the User model's $beforeUpdate / $beforeInsert hooks? Think about it.
     const result = await createUser(db, params.username, body);
     // Content-Location not strictly needed here, but add it for consistency
     if (result && result.status && result.status >= 200 && result.status < 300) {
@@ -50,8 +48,6 @@ export async function patch({ path, params, body, query }) {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    // TODO: Detect password in the update and handle it specially
-    // TODO: Or maybe detect passwords in the User model's $beforeUpdate / $beforeInsert hooks? Think about it.
     const result = patchUser(db, params.username, body);
     // Add Content-Location header on success so client knows where to find the newly-created project
     if (result && result.status && result.status >= 200 && result.status < 300) {

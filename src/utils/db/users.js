@@ -34,19 +34,14 @@ export function getOneUser(db, username) {
 }
 
 export async function createUser(db, username, newUser) {
-    // TODO: Decide whether special handling of password needs to belong here, or in API handlers
     const trx = await User.startTransaction(db);
     const query = oneUserQuery(trx, username).select('id').forUpdate();
     const result = await atMostOne(query, 'username', 'username',
     async () => {
-        // TODO: Use the verifyPassword functions, or hashRedminePassword functions, for making the hashed_password value, then save it along the new user
         const result = await User.query(trx).insertAndFetch(newUser);
         return { status: 201, body: result };
     },
     async (user) => {
-        // TODO: Here, we're updating the whole user account, so we need to set (or maintain) the password.
-        // Check whether the clear password exists, and if it does *not*, then don't change the current password.
-        // A salt should *not* be accepted, I don't think.
         const result = await User.query(trx).updateAndFetchById(user.id, body);
         return { status: 200, body: result };
     });

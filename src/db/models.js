@@ -3,6 +3,7 @@ import { withoutKey } from '$utils/withoutKey';
 import { renameKey } from '$utils/renameKey';
 import { applyAll } from '$utils/applyAll';
 import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
+import { hashPasswordForStorage } from '$utils/db/auth';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 
@@ -198,6 +199,8 @@ class User extends Model {
         json = super.$formatJson(json);
         return applyAll(json,
             withoutKey('hashed_password'),
+            withoutKey('salt'),
+            withoutKey('password'),  // Shouldn't happen, but let's be extra cautious
             renameKey('login', 'username'),
         );
     }
@@ -208,6 +211,28 @@ class User extends Model {
             renameKey('username', 'login')
         );
         return result;
+    }
+    $beforeInsert(context) {
+        super.$beforeInsert(context);
+        setDateColumnsForCreate(this);
+        if (Object.prototype.hasOwnProperty.call(this, 'password')) {
+            const { hashed_password, salt } = hashPasswordForStorage(this.password, undefined);
+            this.hashed_password = hashed_password;
+            this.salt = salt;
+            delete this.password;
+        }
+    }
+    $beforeUpdate(context) {
+        super.$beforeUpdate(context);
+        setDateColumnsForUpdate(this);
+        if (Object.prototype.hasOwnProperty.call(this, 'password')) {
+            if (this.password) { // Empty password in incoming JSON will leave existing password unchanged
+                const { hashed_password, salt } = hashPasswordForStorage(this.password, undefined);
+                this.hashed_password = hashed_password;
+                this.salt = salt;
+            }
+            delete this.password;
+        }
     }
 }
 

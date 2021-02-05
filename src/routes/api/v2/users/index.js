@@ -24,7 +24,6 @@ export async function post({ path, body, query }) {
     if (!body || !body.username) {
         return missingRequiredParam('username', `body of POST request to ${path}`);
     }
-    // TODO: Password needs special handling
     const username = body.username;
     const db = query.private ? dbs.private : dbs.public;
     const result = await createUser(db, username, body);

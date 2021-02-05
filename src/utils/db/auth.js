@@ -33,7 +33,7 @@ export function verifyPassword(user, clearPassword) {
 export function hashPasswordForStorage(clearPassword, salt) {
     salt = salt || createSalt(16);
     const hashed_password = hashRedminePassword(clearPassword, salt);
-    return { hash_password, salt };
+    return { hashed_password, salt };
 }
 
 const userAndPassRegex = /^([^:]*):(.*)$/;
