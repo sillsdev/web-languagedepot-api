@@ -3,7 +3,7 @@ import { withoutKey } from '$utils/withoutKey';
 import { renameKey } from '$utils/renameKey';
 import { applyAll } from '$utils/applyAll';
 import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
-import { hashPasswordForStorage } from '$utils/db/auth';
+import { hashPasswordForStorage } from '$utils/db/passwords';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 
