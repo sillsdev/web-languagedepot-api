@@ -1,17 +1,26 @@
-FROM node:14.15.4-alpine
+FROM node:14.15.4-alpine AS builder
 
-# Should be built with `docker build -p 3000:3000 --init --network host imagename`
-# Then run with `docker run imagename`
+# Should be built with `npm run docker`
+# Then run with `docker run --init --env-file=.env --network host docker.dallas.languagetechnology.org/node-ldapi:latest`
 #
-# For green-blue:
-# docker build -p 3000:3000 --init --network host imagename-green
-# docker build -p 3001:3000 --init --network host imagename-blue
-# Then edit Apache config to forward port 3001 or port 3000, and do `systemctl reload apache2`
+# This assumes a .env file that looks something like this:
+# PORT=3000
+# MYSQL_USER=mysqlusername
+# MYSQL_PASSWORD=mysqlpassword
 
 WORKDIR /app
-COPY package*.json .env ./
+COPY package*.json ./
 RUN npm ci
-COPY build/* ./
+COPY static ./static
+COPY svelte.config.js snowpack.config.js tsconfig.json ./
+COPY src ./src
+RUN npm run build && npm run adapt
+
+FROM node:14.15.4-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY --from=builder app/build/* ./
 COPY static assets
 EXPOSE 3000
 USER node

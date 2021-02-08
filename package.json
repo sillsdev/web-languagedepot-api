@@ -6,8 +6,8 @@
 		"build": "svelte-kit build",
 		"start": "svelte-kit start",
 		"adapt": "svelte-kit adapt",
-		"docker-build": "docker build .",
-		"docker": "npm-run-all build adapt docker-build"
+		"docker-builder": "docker build . --target builder -t docker.dallas.languagetechnology.org/builder:$(git rev-parse --short HEAD)",
+		"docker": "docker build . -t docker.dallas.languagetechnology.org/node-ldapi:$(git rev-parse --short HEAD) -t docker.dallas.languagetechnology.org/node-ldapi:latest"
 	},
 	"devDependencies": {
 		"@snowpack/plugin-typescript": "^1.0.0",
