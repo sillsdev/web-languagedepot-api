@@ -2,8 +2,7 @@ import { Project, defaultRoleName } from '$db/models';
 import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { onlyOne } from '$utils/commonSqlHandlers';
-import { addUserWithRole } from '$utils/db/usersAndRoles';
-import { removeUserFromProject } from '../../../../../../utils/db/usersAndRoles';
+import { addUserWithRole, removeUserFromProject } from '$utils/db/usersAndRoles';
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
 export async function get({ params, query }) {
