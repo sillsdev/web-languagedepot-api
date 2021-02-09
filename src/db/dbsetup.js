@@ -14,7 +14,7 @@ const dbs = {
                 host : process.env.MYSQL_HOST || '127.0.0.1',
                 user : process.env.MYSQL_USER || '',
                 password : process.env.MYSQL_PASSWORD || '',
-                database : process.env.MYSQL_DB || 'testldapi'
+                database : process.env.MYSQL_DATABASE || 'testldapi'
             },
         });
     },
@@ -29,7 +29,7 @@ const dbs = {
                 host : process.env.MYSQL_HOST || '127.0.0.1',
                 user : process.env.MYSQL_USER || '',
                 password : process.env.MYSQL_PASSWORD || '',
-                database : process.env.MYSQL_DB || 'testldapi' // `${process.env.MYSQL_DB || 'testldapi'}pvt`
+                database : process.env.MYSQL_DATABASE || 'testldapi' // `${process.env.MYSQL_DATABASE || 'testldapi'}pvt`
             },
         });
     }
