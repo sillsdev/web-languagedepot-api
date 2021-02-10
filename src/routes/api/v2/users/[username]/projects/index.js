@@ -1,5 +1,6 @@
 import { dbs } from '$db/dbsetup';
-import { verifyJwtAuth } from '$utils/db/auth';
+import { authTokenRequired, missingRequiredParam } from '$utils/commonErrors';
+import { verifyJwtAuth, verifyBasicAuth } from '$utils/db/auth';
 import { allowSameUserOrAdmin } from '$utils/db/authRules';
 import { getProjectsForUser } from '$utils/db/usersAndRoles';
 
