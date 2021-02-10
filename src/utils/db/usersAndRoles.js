@@ -1,5 +1,5 @@
 import { Project, Role, User, Membership, MemberRole } from '$db/models';
-import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
 
 async function addUserWithRole(db, projectCode, username, roleNameOrId) {
     const trx = await Project.startTransaction(db);
@@ -80,16 +80,23 @@ function getProjectsForUser(db, { username, rolename } = {}) {
             .withGraphJoined('memberships.[project, role]')
             .where('login', username);
         if (rolename) {
-            query = query.andWhere('memberships:role.name', rolename);
+            if (typeof rolename === 'number' || /^\d+$/.test(rolename)) {
+                query = query.where('memberships:role.id', rolename);
+            } else {
+                query = query.where('memberships:role.name', rolename);
+            }
         }
-        const result = (await query).map(user => ({
-            username: user.login,
-            memberships: user.memberships.map(m => ({
+        const usersWithMemberships = await retryOnServerError(query);
+        if (!usersWithMemberships || usersWithMemberships.length < 1) {
+            return { status: 200, body: [] };
+        } else {
+            const user = usersWithMemberships[0];
+            const result = user.memberships.map(m => ({
                 projectCode: m.project.identifier,
                 role: m.role.name,
-            }))
-        }));
-        return { status: 200, body: result };
+            }));
+            return { status: 200, body: result };
+        }
     });
 }
 
