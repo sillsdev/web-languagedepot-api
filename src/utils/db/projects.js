@@ -30,15 +30,12 @@ export function oneProjectQuery(db, projectCode) {
 }
 
 export function getOneProject(db, projectCode) {
-    // Also want to collect and return member data here
     const query = oneProjectQuery(db, projectCode).withGraphJoined('members.[user, role]');
     return onlyOne(query, 'projectCode', 'project code', project => {
-        // console.log(project);
         project.members = project.members.map(m => ({
             user: m.user,
             role: m.role.name,
         }))
-        // console.log('Result:', project);
         return { status: 200, body: project };
     });
 }

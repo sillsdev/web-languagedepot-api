@@ -79,6 +79,7 @@ function getProjectsForUser(db, { username, rolename } = {}) {
         let query = User.query(db)
             .withGraphJoined('memberships.[project, role]')
             .where('login', username);
+        // TODO: Need to deal with the "inherit members" feature of Redmine, as some projects inherit membership from parent project
         if (rolename) {
             if (typeof rolename === 'number' || /^\d+$/.test(rolename)) {
                 query = query.where('memberships:role.id', rolename);

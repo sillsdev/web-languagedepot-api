@@ -4,6 +4,7 @@ import { renameKey } from '$utils/renameKey';
 import { applyAll } from '$utils/applyAll';
 import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
 import { hashPasswordForStorage } from '$utils/db/passwords';
+import { withOnlyKeys } from '$utils/withOnlyKeys';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 
@@ -110,6 +111,7 @@ class Project extends Model {
         json = super.$formatJson(json);
         const result = applyAll(json,
             renameKey('identifier', 'projectCode'),
+            withOnlyKeys(['projectCode', 'name', 'description', 'members']),
         );
         return result;
     }
@@ -202,6 +204,7 @@ class User extends Model {
             withoutKey('salt'),
             withoutKey('password'),  // Shouldn't happen, but let's be extra cautious
             renameKey('login', 'username'),
+            withOnlyKeys(['username', 'firstname', 'lastname', 'admin', 'language']),
         );
     }
     $parseJson(json) {
