@@ -1,5 +1,6 @@
 import { dbs } from '$db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { getAllUsers, countAllUsersQuery, createUser } from '$utils/db/users';
 
 export async function get({ query }) {
@@ -12,7 +13,7 @@ export async function get({ query }) {
 export async function head({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     const queryParams = Object.fromEntries(query);
-    const count = await countAllUsersQuery(db, queryParams);
+    const count = await retryOnServerError(countAllUsersQuery(db, queryParams));
     const status = count > 0 ? 200 : 404;
     return { status, body: {} };
 }

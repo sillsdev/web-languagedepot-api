@@ -1,6 +1,6 @@
 import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$db/models';
 import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing } from '$utils/commonErrors';
-import { onlyOne, atMostOne, catchSqlError } from '$utils/commonSqlHandlers';
+import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
 import { addUserWithRole } from './usersAndRoles';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
@@ -20,7 +20,7 @@ export function countAllProjectsQuery(db, params) {
 
 export function getAllProjects(db, params) {
     return catchSqlError(async () => {
-        const projects = await allProjectsQuery(db, params);
+        const projects = await retryOnServerError(allProjectsQuery(db, params));
         return { status: 200, body: projects };
     });
 }
@@ -53,12 +53,12 @@ export async function createOneProject(db, projectCode, newProject, initialManag
     const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
     const result = await atMostOne(query, 'projectCode', 'project code',
     async () => {
-        const result = await Project.query(trx).insertAndFetch(newProject);
+        const result = await retryOnServerError(Project.query(trx).insertAndFetch(newProject));
         return { status: 201, body: result };
     },
     async (project) => {
         // TODO: Should this automatically reactivate a project that's been archived? Or should an archived project's code be permanently retired?
-        const result = await Project.query(trx).updateAndFetchById(project.id, newProject);
+        const result = await retryOnServerError(Project.query(trx).updateAndFetchById(project.id, newProject));
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
@@ -95,7 +95,7 @@ export async function patchOneProject(db, projectCode, updateData) {
         return cannotUpdateMissing(projectCode, 'project');
     },
     async (project) => {
-        const result = await Project.query(trx).patchAndFetchById(project.id, updateData);
+        const result = await retryOnServerError(Project.query(trx).patchAndFetchById(project.id, updateData));
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
@@ -115,12 +115,12 @@ export async function deleteOneProject(db, projectCode) {
         return { status: 204, body: {} };
     },
     async (project) => {
-        // await Project.query(trx).findById(project.id).patch({ status: projectStatus.archived });
+        // await retryOnServerError((Project.query(trx).findById(project.id).patch({ status: projectStatus.archived }));
         // DEBUG: Delete all project memberships and member_roles too, so that we can start over with a fresh slate when testing
-        const membershipIds = (await Membership.query(trx).where({project_id: project.id}).select('id')).map(m => m.id);
-        await MemberRole.query(trx).whereIn('member_id', membershipIds).delete();
-        await Membership.query(trx).whereIn('id', membershipIds).delete();
-        await Project.query(trx).findById(project.id).delete();
+        const membershipIds = (await retryOnServerError(Membership.query(trx).where({project_id: project.id}).select('id'))).map(m => m.id);
+        await retryOnServerError(MemberRole.query(trx).whereIn('member_id', membershipIds).delete());
+        await retryOnServerError(Membership.query(trx).whereIn('id', membershipIds).delete());
+        await retryOnServerError(Project.query(trx).findById(project.id).delete());
         return { status: 204, body: {} };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {

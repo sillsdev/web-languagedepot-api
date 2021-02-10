@@ -1,15 +1,16 @@
 import { Project, managerRoleId, techSupportRoleId } from '$db/models';
 import { authTokenRequired, notAllowed } from '$utils/commonErrors';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 
 export async function getMemberRoleInProject(db, { projectCode, username } = {}) {
     if (!projectCode || !username) {
         return undefined;
     }
     try {
-        const projects = await Project.query(db)
+        const projects = await retryOnServerError(Project.query(db)
             .where('identifier', projectCode)
             .withGraphJoined('members.[user, role]')
-            ;
+        );
         if (projects.length < 1) {
             return undefined;
         }

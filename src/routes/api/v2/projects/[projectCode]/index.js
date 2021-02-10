@@ -1,6 +1,7 @@
 import { dbs } from '$db/dbsetup';
 import { Project } from '$db/models';
 import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired } from '$utils/commonErrors';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
 
@@ -18,7 +19,7 @@ export async function head({ params, query }) {
     }
     const db = query.private ? dbs.private : dbs.public;
     try {
-        const projectCount = await Project.query(db).where('identifier', params.projectCode).resultSize();
+        const projectCount = await retryOnServerError(Project.query(db).where('identifier', params.projectCode).resultSize());
         const status = projectCount < 1 ? 404 : projectCount > 1 ? 500 : 200;
         return { status, body: {} };
     } catch (error) {

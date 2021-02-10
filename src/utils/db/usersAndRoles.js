@@ -23,18 +23,18 @@ async function addUserWithRole(db, projectCode, username, roleNameOrId) {
             const query = User.query(trx).select('id').where('login', username);
             return onlyOne(query, 'username', 'username',
             async (user) => {
-                let membership = await Membership.query(trx).where({user_id: user.id, project_id: project.id});
+                let membership = await retryOnServerError(Membership.query(trx).where({user_id: user.id, project_id: project.id}));
                 if (!membership || membership.length === 0) {
-                    membership = await Membership.query(trx).insert({user_id: user.id, project_id: project.id});
+                    membership = await retryOnServerError(Membership.query(trx).insert({user_id: user.id, project_id: project.id}));
                 } else {
                     membership = membership[0];
                 }
                 // Update role if already a member, else add new MemberRole
-                let memberRole = await MemberRole.query(trx).where({member_id: membership.id});
+                let memberRole = await retryOnServerError(MemberRole.query(trx).where({member_id: membership.id}));
                 if (memberRole.length === 0) {
-                    await MemberRole.query(trx).insert({member_id: membership.id, role_id: role.id});
+                    await retryOnServerError(MemberRole.query(trx).insert({member_id: membership.id, role_id: role.id}));
                 } else {
-                    await MemberRole.query(trx).findById(memberRole[0].id).patch({role_id: role.id});
+                    await retryOnServerError(MemberRole.query(trx).findById(memberRole[0].id).patch({role_id: role.id}));
                 }
                 return { status: 204, body: {} };
             });
@@ -60,9 +60,9 @@ async function removeUserFromProject(db, projectCode, username) {
             return { status: 204, body: {} };
         },
         async (member) => {
-            await MemberRole.query(trx).where('member_id', member.id).delete();
+            await retryOnServerError(MemberRole.query(trx).where('member_id', member.id).delete());
             // TODO: Find out how to use .unrelate() and .relatedQuery() to achieve this effect
-            await Membership.query(trx).deleteById(member.id);
+            await retryOnServerError(Membership.query(trx).deleteById(member.id));
             return { status: 204, body: {} };
         });
     });

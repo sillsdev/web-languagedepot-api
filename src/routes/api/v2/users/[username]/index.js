@@ -1,5 +1,6 @@
 import { dbs } from '$db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { getOneUser, oneUserQuery, patchUser, deleteUser } from '$utils/db/users';
 
 export async function get({ params, path, query }) {
@@ -16,7 +17,7 @@ export async function head({ params, query }) {
     }
     const db = query.private ? dbs.private : dbs.public;
     try {
-        const userCount = await oneUserQuery(db, params.username).resultSize();
+        const userCount = await retryOnServerError(oneUserQuery(db, params.username).resultSize());
         const status = userCount < 1 ? 404 : userCount > 1 ? 500 : 200;
         return { status, body: {} };
     } catch (error) {

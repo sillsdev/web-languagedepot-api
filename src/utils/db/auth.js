@@ -1,6 +1,7 @@
 import { oneUserQuery } from './users';
 import jwt from 'jsonwebtoken';
 import { verifyPassword } from './passwords';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 
 const userAndPassRegex = /^([^:]*):(.*)$/;
 export function getUserAndPassFromBasicAuth(headers) {
@@ -22,7 +23,7 @@ export async function verifyBasicAuth(db, headers) {
     const usernameAndPass = getUserAndPassFromBasicAuth(headers);
     if (usernameAndPass) {
         try {
-            const users = await oneUserQuery(db, usernameAndPass[0]);
+            const users = await retryOnServerError(oneUserQuery(db, usernameAndPass[0]));
             if (users && users.length === 1) {
                 if (verifyPassword(users[0], usernameAndPass[1])) {
                     return users[0];
@@ -99,7 +100,7 @@ export async function verifyJwtAuth(db, headers) {
         const username = await verifyUsernameFromToken(token);
         if (username) {
             try {
-                const users = await oneUserQuery(db, username);
+                const users = await retryOnServerError(oneUserQuery(db, username));
                 if (users && users.length === 1) {
                     return users[0];
                 }

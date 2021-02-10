@@ -1,5 +1,6 @@
 import { dbs } from '$db/dbsetup';
 import { authTokenRequired, jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getAllProjects, countAllProjectsQuery, createOneProject } from '$utils/db/projects';
 
@@ -13,7 +14,7 @@ export function get({ query }) {
 export async function head({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     const queryParams = Object.fromEntries(query);
-    const count = await countAllProjectsQuery(db, queryParams);
+    const count = await retryOnServerError(countAllProjectsQuery(db, queryParams));
     const status = count > 0 ? 200 : 404;
     return { status, body: {} };
 }
