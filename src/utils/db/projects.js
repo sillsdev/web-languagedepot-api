@@ -1,7 +1,7 @@
 import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$db/models';
 import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
-import { addUserWithRole } from './usersAndRoles';
+import { addUserWithRoleByProjectCode, addUserWithRole } from './usersAndRoles';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
     let query = Project.query(db);
@@ -64,7 +64,7 @@ export async function createOneProject(db, projectCode, newProject, initialManag
             initialManager && initialManager.username ? initialManager.username :
             initialManager;
         if (initialManagerUsername) {
-            const subResult = await addUserWithRole(trx, projectCode, initialManagerUsername, managerRoleId);
+            const subResult = await addUserWithRoleByProjectCode(trx, projectCode, initialManagerUsername, managerRoleId);
             if (subResult && subResult.status && subResult.status >= 200 && subResult.status < 400) {
                 await trx.commit();
             } else {
@@ -92,6 +92,16 @@ export async function patchOneProject(db, projectCode, updateData) {
         return cannotUpdateMissing(projectCode, 'project');
     },
     async (project) => {
+        if (updateData && updateData.members) {
+            if (updateData.members.add) {
+                for (const addMember of updateData.members.add) {
+                    const result = await addUserWithRole(trx, project, addMember.user, addMember.role);
+                    if (result && result.status && result.status >= 400) {
+                        return result;
+                    }
+                }
+            }
+        }
         const result = await retryOnServerError(Project.query(trx).patchAndFetchById(project.id, updateData));
         return { status: 200, body: result };
     });

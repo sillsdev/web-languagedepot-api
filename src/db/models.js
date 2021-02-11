@@ -243,13 +243,14 @@ class Role extends Model {
     static tableName = 'roles';
 }
 
-const defaultRoleName = 'Contributer';
-
 // Hardcoded role IDs for manager and contributor roles
 // Must update these if the DB ever gets updated
 const managerRoleId = 3;
 const contributorRoleId = 4;
 const techSupportRoleId = 6;
+
+const defaultRoleName = 'Contributer';
+const defaultRoleId = contributorRoleId;
 
 const projectStatus = {
     // Values copied from Redmine source
@@ -266,4 +267,4 @@ const userStatus = {
     locked: 3,
 }
 
-export { Membership, MemberRole, Project, Role, User, Email, defaultRoleName, managerRoleId, contributorRoleId, techSupportRoleId, projectStatus, userStatus };
+export { Membership, MemberRole, Project, Role, User, Email, managerRoleId, contributorRoleId, techSupportRoleId, defaultRoleName, defaultRoleId, projectStatus, userStatus };

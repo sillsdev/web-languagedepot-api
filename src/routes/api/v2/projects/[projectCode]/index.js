@@ -4,6 +4,7 @@ import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams, authT
 import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
+import { canonicalizeMembershipList, InvalidMemberships } from '$utils/db/usersAndRoles';
 
 export async function get({ params, path, query }) {
     if (!params.projectCode) {
@@ -61,6 +62,29 @@ export async function patch({ path, params, body, query }) {
     if (body && body.projectCode) {
         if (params.projectCode !== body.projectCode) {
             return cannotModifyPrimaryKey('projectCode', 'project');
+        }
+    }
+    if (body && body.members) {
+        try {
+            if (body.members.add) {
+                body.members = { add: canonicalizeMembershipList(body.members.add) };
+            } else if (body.members.remove) {
+                body.members = { remove: canonicalizeMembershipList(body.members.remove) };
+            } else if (body.members.removeUser && typeof body.members.removeUser === 'string') {
+                // Deprecated, backwards compatibility with previous implementation
+                body.members = { remove: [{user: body.members.removeUser}] };
+            } else if (Array.isArray(body.members)) {
+                body.members = { set: canonicalizeMembershipList(body.members) };
+            } else {
+                throw new InvalidMemberships(body.members);
+            }
+        } catch (error) {
+            if (error instanceof InvalidMemberships) {
+                console.log('invalid members', error.message);
+                return { status: 400, body: {code: 'invalid_memberships_record', record_with_error: error.message, description: 'Could not parse "members" property in PATCH body; see record_with_error property for the invalid item'}};
+            } else {
+                throw error;
+            }
         }
     }
     const db = query.private ? dbs.private : dbs.public;

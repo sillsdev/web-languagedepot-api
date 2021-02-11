@@ -2,7 +2,7 @@ import { Project, defaultRoleName } from '$db/models';
 import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { onlyOne } from '$utils/commonSqlHandlers';
-import { addUserWithRole, removeUserFromProject } from '$utils/db/usersAndRoles';
+import { addUserWithRoleByProjectCode, removeUserFromProject } from '$utils/db/usersAndRoles';
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
 export async function get({ params, query }) {
@@ -19,13 +19,12 @@ export async function get({ params, query }) {
         ;
     return onlyOne(dbQuery, 'projectCode', 'project code',
     async (project) => {
-        users = project.members.filter(member => member.user.login === params.username && member.role && member.role.name);
-        // return onlyOne(users, 'username', 'username', (member) => ({ status: 200, body: member.role.name }));
-        return { status: 200, body: project };
+        const users = project.members.filter(member => member.user.login === params.username && member.role && member.role.name);
+        return onlyOne(users, 'username', 'username', (member) => ({ status: 200, body: { user: member.user, role: member.role.name }}));
     });
 }
 
-// TODO: Handle HEAD, which should either return 200 if there are users, 404 if there are none, or 403 Unauthorized if you're supposed to be logged in to access this
+// TODO: Handle HEAD, which should either return 200 if user is member of project, 404 if he/she is not, or 403 Unauthorized if you're supposed to be logged in to access this
 // export async function head({ path }) {
 //     return { status: 204, body: {} }
 // }
@@ -58,5 +57,5 @@ export async function post({ params, path, body, query }) {
         roleName = defaultRoleName;
     }
     const db = query.private ? dbs.private : dbs.public;
-    return addUserWithRole(db, params.projectCode, params.username, roleName);
+    return addUserWithRoleByProjectCode(db, params.projectCode, params.username, roleName);
 }
