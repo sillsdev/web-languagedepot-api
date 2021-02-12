@@ -6,6 +6,7 @@ export async function mochaGlobalSetup() {
         return result;
     } catch (error) {
         console.log('API seems to not be running; tests are probably going to fail. Try "npm run dev" in another console tab');
+        console.log('error was', error);
         // throw 'Exit now please';
         process.exit(1);
     }

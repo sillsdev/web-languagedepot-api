@@ -84,8 +84,8 @@ describe('updating a project\'s membership list', function() {
         await checkUserExists('Manager')
     })
 
-    for (const membership of validMembershipFormats) {            
-        it('accepts multiple syntaxes', async function() {
+    for (const membership of validMembershipFormats) {
+        it(`accepts multiple syntaxes: ${JSON.stringify(membership)}`, async function() {
             const addResponse = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
             expect(addResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in add operation`);
             await checkUserExists(membership.role ? 'Manager' : 'Contributor')
@@ -93,10 +93,28 @@ describe('updating a project\'s membership list', function() {
             expect(removeResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in remove operation`);
             await checkUserDoesNotExist()
         })
+
+        if (typeof membership === 'string') {
+            it('accepts backwards-compatibility removeUser syntax for strings only', async function() {
+                await api.post(`projects/tha-food/user/rhood/withRole/Manager`, {throwHttpErrors: false})
+                await checkUserExists('Manager')
+                const removeResponse = await api.patch('projects/tha-food', {json: {members: {removeUser: membership}}, throwHttpErrors: false})
+                expect(removeResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in removeUser operation`);
+                await checkUserDoesNotExist()
+            })
+        } else {
+            it(`rejects backwards-compatibility removeUser syntax for non-string membership formats: ${JSON.stringify(membership)}`, async function() {
+                await api.post(`projects/tha-food/user/rhood/withRole/Manager`, {throwHttpErrors: false})
+                await checkUserExists('Manager')
+                const removeResponse = await api.patch('projects/tha-food', {json: {members: {removeUser: membership}}, throwHttpErrors: false})
+                expect(removeResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in removeUser operation`);
+                await checkUserExists('Manager')
+            })
+        }
     }
 
-    for (const membership of invalidMembershipFormats) {            
-        it('rejects invalid syntaxes', async function() {
+    for (const membership of invalidMembershipFormats) {
+        it(`rejects invalid syntaxes: ${JSON.stringify(membership)}`, async function() {
             await api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
             const addResponse = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
             expect(addResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in add operation`);
