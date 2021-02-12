@@ -76,12 +76,11 @@ export async function patch({ path, params, body, query }) {
             } else if (Array.isArray(body.members)) {
                 body.members = { set: canonicalizeMembershipList(body.members) };
             } else {
-                throw new InvalidMemberships(body.members);
+                throw new InvalidMemberships('invalid_memberships_record', body.members);
             }
         } catch (error) {
             if (error instanceof InvalidMemberships) {
-                console.log('invalid members', error.message);
-                return { status: 400, body: {code: 'invalid_memberships_record', record_with_error: error.message, description: 'Could not parse "members" property in PATCH body; see record_with_error property for the invalid item'}};
+                return { status: 400, body: {code: error.code, details: error.details, description: 'Could not parse "members" property in PATCH body; see details property for the invalid item'}};
             } else {
                 throw error;
             }

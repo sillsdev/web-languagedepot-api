@@ -2,7 +2,7 @@ import { Project, defaultRoleName } from '$db/models';
 import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { onlyOne } from '$utils/commonSqlHandlers';
-import { addUserWithRoleByProjectCode, removeUserFromProject } from '$utils/db/usersAndRoles';
+import { addUserWithRoleByProjectCode, removeUserFromProjectByProjectCode } from '$utils/db/usersAndRoles';
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
 export async function get({ params, query }) {
@@ -38,7 +38,7 @@ export async function del({ params, query }) {
         return missingRequiredParam('username', 'URL');
     }
     const db = query.private ? dbs.private : dbs.public;
-    return removeUserFromProject(db, params.projectCode, params.username);
+    return removeUserFromProjectByProjectCode(db, params.projectCode, params.username);
 }
 
 export async function post({ params, path, body, query }) {

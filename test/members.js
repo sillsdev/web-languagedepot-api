@@ -59,10 +59,6 @@ const invalidMembershipFormats = [
 ]
 
 describe('updating a project\'s membership list', function() {
-    beforeEach(async function() {
-        return await api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
-    })
-
     async function checkUserExists(expectedRole) {
         const response = await api('projects/tha-food/user/rhood', {throwHttpErrors: false})
         expect(response.statusCode).to.be.within(200, 299);
@@ -75,12 +71,14 @@ describe('updating a project\'s membership list', function() {
     }
 
     it('can be done by POST', async function() {
+        await api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
         const response = await api.post('projects/tha-food/user/rhood/withRole/Manager', { throwHttpErrors: false})
         expect(response.statusCode).to.be.within(200, 299);
         await checkUserExists('Manager')
     })
 
     it('can be done by PATCH', async function() {
+        await api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
         const response = await api.patch('projects/tha-food', {json: {members: {add: { user: 'rhood', role: {name: 'Manager'} }}}})
         expect(response.statusCode).to.be.within(200, 299);
         await checkUserExists('Manager')
@@ -88,17 +86,28 @@ describe('updating a project\'s membership list', function() {
 
     for (const membership of validMembershipFormats) {            
         it('accepts multiple syntaxes', async function() {
-            const response = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
-            expect(response.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax`);
+            const addResponse = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
+            expect(addResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in add operation`);
             await checkUserExists(membership.role ? 'Manager' : 'Contributor')
+            const removeResponse = await api.patch('projects/tha-food', {json: {members: {remove: membership}}, throwHttpErrors: false})
+            expect(removeResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in remove operation`);
+            await checkUserDoesNotExist()
         })
     }
 
     for (const membership of invalidMembershipFormats) {            
         it('rejects invalid syntaxes', async function() {
-            const response = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
-            expect(response.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error`);
+            await api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
+            const addResponse = await api.patch('projects/tha-food', {json: {members: {add: membership}}, throwHttpErrors: false})
+            expect(addResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in add operation`);
             await checkUserDoesNotExist()
+            // Now add the user with a valid syntax, then remove the user with an invalid syntax, and they should still exist in the project
+            const validAddResponse = await api.patch('projects/tha-food', {json: {members: {add: {user: 'rhood', role: 'Manager' }}}, throwHttpErrors: false})
+            expect(validAddResponse.statusCode).to.be.within(200, 399, `failed to add user with valid syntax during the invalid-syntax test for ${JSON.stringify(membership)}`);
+            await checkUserExists('Manager')
+            const removeResponse = await api.patch('projects/tha-food', {json: {members: {remove: membership}}, throwHttpErrors: false})
+            expect(removeResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in remove operation`);
+            await checkUserExists('Manager')
         })
     }
 })

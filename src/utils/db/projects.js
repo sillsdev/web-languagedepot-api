@@ -1,7 +1,7 @@
 import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$db/models';
 import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
-import { addUserWithRoleByProjectCode, addUserWithRole } from './usersAndRoles';
+import { addUserWithRoleByProjectCode, addUserWithRole, removeUserFromProject } from './usersAndRoles';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
     let query = Project.query(db);
@@ -99,6 +99,18 @@ export async function patchOneProject(db, projectCode, updateData) {
                     if (result && result.status && result.status >= 400) {
                         return result;
                     }
+                }
+            } else if (updateData.members.remove) {
+                for (const removeMember of updateData.members.remove) {
+                    const result = await removeUserFromProject(trx, project, removeMember.user);
+                    if (result && result.status && result.status >= 400) {
+                        return result;
+                    }
+                }
+            } else if (updateData.members.removeUser && typeof updateData.members.removeUser === 'string') {
+                const result = await removeUserFromProject(trx, project, updateData.members.removeUser);
+                if (result && result.status && result.status >= 400) {
+                    return result;
                 }
             }
         }

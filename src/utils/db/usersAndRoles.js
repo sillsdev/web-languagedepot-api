@@ -52,23 +52,33 @@ async function addUserWithRoleByProjectCode(db, projectCode, username, roleNameO
     return result;
 }
 
-async function removeUserFromProject(db, projectCode, username) {
+async function removeUserFromProject(trx, project, username) {
+    console.log('Removing', username, 'from', project);
+    let users;
+    if (project.members) {
+        users = project.members.filter(member => member.user.login === username);
+    } else {
+        users = Membership.query(trx).where('project_id', project.id).joinRelated('user').where('user.login', username);
+    }
+    return atMostOne(users, 'membership', `project membership for ${username} in ${project.identifier}`,
+    () => {
+        // Not a member? Then there's nothing to delete
+        return { status: 204, body: {} };
+    },
+    async (member) => {
+        await retryOnServerError(MemberRole.query(trx).where('member_id', member.id).delete());
+        // TODO: Find out how to use .unrelate() and .relatedQuery() to achieve this effect
+        await retryOnServerError(Membership.query(trx).deleteById(member.id));
+        return { status: 204, body: {} };
+    });
+}
+
+async function removeUserFromProjectByProjectCode(db, projectCode, username) {
     const trx = await Project.startTransaction(db);
     const query = Project.query(trx).where('identifier', projectCode).withGraphJoined('members.[user, role]');
     const result = await onlyOne(query, 'projectCode', 'project code',
     async (project) => {
-        users = project.members.filter(member => member.user.login === username);
-        return atMostOne(users, 'membership', `project membership for ${username} in ${projectCode}`,
-        () => {
-            // Not a member? Then there's nothing to delete
-            return { status: 204, body: {} };
-        },
-        async (member) => {
-            await retryOnServerError(MemberRole.query(trx).where('member_id', member.id).delete());
-            // TODO: Find out how to use .unrelate() and .relatedQuery() to achieve this effect
-            await retryOnServerError(Membership.query(trx).deleteById(member.id));
-            return { status: 204, body: {} };
-        });
+        return removeUserFromProject(trx, project, username);
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
         await trx.commit();
@@ -114,9 +124,11 @@ function getProjectsForUser(db, { username, rolename } = {}) {
 // -or-
 // username (a string) - in this mode, the default role ("Contributor") is assigned
 class InvalidMemberships extends TypeError {
-    constructor(message) {
-        super(message);
+    constructor(code, details) {
+        super(code);  // TODO: Perhaps construct a user-readable message from the various possible codes
         this.name = this.constructor.name;
+        this.details = details;
+        this.code = code;
     }
 }
 
@@ -132,7 +144,7 @@ function canonicalizeRole(role) {
     } else if (hop.call(role, 'name') && typeof role.name === 'string') {
         return role.name;
     } else {
-        throw new InvalidMemberships(role);
+        throw new InvalidMemberships('invalid_role', role);
     }
 }
 
@@ -142,7 +154,7 @@ function canonicalizeUser(user) {
     } else if (hop.call(user, 'username') && typeof user.username === 'string') {
         return user.username;
     } else {
-        throw new InvalidMemberships(user);
+        throw new InvalidMemberships('invalid_user', user);
     }
 }
 
@@ -169,10 +181,10 @@ function canonicalizeMembershipList(memberships) {
             const role = defaultRoleId;
             result[i] = { user, role };
         } else {
-            throw new InvalidMemberships(memberships);
+            throw new InvalidMemberships('invalid_membership_record', memberships);
         }
     }
     return result;
 }
 
-export { addUserWithRole, addUserWithRoleByProjectCode, removeUserFromProject, getProjectsForUser, canonicalizeUser, canonicalizeRole, canonicalizeMembershipList, InvalidMemberships };
+export { addUserWithRole, addUserWithRoleByProjectCode, removeUserFromProject, removeUserFromProjectByProjectCode, getProjectsForUser, canonicalizeUser, canonicalizeRole, canonicalizeMembershipList, InvalidMemberships };
