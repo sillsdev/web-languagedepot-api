@@ -11,6 +11,10 @@ function cannotModifyPrimaryKey(paramName, itemName) {
     return { status: 409, body: { code: `cannot_modify_${paramName}`, description: `Modifying the ${paramName} of an existing ${itemName} is not yet supported` } }
 }
 
+function basicAuthRequired() {
+    return { status: 401, body: { description: `HTTP basic authentication required`, code: `basic_auth` }};
+}
+
 function authTokenRequired() {
     return { status: 401, body: { description: `Bearer authentication token required; please login to get a token`, code: `auth_token_required` }};
 }
@@ -40,4 +44,4 @@ function cannotUpdateMissing(itemKey, itemName) {
     return { status: 404, body: { description: `${itemName} ${itemKey} not found; cannot update a missing ${itemName}`, code: `unknown_${itemKey}` }};
 }
 
-export { missingRequiredParam, inconsistentParams, cannotModifyPrimaryKey, authTokenRequired, notAllowed, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };
+export { missingRequiredParam, inconsistentParams, cannotModifyPrimaryKey, basicAuthRequired, authTokenRequired, notAllowed, sqlError, duplicateKeyError, notFound, jsonRequired, cannotUpdateMissing };
