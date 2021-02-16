@@ -27,4 +27,17 @@ function verifyToken(token) {
     });
 }
 
-module.exports = { makeJwt, verifyToken };
+async function getTokenFromCredentials({ username, password } = {}) {
+    const result = await api('login', { username, password });
+    if (result.statusCode === 200 && result.body && result.body.access_token) {
+        await verifyToken(result.body.access_token);  // Will throw if token fails to validate
+        return result.body.access_token;
+    } else {
+        throw new Error(`Unknown failure logging in; status code was ${result.statusCode} and JSON response from login route was ${JSON.stringify(result.body)}`);
+    }
+}
+
+const managerRoleId = 3;
+const contributorRoleId = 4;
+
+module.exports = { makeJwt, verifyToken, getTokenFromCredentials, managerRoleId, contributorRoleId };

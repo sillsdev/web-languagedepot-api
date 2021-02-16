@@ -1,6 +1,7 @@
 import { Project, managerRoleId, techSupportRoleId } from '$db/models';
-import { authTokenRequired, notAllowed } from '$utils/commonErrors';
+import { authTokenRequired, missingRequiredParam, notAllowed } from '$utils/commonErrors';
 import { retryOnServerError } from '$utils/commonSqlHandlers';
+import { verifyBasicAuth, verifyJwtAuth } from './auth';
 
 export async function getMemberRoleInProject(db, { projectCode, username } = {}) {
     if (!projectCode || !username) {
@@ -45,8 +46,11 @@ export function isAdmin(authUser) {
 }
 
 // Helpers for quick-and-easy auth
-export async function allowManagerOrAdmin(db, { params, authUser } = {}) {
-    const projectCode = params ? params.projectCode : undefined;
+export async function allowManagerOrAdmin(db, { params, headers } = {}) {
+    if (!params || !params.projectCode) {
+        return missingRequiredParam('projectCode');
+    }
+    let authUser = await verifyJwtAuth(db, headers);
     if (!authUser) {
         if (authUser === undefined) {
             return authTokenRequired();
@@ -54,36 +58,46 @@ export async function allowManagerOrAdmin(db, { params, authUser } = {}) {
             return notAllowed();
         }
     }
+    const projectCode = params ? params.projectCode : undefined;
     const allowed = isAdmin(authUser) || await hasManagerRights(db, { projectCode, authUser });
     if (!allowed) {
         return notAllowed();
     }
-    return { status: 200 };
+    return { status: 200, authUser };
 }
 
-export function allowSameUserOrAdmin({ params, authUser } = {}) {
-    const username = params ? params.username : undefined;
+export async function allowSameUserOrAdmin(db, { params, headers, allowBasicAuth } = {}) {
+    if (!params || !params.username) {
+        return missingRequiredParam('username');
+    }
+    let authUser = await verifyJwtAuth(db, headers);
     if (!authUser) {
+        console.log('no JWT')
         if (authUser === undefined) {
-            return authTokenRequired();
+            console.log('authUser undefined')
+            if (allowBasicAuth) {
+                // To interop with older clients, this route also allows user:pass in URL (HTTP basic auth)
+                authUser = await verifyBasicAuth(db, headers);
+                if (!authUser) {
+                    if (authUser === undefined) {
+                        // No username or password was presented: return 401
+                        return authTokenRequired();
+                    } else {
+                        // Username and password were presented but they were wrong: return 403
+                        return notAllowed();
+                    }
+                }
+            } else {
+                return authTokenRequired();
+            }
         } else {
+            console.log('authUser false:', authUser)
             return notAllowed();
         }
     }
-    const allowed = !!(authUser && authUser.login === username) || isAdmin(authUser);
+    const allowed = !!(authUser && authUser.login === params.username) || isAdmin(authUser);
     if (!allowed) {
         return notAllowed();
     }
-    return { status: 200 };
+    return { status: 200, authUser };
 }
-
-// Use like this:
-// function get({params, headers, query}) {
-//     const db = query.private ? dbs.private : dbs.public;
-//     const authUser = verifyJwtAuth(db, headers);
-//     const authResponse = allowSameUserOrAdmin({ params, authUser });
-//     if (authResponse.status >= 300) {
-//         return authResponse;
-//     }
-//     // Continue with logic now that we know the operation is allowed
-// }

@@ -3,15 +3,21 @@ import { Project } from '$db/models';
 import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$utils/commonErrors';
 import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
+import { allowManagerOrAdmin } from '$utils/db/authRules';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
 import { canonicalizeMembershipList, InvalidMemberships } from '$utils/db/usersAndRoles';
 
-export async function get({ params, path, query }) {
+export async function get({ params, path, query, headers }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    return getOneProject(db, params.projectCode);
+    const authResult = await allowManagerOrAdmin(db, { params, headers });
+    if (authResult.status === 200) {
+        return getOneProject(db, params.projectCode);
+    } else {
+        return authResult;
+    }
 }
 
 export async function head({ params, query }) {
@@ -19,6 +25,7 @@ export async function head({ params, query }) {
         return { status: 400, body: {} };
     }
     const db = query.private ? dbs.private : dbs.public;
+    // No auth check here: anyone is allowed to query whether a project exists
     try {
         const projectCount = await retryOnServerError(Project.query(db).where('identifier', params.projectCode).resultSize());
         const status = projectCount < 1 ? 404 : projectCount > 1 ? 500 : 200;
@@ -28,7 +35,7 @@ export async function head({ params, query }) {
     }
 }
 
-export async function put({ path, params, body, query }) {
+export async function put({ path, params, body, query, headers }) {
     if (typeof body !== 'object') {
         return jsonRequired('PUT', path);
     }
@@ -55,7 +62,7 @@ export async function put({ path, params, body, query }) {
     // Here we don't return Content-Location because the client already knows it
 }
 
-export async function patch({ path, params, body, query }) {
+export async function patch({ path, params, body, query, headers }) {
     // TODO: Membership records need special handling
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
@@ -91,7 +98,12 @@ export async function patch({ path, params, body, query }) {
         }
     }
     const db = query.private ? dbs.private : dbs.public;
-    return await patchOneProject(db, params.projectCode, body);
+    const authResult = await allowManagerOrAdmin(db, { params, headers });
+    if (authResult.status === 200 && authResult.authUser) {
+        return await patchOneProject(db, params.projectCode, body);
+    } else {
+        return authResult;
+    }
 }
 
 export async function del({ path, params, query }) {
