@@ -18,7 +18,7 @@ export function getUserAndPassFromBasicAuth(headers) {
     return undefined;
 }
 
-// Returns a user model instance if basic auth matches, or undefined if anything fails
+// Returns a user model instance if basic auth matches, undefined if there is no basic auth present, or false if anything fails (wrong username/password, etc)
 export async function verifyBasicAuth(db, headers) {
     const usernameAndPass = getUserAndPassFromBasicAuth(headers);
     if (usernameAndPass) {
@@ -29,9 +29,13 @@ export async function verifyBasicAuth(db, headers) {
                     return users[0];
                 }
             }
-        } catch (error) { }  // Suppress errors and just fail the auth
+            return false;  // Username wrong, or password invalid? Either way we want to return 403
+        } catch (error) {
+            return undefined;  // A server error should return 401, not 403, since we don't know that we should reject this
+        }
+    } else {
+        return undefined;  // No basic auth presented
     }
-    return undefined;
 }
 
 const jwtAudience = process.env.JWT_AUDIENCE || 'https://admin.languagedepot.org/api/v2'; // TODO: Should this have a default?
@@ -103,9 +107,16 @@ export async function verifyJwtAuth(db, headers) {
                 const users = await retryOnServerError(oneUserQuery(db, username));
                 if (users && users.length === 1) {
                     return users[0];
+                } else {
+                    return false;
                 }
-            } catch (error) { }  // Suppress errors and just fail the auth
+            } catch (error) {
+                return undefined;  // Same as with basic auth, a server error should return 401, not 403
+            }
+        } else {
+            return false;  // Invalid username is a 403
         }
+    } else {
+        return undefined;  // No JWT token is a 401
     }
-    return undefined;
 }

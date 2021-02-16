@@ -1,6 +1,6 @@
 import { dbs } from '$db/dbsetup';
 import { Project } from '$db/models';
-import { missingRequiredParam, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired } from '$utils/commonErrors';
+import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$utils/commonErrors';
 import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
@@ -45,7 +45,11 @@ export async function put({ path, params, body, query }) {
     const db = query.private ? dbs.private : dbs.public;
     const authUser = await verifyJwtAuth(db, headers);
     if (!authUser) {
-        return authTokenRequired();
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
     }
     return await createOneProject(db, params.projectCode, body, authUser);
     // Here we don't return Content-Location because the client already knows it

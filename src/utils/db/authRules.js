@@ -48,7 +48,11 @@ export function isAdmin(authUser) {
 export async function allowManagerOrAdmin(db, { params, authUser } = {}) {
     const projectCode = params ? params.projectCode : undefined;
     if (!authUser) {
-        return authTokenRequired();
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
     }
     const allowed = isAdmin(authUser) || await hasManagerRights(db, { projectCode, authUser });
     if (!allowed) {
@@ -60,7 +64,11 @@ export async function allowManagerOrAdmin(db, { params, authUser } = {}) {
 export function allowSameUserOrAdmin({ params, authUser } = {}) {
     const username = params ? params.username : undefined;
     if (!authUser) {
-        return authTokenRequired();
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
     }
     const allowed = !!(authUser && authUser.login === username) || isAdmin(authUser);
     if (!allowed) {

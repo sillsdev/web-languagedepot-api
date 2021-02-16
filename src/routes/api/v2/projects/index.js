@@ -1,5 +1,5 @@
 import { dbs } from '$db/dbsetup';
-import { authTokenRequired, jsonRequired, missingRequiredParam } from '$utils/commonErrors';
+import { jsonRequired, missingRequiredParam, authTokenRequired, notAllowed } from '$utils/commonErrors';
 import { retryOnServerError } from '$utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$utils/db/auth';
 import { getAllProjects, countAllProjectsQuery, createOneProject } from '$utils/db/projects';
@@ -30,7 +30,11 @@ export async function post({ path, body, query, headers }) {
     const db = query.private ? dbs.private : dbs.public;
     const authUser = await verifyJwtAuth(db, headers);
     if (!authUser) {
-        return authTokenRequired();
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
     }
     const result = await createOneProject(db, projectCode, body, authUser);
     // Add Content-Location header on success so client knows where to find the newly-created project

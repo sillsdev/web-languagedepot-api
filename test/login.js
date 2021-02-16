@@ -21,4 +21,20 @@ describe('/login route', function() {
         expect(this.token).to.be.a('string')
         return loginUtils.verifyToken(this.token)  // Will cause test failure if verifyToken returns rejected promise
     })
+
+    it('routes that require auth will return 401 when no token provided', async function() {
+        const result = await api('users/admin/projects', {throwHttpErrors: false})
+        expect(result.statusCode).to.equal(401)
+    })
+
+    it('routes that require auth will return 403 when an invalid token is provided', async function() {
+        const badToken = this.token + 'A'
+        const result = await api('users/admin/projects', {throwHttpErrors: false, headers: {authorization: `Bearer ${badToken}`}})
+        expect(result.statusCode).to.equal(403)
+    })
+
+    it('routes that require auth will return 200 when a valid token is provided', async function() {
+        const result = await api('users/admin/projects', {throwHttpErrors: false, headers: {authorization: `Bearer ${this.token}`}})
+        expect(result.statusCode).to.equal(200)
+    })
 })
