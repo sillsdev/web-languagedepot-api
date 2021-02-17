@@ -1,4 +1,4 @@
-import { Project, defaultRoleName } from '$db/models';
+import { Project, defaultRoleId } from '$db/models';
 import { dbs } from '$db/dbsetup';
 import { missingRequiredParam } from '$utils/commonErrors';
 import { onlyOne } from '$utils/commonSqlHandlers';
@@ -54,10 +54,12 @@ export async function post({ params, path, body, query }) {
     let roleName;
     if (body && typeof body === "string") {
         roleName = body;
+    } else if (body && typeof body === "number") {
+        roleName = body;
     } else if (body && typeof body === "object") {
-        roleName = body.role ? body.role : body.roleName ? body.roleName : defaultRoleName;
+        roleName = body.role ? body.role : body.roleId ? body.roleId : body.roleName ? body.roleName : defaultRoleId;
     } else {
-        roleName = defaultRoleName;
+        roleName = defaultRoleId;
     }
     const db = query.private ? dbs.private : dbs.public;
     return addUserWithRoleByProjectCode(db, params.projectCode, params.username, roleName);

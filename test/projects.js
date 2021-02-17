@@ -8,7 +8,7 @@ describe('/projects API route', function() {
         this.projectCode = 'project-for-projects-route'
         this.projectDetails = {
             projectCode: this.projectCode,
-            name: 'project for API "shape" tests',
+            name: 'project for testing /projects route',
             description: 'sample project for verifying the "shape" of the API results'
         }
         this.api = api.extend({
@@ -89,7 +89,7 @@ describe('/projects/[projectCode] API route', function() {
         this.projectCode = 'project-for-projects-projectCode-route'
         this.projectDetails = {
             projectCode: this.projectCode,
-            name: 'project for /projects/[projectCode] route',
+            name: 'project for testing /projects/[projectCode] route',
             description: 'sample project for verifying the "shape" of the API results'
         }
         this.api = api.extend({
@@ -192,5 +192,96 @@ describe('/projects/[projectCode] API route', function() {
         const projectList = await this.api('projects')
         expect(projectList.statusCode).to.equal(200)
         expect(projectList.body).to.not.deep.include(this.projectDetails)
+    })
+})
+
+describe('/projects/[projectCode]/user/[username] API route', function() {
+    before('set up', function() {
+        this.adminToken = loginUtils.makeJwt('admin')
+        this.projectCode = 'project-for-projects-projectCode-user-username-route'
+        this.projectDetails = {
+            projectCode: this.projectCode,
+            name: 'project for testing /projects/[projectCode]/user/[username] route',
+            description: 'sample project for verifying the "shape" of the API results'
+        }
+        this.api = api.extend({
+            throwHttpErrors: false,
+            headers: {authorization: `Bearer ${this.adminToken}`},
+        })
+        this.projectUrl = `projects/${this.projectCode}`
+        return this.api.put(this.projectUrl, {
+            json: this.projectDetails
+        })
+    })
+
+    after('clean up just-created project', async function() {
+        await this.api.delete(this.projectUrl)
+    })
+
+    it('GET returns user\'s role', async function() {
+        const result = await this.api(`${this.projectUrl}/user/admin`)
+        expect(result.statusCode).to.equal(200)
+        expect(result.body).to.have.keys('user', 'role')
+        expect(result.body.user).to.contain.keys('username')
+        expect(result.body.user.username).to.equal('admin')
+        expect(result.body.role).to.equal('Manager')
+    })
+
+    it('GET for non-member returns HTTP 404', async function() {
+        const result = await this.api(`${this.projectUrl}/user/user2`)
+        expect(result.statusCode).to.equal(404)
+    })
+
+    it('POST with no body adds a new user as Contributor', async function() {
+        const postResult = await this.api.post(`${this.projectUrl}/user/user1`)
+        expect(postResult.statusCode).to.equal(204)
+        const result = await this.api(`${this.projectUrl}/user/user1`)
+        expect(result.statusCode).to.equal(200)
+        expect(result.body).to.have.keys('user', 'role')
+        expect(result.body.user).to.contain.keys('username')
+        expect(result.body.user.username).to.equal('user1')
+        expect(result.body.role).to.equal('Contributor')
+    })
+
+    it('POST can change an existing user\'s role', async function() {
+        const postResult = await this.api.post(`${this.projectUrl}/user/user1`, {json: {role: 'Manager'}})
+        expect(postResult.statusCode).to.equal(204)
+        const result = await this.api(`${this.projectUrl}/user/user1`)
+        expect(result.statusCode).to.equal(200)
+        expect(result.body).to.have.keys('user', 'role')
+        expect(result.body.user).to.contain.keys('username')
+        expect(result.body.user.username).to.equal('user1')
+        expect(result.body.role).to.equal('Manager')
+    })
+
+    const jsonFormats = [
+        {role: 'Manager'},
+        {roleName: 'Manager'},
+        {roleId: 'Manager'},
+        'Manager',
+        {role: 3},
+        {roleId: 3},
+        {roleName: 3},  // Yes, even though roleName is a bit of a misnomer
+        3,
+    ];
+    for (const json of jsonFormats) {
+        it(`POST accepts roles in format ${JSON.stringify(json)}`, async function() {
+            // Setup
+            await this.api.post(`${this.projectUrl}/user/user1`, {json: {role: 'Contributor'}})
+            // Test
+            const postResult = await this.api.post(`${this.projectUrl}/user/user1`, {json})
+            expect(postResult.statusCode).to.equal(204)
+            const result = await this.api(`${this.projectUrl}/user/user1`)
+            expect(result.statusCode).to.equal(200)
+            expect(result.body.role).not.to.equal('Contributor')
+            expect(result.body.role).to.equal('Manager')
+        })
+    }
+
+    it('DEL will remove a user from the project', async function() {
+        const postResult = await this.api.delete(`${this.projectUrl}/user/user1`)
+        expect(postResult.statusCode).to.equal(204)
+        const result = await this.api(`${this.projectUrl}/user/user1`)
+        expect(result.statusCode).to.equal(404)
     })
 })

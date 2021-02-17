@@ -249,7 +249,7 @@ const managerRoleId = 3;
 const contributorRoleId = 4;
 const techSupportRoleId = 6;
 
-const defaultRoleName = 'Contributer';
+const defaultRoleName = 'Contributor';
 const defaultRoleId = contributorRoleId;
 
 const projectStatus = {
