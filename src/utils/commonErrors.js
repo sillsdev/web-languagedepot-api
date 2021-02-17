@@ -12,7 +12,7 @@ function cannotModifyPrimaryKey(paramName, itemName) {
 }
 
 function basicAuthRequired() {
-    return { status: 401, body: { description: `HTTP basic authentication required`, code: `basic_auth` }};
+    return { status: 401, body: { description: `HTTP basic authentication required`, code: `basic_auth_required` }};
 }
 
 function authTokenRequired() {

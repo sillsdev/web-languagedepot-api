@@ -24,7 +24,10 @@ export async function get({ params, query }) {
     });
 }
 
-// TODO: Handle HEAD, which should either return 200 if user is member of project, 404 if he/she is not, or 403 Unauthorized if you're supposed to be logged in to access this
+// TODO: HEAD /api/projects/{projectCode}/user/{username} - is user a member of the project?
+// Possible return codes:
+// 200 if user is member of project (with any role)
+// 404 if he/she is not, or if user or project not found
 // export async function head({ path }) {
 //     return { status: 204, body: {} }
 // }
