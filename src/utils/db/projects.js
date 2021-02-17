@@ -1,7 +1,9 @@
 import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$db/models';
-import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing } from '$utils/commonErrors';
+import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing, authTokenRequired, notAllowed } from '$utils/commonErrors';
 import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
-import { addUserWithRoleByProjectCode, addUserWithRole, removeUserFromProject } from './usersAndRoles';
+import { verifyJwtAuth } from './auth';
+import { allowManagerOrAdmin } from './authRules';
+import { addUserWithRole, removeUserFromProject } from './usersAndRoles';
 
 export function allProjectsQuery(db, { limit, offset } = {}) {
     let query = Project.query(db);
@@ -40,39 +42,52 @@ export function getOneProject(db, projectCode) {
     });
 }
 
-export async function createOneProject(db, projectCode, newProject, initialManager = undefined) {
+export async function createOneProject(db, projectCode, newProject, headers) {
+    const authUser = await verifyJwtAuth(db, headers);
+    if (!authUser) {
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
+    }
     if (newProject && newProject.projectCode) {
         if (projectCode !== newProject.projectCode) {
             return inconsistentParams('projectCode');
         }
     }
     const trx = await Project.startTransaction(db);
-    const query = Project.query(trx).select('id').forUpdate().where('identifier', projectCode);
+    const query = Project.query(trx).forUpdate().where('identifier', projectCode);
     const result = await atMostOne(query, 'projectCode', 'project code',
     async () => {
-        const result = await retryOnServerError(Project.query(trx).insertAndFetch(newProject));
-        return { status: 201, body: result };
+        const project = await retryOnServerError(Project.query(trx).insertAndFetch(newProject));
+        const subResult = await addUserWithRole(trx, project, authUser.login, managerRoleId);
+        if (subResult && subResult.status && subResult.status >= 200 && subResult.status < 400) {
+            return { status: 201, body: project };
+        } else {
+            if (subResult.status === 404 && subResult.code === 'unknown_roleId') {
+                // Manager role ID missing? Something is badly wrong
+                console.log(`Internal server error creating ${projectCode}: Manager role appears missing!`);
+                return { status: 500, code: 'internal_server_error', description: 'Internal Server Error' }
+            } else if (subResult.status === 404 && subResult.code === 'unknown_username') {
+                return { status: 400, code: subResult.code, description: subResult.description }
+            } else {
+                console.log(`Internal server error creating ${projectCode}. Details:`, subResult);
+                return { status: 500, code: 'internal_server_error', description: 'Sorry, something went wrong' }
+            }
+        }
     },
     async (project) => {
-        // TODO: Should this automatically reactivate a project that's been archived? Or should an archived project's code be permanently retired?
-        const result = await retryOnServerError(Project.query(trx).updateAndFetchById(project.id, newProject));
-        return { status: 200, body: result };
+        const authResult = await allowManagerOrAdmin(db, { params: { projectCode }, headers })
+        if (authResult.status === 200) {
+            const result = await retryOnServerError(Project.query(trx).updateAndFetchById(project.id, newProject));
+            return { status: 200, body: result };
+        } else {
+            return authResult;
+        }
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {
-        const initialManagerUsername =
-            initialManager && initialManager.login ? initialManager.login :
-            initialManager && initialManager.username ? initialManager.username :
-            initialManager;
-        if (initialManagerUsername) {
-            const subResult = await addUserWithRoleByProjectCode(trx, projectCode, initialManagerUsername, managerRoleId);
-            if (subResult && subResult.status && subResult.status >= 200 && subResult.status < 400) {
-                await trx.commit();
-            } else {
-                await trx.rollback();
-            }
-        } else {
-            await trx.commit();
-        }
+        await trx.commit();
     } else {
         await trx.rollback();
     }

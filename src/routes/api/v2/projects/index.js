@@ -28,15 +28,7 @@ export async function post({ path, body, query, headers }) {
     }
     const projectCode = body.projectCode;
     const db = query.private ? dbs.private : dbs.public;
-    const authUser = await verifyJwtAuth(db, headers);
-    if (!authUser) {
-        if (authUser === undefined) {
-            return authTokenRequired();
-        } else {
-            return notAllowed();
-        }
-    }
-    const result = await createOneProject(db, projectCode, body, authUser);
+    const result = await createOneProject(db, projectCode, body, headers);
     // Add Content-Location header on success so client knows where to find the newly-created project
     if (result && result.status && result.status >= 200 && result.status < 300) {
         return { ...result, headers: { ...result.headers, 'Content-Location': `${path}/${projectCode}` } };

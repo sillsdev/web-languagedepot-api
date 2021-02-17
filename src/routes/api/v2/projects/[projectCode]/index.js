@@ -50,15 +50,7 @@ export async function put({ path, params, body, query, headers }) {
         return missingRequiredParam('projectCode', `body of PUT request to ${path}`);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const authUser = await verifyJwtAuth(db, headers);
-    if (!authUser) {
-        if (authUser === undefined) {
-            return authTokenRequired();
-        } else {
-            return notAllowed();
-        }
-    }
-    return await createOneProject(db, params.projectCode, body, authUser);
+    return await createOneProject(db, params.projectCode, body, headers);
     // Here we don't return Content-Location because the client already knows it
 }
 

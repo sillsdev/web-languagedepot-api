@@ -1,4 +1,4 @@
-import { Project, Role, User, Membership, MemberRole, defaultRoleName, defaultRoleId } from '$db/models';
+import { Project, Role, User, Membership, MemberRole, defaultRoleId } from '$db/models';
 import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
 
 async function addUserWithRole(trx, project, username, roleNameOrId) {
