@@ -1,10 +1,24 @@
 const api = require('./testsetup').apiv2
 const expect = require('chai').expect
 
-describe('a role', function() {
+describe('GET /api/v2/roles', function() {
+
+    // Expected shape:
+    // [
+    //     ...
+    //     { id: 3, name: 'Manager' },
+    //     { id: 4, name: 'Contributor' },
+    //     ...
+    //     { id: 6, name: 'LanguageDepotProgrammer' }
+    // ]
+
     before('get roles list for tests', async function() {
-        const result = await api('roles')
-        this.roles = result.body
+        this.apiResult = await api('roles', {throwHttpErrors: false})
+        this.roles = this.apiResult.body
+    })
+
+    it('should return HTTP 200', function() {
+        expect(this.apiResult.statusCode).to.equal(200)
     })
 
     it('should be an array', function() {
