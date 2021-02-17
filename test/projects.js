@@ -278,6 +278,28 @@ describe('/projects/[projectCode]/user/[username] API route', function() {
         })
     }
 
+    it('POST to /projects/[projectCode]/user/[username]/withRole/[rolename] can also change an existing user\'s role', async function() {
+        const postResult = await this.api.post(`${this.projectUrl}/user/user1/withRole/Contributor`)
+        expect(postResult.statusCode).to.equal(204)
+        const result = await this.api(`${this.projectUrl}/user/user1`)
+        expect(result.statusCode).to.equal(200)
+        expect(result.body).to.have.keys('user', 'role')
+        expect(result.body.user).to.contain.keys('username')
+        expect(result.body.user.username).to.equal('user1')
+        expect(result.body.role).to.equal('Contributor')
+    })
+
+    it('POST to /projects/[projectCode]/user/[username]/withRole/[rolename] can accept role IDs as well as names', async function() {
+        const postResult = await this.api.post(`${this.projectUrl}/user/user1/withRole/3`)
+        expect(postResult.statusCode).to.equal(204)
+        const result = await this.api(`${this.projectUrl}/user/user1`)
+        expect(result.statusCode).to.equal(200)
+        expect(result.body).to.have.keys('user', 'role')
+        expect(result.body.user).to.contain.keys('username')
+        expect(result.body.user.username).to.equal('user1')
+        expect(result.body.role).to.equal('Manager')
+    })
+
     it('DEL will remove a user from the project', async function() {
         const postResult = await this.api.delete(`${this.projectUrl}/user/user1`)
         expect(postResult.statusCode).to.equal(204)
