@@ -25,6 +25,13 @@ describe('GET /api/v2/login', function() {
         expect(result.body.code).to.equal('basic_auth_required')
     })
 
+    it('username not recognized causes HTTP 403', async function() {
+        const result = await api('login', {username: 'no_such_username', password: 'incorrect_password', throwHttpErrors: false})
+        expect(result.statusCode).to.equal(403)
+        expect(result.body).to.contain.keys('code', 'description')
+        expect(result.body.code).to.equal('forbidden')
+    })
+
     it('invalid password causes rejection with HTTP 403', async function() {
         const result = await api('login', {username: 'admin', password: 'incorrect_password', throwHttpErrors: false})
         expect(result.statusCode).to.equal(403)

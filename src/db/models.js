@@ -187,15 +187,17 @@ class User extends Model {
             }
         },
     });
-    static jsonSchema = () => ({
+    static jsonSchema = {
         type: 'object',
-        required: ['login', 'name'],
+        required: ['login', 'firstname', 'lastname', 'language'],
         properties: {
             id: { type: 'integer' },
-            name: { type: 'string', minLength: 1, maxLength: 255 },
-            description: { type: 'string' },
+            firstname: { type: 'string' },
+            lastname: { type: 'string' },
+            language: { type: 'string' },
+            admin: { type: ['integer', 'boolean'] }
         }
-    });
+    };
     $formatJson(json) {
         // Called when we're about to return JSON to the outside world
         json = super.$formatJson(json);

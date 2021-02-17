@@ -42,7 +42,7 @@ export async function createUser(db, username, newUser) {
         return { status: 201, body: result };
     },
     async (user) => {
-        const result = await retryOnServerError(User.query(trx).updateAndFetchById(user.id, body));
+        const result = await retryOnServerError(User.query(trx).updateAndFetchById(user.id, newUser));
         return { status: 200, body: result };
     });
     if (result && result.status && result.status >= 200 && result.status < 400) {

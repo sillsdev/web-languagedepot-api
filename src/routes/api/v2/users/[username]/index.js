@@ -1,14 +1,20 @@
 import { dbs } from '$db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
 import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { getOneUser, oneUserQuery, patchUser, deleteUser } from '$utils/db/users';
+import { allowSameUserOrAdmin } from '$utils/db/authRules';
+import { getOneUser, oneUserQuery, patchUser, deleteUser, createUser } from '$utils/db/users';
 
-export async function get({ params, path, query }) {
+export async function get({ params, path, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    return getOneUser(db, params.username);
+    const authResult = await allowSameUserOrAdmin(db, { params, headers });
+    if (authResult.status === 200) {
+        return getOneUser(db, params.username);
+    } else {
+        return authResult;
+    }
 }
 
 export async function head({ params, query }) {
@@ -25,7 +31,7 @@ export async function head({ params, query }) {
     }
 }
 
-export async function put({ path, params, body, query }) {
+export async function put({ path, params, body, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
@@ -33,15 +39,20 @@ export async function put({ path, params, body, query }) {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const result = await createUser(db, params.username, body);
-    // Content-Location not strictly needed here, but add it for consistency
-    if (result && result.status && result.status >= 200 && result.status < 300) {
-        result.headers = { ...result.headers, 'Content-Location': `${path}` };
+    const authResult = await allowSameUserOrAdmin(db, { params, headers });
+    if (authResult.status === 200) {
+        const result = await createUser(db, params.username, body);
+        // Content-Location not strictly needed here, but add it for consistency
+        if (result && result.status && result.status >= 200 && result.status < 300) {
+            result.headers = { ...result.headers, 'Content-Location': `${path}` };
+        }
+        return result;
+    } else {
+        return authResult;
     }
-    return result;
 }
 
-export async function patch({ path, params, body, query }) {
+export async function patch({ path, params, body, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
@@ -49,19 +60,28 @@ export async function patch({ path, params, body, query }) {
         return jsonRequired('PATCH', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const result = patchUser(db, params.username, body);
-    // Add Content-Location header on success so client knows where to find the newly-created project
-    if (result && result.status && result.status >= 200 && result.status < 300) {
-        result.headers = { ...result.headers, 'Content-Location': `${path}/${username}` };
+    const authResult = await allowSameUserOrAdmin(db, { params, headers });
+    if (authResult.status === 200) {
+        const result = patchUser(db, params.username, body);
+        // Content-Location not strictly needed here, but add it for consistency
+        if (result && result.status && result.status >= 200 && result.status < 300) {
+            result.headers = { ...result.headers, 'Content-Location': `${path}` };
+        }
+        return result;
+    } else {
+        return authResult;
     }
-    return result;
 }
 
-export async function del({ params, path, query }) {
+export async function del({ params, path, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const result = await deleteUser(db, params.username);
-    return result;
+    const authResult = await allowSameUserOrAdmin(db, { params, headers });
+    if (authResult.status === 200) {
+        return deleteUser(db, params.username);
+    } else {
+        return authResult;
+    }
 }
