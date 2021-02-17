@@ -53,7 +53,6 @@ async function addUserWithRoleByProjectCode(db, projectCode, username, roleNameO
 }
 
 async function removeUserFromProject(trx, project, username) {
-    console.log('Removing', username, 'from', project);
     let users;
     if (project.members) {
         users = project.members.filter(member => member.user.login === username);

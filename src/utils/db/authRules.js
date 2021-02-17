@@ -72,9 +72,7 @@ export async function allowSameUserOrAdmin(db, { params, headers, allowBasicAuth
     }
     let authUser = await verifyJwtAuth(db, headers);
     if (!authUser) {
-        console.log('no JWT')
         if (authUser === undefined) {
-            console.log('authUser undefined')
             if (allowBasicAuth) {
                 // To interop with older clients, this route also allows user:pass in URL (HTTP basic auth)
                 authUser = await verifyBasicAuth(db, headers);
@@ -91,7 +89,6 @@ export async function allowSameUserOrAdmin(db, { params, headers, allowBasicAuth
                 return authTokenRequired();
             }
         } else {
-            console.log('authUser false:', authUser)
             return notAllowed();
         }
     }

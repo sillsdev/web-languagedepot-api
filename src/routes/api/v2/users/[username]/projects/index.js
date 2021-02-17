@@ -12,7 +12,6 @@ export async function get({ params, path, query, headers }) {
     if (authResponse.status === 200) {
         return getProjectsForUser(db, params);
     } else {
-        console.log('authResponse', authResponse)
         return authResponse;
     }
 }
