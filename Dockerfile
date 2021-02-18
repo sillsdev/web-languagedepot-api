@@ -20,7 +20,7 @@ FROM node:14.15.4-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
-COPY --from=builder app/build/* ./
+COPY --from=builder app/build ./
 COPY static assets
 EXPOSE 3000
 USER node
