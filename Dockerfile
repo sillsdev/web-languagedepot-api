@@ -18,10 +18,10 @@ RUN npm run build && npm run adapt
 
 FROM node:14.15.4-alpine
 WORKDIR /app
+COPY static assets
 COPY package*.json ./
 RUN npm ci
 COPY --from=builder app/build ./
-COPY static assets
 EXPOSE 3000
 USER node
 ENTRYPOINT ["node", "index.js"]
