@@ -366,9 +366,10 @@ describe('/users/[username]/projects API route', function() {
         expect(result.statusCode).to.equal(200)
         expect(result.body).to.be.an('array')
         expect(result.body).to.not.be.empty
-        expect(result.body[0]).to.have.keys('projectCode', 'role')
+        expect(result.body[0]).to.have.keys('projectCode', 'name', 'role')
         expect(result.body).to.deep.include({
             projectCode: this.projectDetails.projectCode,
+            name: this.projectDetails.name,
             role: 'Manager'
         })
     })
@@ -389,9 +390,10 @@ describe('/users/[username]/projects API route', function() {
         expect(result.statusCode).to.equal(200)
         expect(result.body).to.be.an('array')
         expect(result.body).to.not.be.empty
-        expect(result.body[0]).to.have.keys('projectCode', 'role')
+        expect(result.body[0]).to.have.keys('projectCode', 'name', 'role')
         expect(result.body).to.deep.include({
             projectCode: this.projectDetails.projectCode,
+            name: this.projectDetails.name,
             role: 'Manager'
         })
     })
@@ -402,9 +404,10 @@ describe('/users/[username]/projects API route', function() {
             expect(result.statusCode).to.equal(200)
             expect(result.body).to.be.an('array')
             expect(result.body).to.not.be.empty
-            expect(result.body[0]).to.have.keys('projectCode', 'role')
+           expect(result.body[0]).to.have.keys('projectCode', 'name', 'role')
             expect(result.body).to.deep.include({
                 projectCode: this.projectDetails.projectCode,
+                name: this.projectDetails.name,
                 role: 'Manager'
             })
         })

@@ -107,6 +107,7 @@ function getProjectsForUser(db, { username, rolename } = {}) {
             const user = usersWithMemberships[0];
             const result = user.memberships.map(m => ({
                 projectCode: m.project.identifier,
+                name: m.project.name,
                 role: m.role.name,
             }));
             return { status: 200, body: result };
