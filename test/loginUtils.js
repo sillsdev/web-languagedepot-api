@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken')
 // Some tests will construct a JWT and make sure it's accepted by the server,
 // so make sure CI passes the same signing key and audience to the tests as the server
 const jwtAudience = process.env.JWT_AUDIENCE || 'https://admin.languagedepot.org/api/v2';
-const signKey = process.env.JWT_SIGNING_KEY || 'not-really-secret';
+const signKey = process.env.JWT_SIGNING_KEY || 'not-a-secret';
 function makeJwt(username) {
     var token = jwt.sign({
         sub: username,

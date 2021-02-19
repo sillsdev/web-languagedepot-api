@@ -55,7 +55,6 @@ export async function put({ path, params, body, query, headers }) {
 }
 
 export async function patch({ path, params, body, query, headers }) {
-    // TODO: Membership records need special handling
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
     }
