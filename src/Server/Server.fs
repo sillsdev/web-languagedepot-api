@@ -23,8 +23,8 @@ open System.Text.Json.Serialization
 open Microsoft.IdentityModel.Tokens
 open Microsoft.AspNetCore.Http
 
-// let [<Literal>] SecretApiToken = "not-a-secret"
-// let [<Literal>] BearerToken = "Bearer " + SecretApiToken
+let [<Literal>] SecretApiToken = "not-a-secret"
+let [<Literal>] BearerToken = "Bearer " + SecretApiToken
 
 // TODO: Create an API endpoint that looks this up in the database
 let adminEmails = [
@@ -49,6 +49,17 @@ let errorHandler : Giraffe.Core.ErrorHandler = fun ex logger ->
 let port =
     "SERVER_PORT"
     |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
+
+let requireSecretToken : HttpHandler = fun next ctx -> task {
+    let hasToken =
+        match ctx.Request.Headers.TryGetValue("Authorization") with
+        | true, token -> token |> Seq.contains BearerToken
+        | false, _ -> false
+    if hasToken then
+        return! next ctx
+    else
+        return! (setStatusCode 403 >=> Controller.jsonError "Unauthorized") next ctx
+}
 
 let requireAdmin : HttpHandler = fun next ctx -> task {
     let! isAdmin =
@@ -122,6 +133,7 @@ let usersRouter isPublic = router {
 let securedApp = router {
     // pipe_through requireAdmin  // TODO: Only do this on a subset of the API endpoints, not all of them
     // pipe_through (requireIp [|"127.0.0.1"|])  // TODO: Let the allowed IPs be in the app config so it's easy to edit at need
+    // pipe_through requireSecretToken
     // Do not allow CloudFlare to cache API responses
     pipe_through (setHttpHeader "Cache-Control" "no-store")
 
