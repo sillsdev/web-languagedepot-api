@@ -28,7 +28,7 @@ const dbs = {
             connection: {
                 host : process.env.MYSQL_HOST || '127.0.0.1',
                 user : process.env.MYSQL_USER || '',
-                password : process.env.MYSQL_PASSWORD || '',
+                password : process.env.MYSQL_PASSWORD_PRIVATE || process.env.MYSQL_PASSWORD_PVT || process.env.MYSQL_PASSWORD || '',
                 database : process.env.MYSQL_DATABASE_PRIVATE || process.env.MYSQL_DATABASE_PVT || (process.env.MYSQL_DATABASE ? `${process.env.MYSQL_DATABASE}pvt` : 'testldapi')
             },
         });
