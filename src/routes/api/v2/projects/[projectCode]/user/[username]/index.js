@@ -1,8 +1,8 @@
-import { Project, defaultRoleId } from '$db/models';
-import { dbs } from '$db/dbsetup';
-import { missingRequiredParam } from '$utils/commonErrors';
-import { onlyOne } from '$utils/commonSqlHandlers';
-import { addUserWithRoleByProjectCode, removeUserFromProjectByProjectCode } from '$utils/db/usersAndRoles';
+import { Project, defaultRoleId } from '$lib/db/models';
+import { dbs } from '$lib/db/dbsetup';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
+import { onlyOne } from '$lib/utils/commonSqlHandlers';
+import { addUserWithRoleByProjectCode, removeUserFromProjectByProjectCode } from '$lib/utils/db/usersAndRoles';
 
 // GET /api/projects/{projectCode}/user/{username} - return user's role
 export async function get({ params, query }) {

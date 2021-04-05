@@ -1,5 +1,5 @@
-import { Project, Role, User, Membership, MemberRole, defaultRoleId } from '$db/models';
-import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
+import { Project, Role, User, Membership, MemberRole, defaultRoleId } from '$lib/db/models';
+import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$lib/utils/commonSqlHandlers';
 
 async function addUserWithRole(trx, project, username, roleNameOrId) {
     let query = Role.query(trx).select('id'),

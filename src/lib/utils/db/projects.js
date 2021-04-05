@@ -1,6 +1,6 @@
-import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$db/models';
-import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing, authTokenRequired, notAllowed } from '$utils/commonErrors';
-import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
+import { MemberRole, Membership, Project, managerRoleId, projectStatus } from '$lib/db/models';
+import { cannotModifyPrimaryKey, inconsistentParams, cannotUpdateMissing, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
+import { onlyOne, atMostOne, catchSqlError, retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { verifyJwtAuth } from './auth';
 import { allowManagerOrAdmin } from './authRules';
 import { addUserWithRole, removeUserFromProject } from './usersAndRoles';

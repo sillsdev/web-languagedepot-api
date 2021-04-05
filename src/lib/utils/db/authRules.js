@@ -1,6 +1,6 @@
-import { Project, managerRoleId, techSupportRoleId } from '$db/models';
-import { authTokenRequired, missingRequiredParam, notAllowed } from '$utils/commonErrors';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
+import { Project, managerRoleId, techSupportRoleId } from '$lib/db/models';
+import { authTokenRequired, missingRequiredParam, notAllowed } from '$lib/utils/commonErrors';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { verifyBasicAuth, verifyJwtAuth } from './auth';
 
 export async function getMemberRoleInProject(db, { projectCode, username } = {}) {

@@ -1,7 +1,7 @@
 import { oneUserQuery } from './users';
 import jwt from 'jsonwebtoken';
 import { verifyPassword } from './passwords';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 
 const userAndPassRegex = /^([^:]*):(.*)$/;
 export function getUserAndPassFromBasicAuth(headers) {

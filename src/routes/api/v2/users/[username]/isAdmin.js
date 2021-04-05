@@ -1,7 +1,7 @@
-import { dbs } from '$db/dbsetup';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { isAdmin } from '$utils/db/authRules';
-import { oneUserQuery } from '$utils/db/users';
+import { dbs } from '$lib/db/dbsetup';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { isAdmin } from '$lib/utils/db/authRules';
+import { oneUserQuery } from '$lib/utils/db/users';
 
 export async function get({ query, params }) {
     const db = query.private ? dbs.private : dbs.public;

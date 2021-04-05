@@ -1,9 +1,9 @@
-import { User } from '$db/models';
-import { dbs } from '$db/dbsetup';
-import { missingRequiredParam } from '$utils/commonErrors';
-import { catchSqlError } from '$utils/commonSqlHandlers';
-import { verifyJwtAuth } from '$utils/db/auth';
-import { isAdmin } from '$utils/db/authRules';
+import { User } from '$lib/db/models';
+import { dbs } from '$lib/db/dbsetup';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
+import { catchSqlError } from '$lib/utils/commonSqlHandlers';
+import { verifyJwtAuth } from '$lib/utils/db/auth';
+import { isAdmin } from '$lib/utils/db/authRules';
 
 export async function get({ params, query, path, headers }) {
     const db = query.private ? dbs.private : dbs.public;

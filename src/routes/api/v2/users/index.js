@@ -1,7 +1,7 @@
-import { dbs } from '$db/dbsetup';
-import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { getAllUsers, countAllUsersQuery, createUser } from '$utils/db/users';
+import { dbs } from '$lib/db/dbsetup';
+import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { getAllUsers, countAllUsersQuery, createUser } from '$lib/utils/db/users';
 
 export async function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;

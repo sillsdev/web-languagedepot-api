@@ -1,7 +1,7 @@
-import { missingRequiredParam } from '$utils/commonErrors';
-import { addUserWithRoleByProjectCode } from '$utils/db/usersAndRoles';
-import { dbs } from '$db/dbsetup';
-import { allowManagerOrAdmin } from '$utils/db/authRules';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
+import { addUserWithRoleByProjectCode } from '$lib/utils/db/usersAndRoles';
+import { dbs } from '$lib/db/dbsetup';
+import { allowManagerOrAdmin } from '$lib/utils/db/authRules';
 
 export async function post({ params, path, query, headers }) {
     if (!params.projectCode) {

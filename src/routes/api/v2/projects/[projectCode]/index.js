@@ -1,11 +1,11 @@
-import { dbs } from '$db/dbsetup';
-import { Project } from '$db/models';
-import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$utils/commonErrors';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { verifyJwtAuth } from '$utils/db/auth';
-import { allowManagerOrAdmin } from '$utils/db/authRules';
-import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$utils/db/projects';
-import { canonicalizeMembershipList, InvalidMemberships } from '$utils/db/usersAndRoles';
+import { dbs } from '$lib/db/dbsetup';
+import { Project } from '$lib/db/models';
+import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { verifyJwtAuth } from '$lib/utils/db/auth';
+import { allowManagerOrAdmin } from '$lib/utils/db/authRules';
+import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$lib/utils/db/projects';
+import { canonicalizeMembershipList, InvalidMemberships } from '$lib/utils/db/usersAndRoles';
 
 export async function get({ params, path, query, headers }) {
     if (!params.projectCode) {

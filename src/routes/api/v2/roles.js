@@ -1,6 +1,6 @@
-import { Role } from '$db/models';
-import { dbs } from '$db/dbsetup';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
+import { Role } from '$lib/db/models';
+import { dbs } from '$lib/db/dbsetup';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 
 export async function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;

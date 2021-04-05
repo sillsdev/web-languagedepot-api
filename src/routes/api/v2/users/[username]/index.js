@@ -1,8 +1,8 @@
-import { dbs } from '$db/dbsetup';
-import { jsonRequired, missingRequiredParam } from '$utils/commonErrors';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { allowSameUserOrAdmin } from '$utils/db/authRules';
-import { getOneUser, oneUserQuery, patchUser, deleteUser, createUser } from '$utils/db/users';
+import { dbs } from '$lib/db/dbsetup';
+import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { allowSameUserOrAdmin } from '$lib/utils/db/authRules';
+import { getOneUser, oneUserQuery, patchUser, deleteUser, createUser } from '$lib/utils/db/users';
 
 export async function get({ params, path, query, headers }) {
     if (!params.username) {

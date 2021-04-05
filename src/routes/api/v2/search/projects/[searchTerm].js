@@ -1,7 +1,7 @@
-import { Project } from '$db/models';
-import { dbs } from '$db/dbsetup';
-import { missingRequiredParam } from '$utils/commonErrors';
-import { catchSqlError } from '$utils/commonSqlHandlers';
+import { Project } from '$lib/db/models';
+import { dbs } from '$lib/db/dbsetup';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
+import { catchSqlError } from '$lib/utils/commonSqlHandlers';
 
 export async function get({ params, query, path }) {
     const db = query.private ? dbs.private : dbs.public;

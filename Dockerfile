@@ -8,19 +8,23 @@ FROM node:14.15.4-alpine AS builder
 # MYSQL_USER=mysqlusername
 # MYSQL_PASSWORD=mysqlpassword
 
+RUN npm i -g pnpm
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm i
 COPY static ./static
-COPY svelte.config.js snowpack.config.js tsconfig.json ./
+COPY svelte.config.cjs tsconfig.json ./
 COPY src ./src
-RUN npm run build && npm run adapt
+RUN pnpm run build
 
 FROM node:14.15.4-alpine
+COPY --from=builder /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
+RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.js /usr/local/bin/pnpm && \
+    ln -s ../lib/node_modules/pnpm/bin/pnpx.js /usr/local/bin/pnpx
 WORKDIR /app
 COPY static assets
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm i --prod --frozen-lockfile
 COPY --from=builder app/build ./
 EXPOSE 3000
 USER node

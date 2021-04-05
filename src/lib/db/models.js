@@ -1,10 +1,10 @@
 import { Model } from 'objection';
-import { withoutKey } from '$utils/withoutKey';
-import { renameKey } from '$utils/renameKey';
-import { applyAll } from '$utils/applyAll';
-import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$utils/db/mysqlDates';
-import { hashPasswordForStorage } from '$utils/db/passwords';
-import { withOnlyKeys } from '$utils/withOnlyKeys';
+import { withoutKey } from '$lib/utils/withoutKey';
+import { renameKey } from '$lib/utils/renameKey';
+import { applyAll } from '$lib/utils/applyAll';
+import { setDateColumnsForCreate, setDateColumnsForCreateWithoutUpdate, setDateColumnsForUpdate } from '$lib/utils/db/mysqlDates';
+import { hashPasswordForStorage } from '$lib/utils/db/passwords';
+import { withOnlyKeys } from '$lib/utils/withOnlyKeys';
 
 // Models for Membership, Project and User must be in same file to avoid circular imports
 

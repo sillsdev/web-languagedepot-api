@@ -1,8 +1,8 @@
-import { dbs } from '$db/dbsetup';
-import { jsonRequired, missingRequiredParam, authTokenRequired, notAllowed } from '$utils/commonErrors';
-import { retryOnServerError } from '$utils/commonSqlHandlers';
-import { verifyJwtAuth } from '$utils/db/auth';
-import { getAllProjects, countAllProjectsQuery, createOneProject } from '$utils/db/projects';
+import { dbs } from '$lib/db/dbsetup';
+import { jsonRequired, missingRequiredParam, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
+import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { verifyJwtAuth } from '$lib/utils/db/auth';
+import { getAllProjects, countAllProjectsQuery, createOneProject } from '$lib/utils/db/projects';
 
 export function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;

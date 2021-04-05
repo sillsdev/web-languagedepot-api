@@ -1,4 +1,4 @@
-import { DBError } from 'objection';
+import objection from 'objection';
 import { sqlError, duplicateKeyError, notFound } from './commonErrors';
 
 function catchSqlError(callback) {
@@ -31,7 +31,7 @@ async function retryOnServerError(query, options = {}) {
             result = await query;
             return result;
         } catch (error) {
-            if (error instanceof DBError &&
+            if (error instanceof objection.DBError &&
                 error.nativeError &&
                 error.nativeError.code &&
                 errorCodesToRetry.includes(error.nativeError.code)) {
@@ -47,7 +47,7 @@ async function retryOnServerError(query, options = {}) {
     if (mostRecentError) {
         throw mostRecentError;
     } else {
-        throw new DBError('Could not run query due to server errors');
+        throw new objection.DBError('Could not run query due to server errors');
     };
 }
 

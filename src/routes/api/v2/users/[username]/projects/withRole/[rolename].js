@@ -1,7 +1,7 @@
-import { dbs } from '$db/dbsetup';
-import { missingRequiredParam } from '$utils/commonErrors';
-import { allowSameUserOrAdmin } from '$utils/db/authRules';
-import { getProjectsForUser } from '$utils/db/usersAndRoles';
+import { dbs } from '$lib/db/dbsetup';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
+import { allowSameUserOrAdmin } from '$lib/utils/db/authRules';
+import { getProjectsForUser } from '$lib/utils/db/usersAndRoles';
 
 export async function get({ params, path, query, headers }) {
     if (!params.username) {

@@ -1,6 +1,6 @@
-import { User, Membership, MemberRole, Email } from '$db/models';
-import { cannotUpdateMissing } from '$utils/commonErrors';
-import { atMostOne, onlyOne, catchSqlError, retryOnServerError } from '$utils/commonSqlHandlers';
+import { User, Membership, MemberRole, Email } from '$lib/db/models';
+import { cannotUpdateMissing } from '$lib/utils/commonErrors';
+import { atMostOne, onlyOne, catchSqlError, retryOnServerError } from '$lib/utils/commonSqlHandlers';
 
 export function allUsersQuery(db, { limit, offset } = {}) {
     let query = User.query(db);
