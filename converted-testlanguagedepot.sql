@@ -4,6 +4,7 @@ SET standard_conforming_strings=off;
 SET escape_string_warning=off;
 SET CONSTRAINTS ALL DEFERRED;
 
+DROP TABLE IF EXISTS "ar_internal_metadata";
 CREATE TABLE "ar_internal_metadata" (
     "key" varchar(510) NOT NULL,
     "value" varchar(510) DEFAULT NULL,
@@ -13,6 +14,7 @@ CREATE TABLE "ar_internal_metadata" (
 );
 
 INSERT INTO "ar_internal_metadata" VALUES ('environment','production_languagedepot','2019-10-04 14:08:08','2019-10-04 14:08:08');
+DROP TABLE IF EXISTS "attachments";
 CREATE TABLE "attachments" (
     "id" integer NOT NULL,
     "container_id" integer DEFAULT NULL,
@@ -30,6 +32,7 @@ CREATE TABLE "attachments" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "auth_sources";
 CREATE TABLE "auth_sources" (
     "id" integer NOT NULL,
     "type" varchar(60) NOT NULL DEFAULT '',
@@ -51,6 +54,7 @@ CREATE TABLE "auth_sources" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "boards";
 CREATE TABLE "boards" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL,
@@ -64,6 +68,7 @@ CREATE TABLE "boards" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "changes";
 CREATE TABLE "changes" (
     "id" integer NOT NULL,
     "changeset_id" integer NOT NULL,
@@ -76,11 +81,13 @@ CREATE TABLE "changes" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "changeset_parents";
 CREATE TABLE "changeset_parents" (
     "changeset_id" integer NOT NULL,
     "parent_id" integer NOT NULL
 );
 
+DROP TABLE IF EXISTS "changesets";
 CREATE TABLE "changesets" (
     "id" integer NOT NULL,
     "repository_id" integer NOT NULL,
@@ -95,12 +102,14 @@ CREATE TABLE "changesets" (
     UNIQUE ("repository_id","revision")
 );
 
+DROP TABLE IF EXISTS "changesets_issues";
 CREATE TABLE "changesets_issues" (
     "changeset_id" integer NOT NULL,
     "issue_id" integer NOT NULL,
     UNIQUE ("changeset_id","issue_id")
 );
 
+DROP TABLE IF EXISTS "comments";
 CREATE TABLE "comments" (
     "id" integer NOT NULL,
     "commented_type" varchar(60) NOT NULL DEFAULT '',
@@ -112,6 +121,7 @@ CREATE TABLE "comments" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "custom_field_enumerations";
 CREATE TABLE "custom_field_enumerations" (
     "id" integer NOT NULL,
     "custom_field_id" integer NOT NULL,
@@ -121,6 +131,7 @@ CREATE TABLE "custom_field_enumerations" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "custom_fields";
 CREATE TABLE "custom_fields" (
     "id" integer NOT NULL,
     "type" varchar(60) NOT NULL DEFAULT '',
@@ -144,24 +155,28 @@ CREATE TABLE "custom_fields" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "custom_fields_projects";
 CREATE TABLE "custom_fields_projects" (
     "custom_field_id" integer NOT NULL DEFAULT '0',
     "project_id" integer NOT NULL DEFAULT '0',
     UNIQUE ("custom_field_id","project_id")
 );
 
+DROP TABLE IF EXISTS "custom_fields_roles";
 CREATE TABLE "custom_fields_roles" (
     "custom_field_id" integer NOT NULL,
     "role_id" integer NOT NULL,
     UNIQUE ("custom_field_id","role_id")
 );
 
+DROP TABLE IF EXISTS "custom_fields_trackers";
 CREATE TABLE "custom_fields_trackers" (
     "custom_field_id" integer NOT NULL DEFAULT '0',
     "tracker_id" integer NOT NULL DEFAULT '0',
     UNIQUE ("custom_field_id","tracker_id")
 );
 
+DROP TABLE IF EXISTS "custom_values";
 CREATE TABLE "custom_values" (
     "id" integer NOT NULL,
     "customized_type" varchar(60) NOT NULL DEFAULT '',
@@ -171,6 +186,7 @@ CREATE TABLE "custom_values" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "documents";
 CREATE TABLE "documents" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL DEFAULT '0',
@@ -181,6 +197,7 @@ CREATE TABLE "documents" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "email_addresses";
 CREATE TABLE "email_addresses" (
     "id" integer NOT NULL,
     "user_id" integer NOT NULL,
@@ -193,6 +210,7 @@ CREATE TABLE "email_addresses" (
 );
 
 INSERT INTO "email_addresses" VALUES (1,1,'admin@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(2,3,'king.richard@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(3,4,'princejohn@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(4,10,'manager1@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(5,11,'manager2@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(6,20,'user1@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(7,21,'user2@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(8,22,'UPPER@example.net',1,1,'2015-10-16 09:08:39','2015-10-16 09:08:39'),(9,30,'modify@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(10,170,'Test@example.net',1,1,'2010-09-09 03:29:15','2012-08-30 09:49:02'),(11,234,'friar_tuck@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(12,235,'noone@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(13,236,'nobody@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(14,1094,'robin_hood@example.org',0,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(16,1947,'ws1@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(17,4159,'alan_a_dale@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(18,5,'robin_munn@sil.org',1,1,'2020-08-14 12:34:56','2020-08-14 12:34:56');
+DROP TABLE IF EXISTS "enabled_modules";
 CREATE TABLE "enabled_modules" (
     "id" integer NOT NULL,
     "project_id" integer DEFAULT NULL,
@@ -200,6 +218,7 @@ CREATE TABLE "enabled_modules" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "enumerations";
 CREATE TABLE "enumerations" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
@@ -213,12 +232,14 @@ CREATE TABLE "enumerations" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "groups_users";
 CREATE TABLE "groups_users" (
     "group_id" integer NOT NULL,
     "user_id" integer NOT NULL,
     UNIQUE ("group_id","user_id")
 );
 
+DROP TABLE IF EXISTS "import_items";
 CREATE TABLE "import_items" (
     "id" integer NOT NULL,
     "import_id" integer NOT NULL,
@@ -228,6 +249,7 @@ CREATE TABLE "import_items" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "imports";
 CREATE TABLE "imports" (
     "id" integer NOT NULL,
     "type" varchar(510) DEFAULT NULL,
@@ -241,6 +263,7 @@ CREATE TABLE "imports" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "issue_categories";
 CREATE TABLE "issue_categories" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL DEFAULT '0',
@@ -249,6 +272,7 @@ CREATE TABLE "issue_categories" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "issue_relations";
 CREATE TABLE "issue_relations" (
     "id" integer NOT NULL,
     "issue_from_id" integer NOT NULL,
@@ -259,6 +283,7 @@ CREATE TABLE "issue_relations" (
     UNIQUE ("issue_from_id","issue_to_id")
 );
 
+DROP TABLE IF EXISTS "issue_statuses";
 CREATE TABLE "issue_statuses" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
@@ -268,6 +293,7 @@ CREATE TABLE "issue_statuses" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "issues";
 CREATE TABLE "issues" (
     "id" integer NOT NULL,
     "tracker_id" integer NOT NULL,
@@ -296,6 +322,7 @@ CREATE TABLE "issues" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "journal_details";
 CREATE TABLE "journal_details" (
     "id" integer NOT NULL,
     "journal_id" integer NOT NULL DEFAULT '0',
@@ -306,6 +333,7 @@ CREATE TABLE "journal_details" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "journals";
 CREATE TABLE "journals" (
     "id" integer NOT NULL,
     "journalized_id" integer NOT NULL DEFAULT '0',
@@ -317,6 +345,7 @@ CREATE TABLE "journals" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "member_roles";
 CREATE TABLE "member_roles" (
     "id" integer NOT NULL,
     "member_id" integer NOT NULL,
@@ -326,6 +355,7 @@ CREATE TABLE "member_roles" (
 );
 
 INSERT INTO "member_roles" VALUES (1,2,3,NULL),(2,3,4,NULL),(3,4,4,NULL),(4,5,3,NULL),(5,6,4,NULL),(6,7,3,NULL),(7,8,6,NULL),(8,8,3,NULL),(9,9,3,NULL),(45,69,3,NULL),(46,70,4,NULL),(352,500,3,NULL),(361,509,5,NULL),(3715,4822,4,NULL),(5606,7115,3,NULL),(6605,8250,3,NULL),(6607,8251,3,6605),(6608,8252,3,6605),(6614,8259,3,NULL),(6617,8262,3,NULL),(6618,8263,3,NULL),(7047,8692,3,NULL),(7102,8747,6,NULL),(7162,8807,4,NULL),(7795,9440,3,NULL);
+DROP TABLE IF EXISTS "members";
 CREATE TABLE "members" (
     "id" integer NOT NULL,
     "user_id" integer NOT NULL DEFAULT '0',
@@ -337,6 +367,7 @@ CREATE TABLE "members" (
 );
 
 INSERT INTO "members" VALUES (2,10,2,'2009-07-27 02:03:33',0),(3,20,2,'2009-07-27 02:03:33',0),(4,170,2,'2017-01-02 03:04:55',0),(5,11,3,'2009-07-27 02:03:33',0),(6,21,3,'2009-07-27 02:03:33',0),(7,170,3,'2017-01-02 03:04:55',0),(8,170,4,'2017-02-02 04:04:55',0),(9,170,7,'2017-02-02 04:04:55',0),(69,3,9,'2009-10-12 03:42:10',0),(70,20,9,'2009-10-12 03:42:19',0),(500,234,9,'2011-09-13 06:26:57',0),(509,256,9,'2011-10-12 06:03:49',0),(4822,234,1289,'2016-08-29 09:55:07',0),(7115,1947,1894,'2018-07-23 10:11:19',0),(8250,1094,2145,'2019-10-08 04:06:52',0),(8251,1094,2146,'2019-10-08 04:09:24',0),(8252,1094,2147,'2019-10-09 05:21:30',0),(8259,4159,2150,'2019-10-18 14:00:00',0),(8262,4159,2152,'2019-10-22 20:36:13',0),(8263,234,2153,'2019-10-24 07:09:46',0),(8692,1094,2255,'2021-02-18 10:50:32',0),(8747,5,1289,'2021-02-18 17:12:08',0),(8807,1094,1289,'2021-02-23 11:33:58',0),(9440,1094,9,'2021-04-19 14:24:47',0);
+DROP TABLE IF EXISTS "messages";
 CREATE TABLE "messages" (
     "id" integer NOT NULL,
     "board_id" integer NOT NULL,
@@ -353,6 +384,7 @@ CREATE TABLE "messages" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "news";
 CREATE TABLE "news" (
     "id" integer NOT NULL,
     "project_id" integer DEFAULT NULL,
@@ -365,6 +397,7 @@ CREATE TABLE "news" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "open_id_authentication_associations";
 CREATE TABLE "open_id_authentication_associations" (
     "id" integer NOT NULL,
     "issued" integer DEFAULT NULL,
@@ -376,6 +409,7 @@ CREATE TABLE "open_id_authentication_associations" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "open_id_authentication_nonces";
 CREATE TABLE "open_id_authentication_nonces" (
     "id" integer NOT NULL,
     "timestamp" integer NOT NULL,
@@ -384,21 +418,25 @@ CREATE TABLE "open_id_authentication_nonces" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "phantom1";
 CREATE TABLE "phantom1" (
     "id" int4 NOT NULL,
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "phantom2";
 CREATE TABLE "phantom2" (
     "id" int4 NOT NULL,
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "plugin_schema_info";
 CREATE TABLE "plugin_schema_info" (
     "plugin_name" varchar(510) DEFAULT NULL,
     "version" integer DEFAULT NULL
 );
 
+DROP TABLE IF EXISTS "projects";
 CREATE TABLE "projects" (
     "id" integer NOT NULL,
     "name" varchar(510) NOT NULL DEFAULT '',
@@ -419,12 +457,14 @@ CREATE TABLE "projects" (
 );
 
 INSERT INTO "projects" VALUES (1,'LD Test','LD API Test project','',0,NULL,'2009-07-23 09:56:52','2017-02-24 09:56:52','ld-test',1,NULL,NULL,0,NULL,NULL),(2,'LD Test Dictionary','LD API Test Dictionary project','',1,NULL,'2011-07-24 05:24:19','2017-02-24 02:33:33','test-ld-dictionary',1,3,4,0,NULL,NULL),(3,'LD API Test Flex','LD API Test FLEx project','',1,NULL,'2012-09-21 02:44:47','2017-02-24 02:44:47','test-ld-flex',1,5,6,0,NULL,NULL),(4,'LD API Test Demo','LD API Test Demo project','',1,NULL,'2013-09-21 02:44:47','2017-02-24 02:44:47','test-ld-demo',1,7,8,0,NULL,NULL),(5,'LD API Test AdaptIT','LD API Test AdaptIT project','',1,NULL,'2014-09-21 02:44:47','2017-02-24 02:44:47','test-ld-adapt',1,9,10,0,NULL,NULL),(6,'LD API Test Training','LD API Test Training project','',1,NULL,'2015-09-21 02:44:47','2017-02-24 02:44:47','test-ld-training',1,11,12,0,NULL,NULL),(7,'LD API UTF8 E�coding','LD API Test UTF8 E�coding project','',1,NULL,'2016-08-10 07:30:45','2017-03-01 08:10:20','test-ld-�tf8',1,13,14,0,NULL,NULL),(9,'Thai Food Dictionary','A picture dictionary of Thai food.','',1,NULL,'2009-10-12 03:41:53','2021-04-19 14:24:47','tha-food',1,17,18,0,NULL,NULL),(1289,'Sherwood TestSena3 03','','',1,NULL,'2016-08-25 07:58:11','2021-02-23 11:33:58','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),(1894,'test-ws-1-flex','','',1,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),(2145,'Robin Test Projects','Test projects for Robin Hood testing Send/Receive scenarios','',1,NULL,'2019-10-08 04:06:32','2019-10-08 04:06:32','robin-test-projects',1,3999,4022,0,NULL,NULL),(2146,'Robin Test FLEx new public','','',1,2145,'2019-10-08 04:09:24','2019-10-08 04:09:24','test-robin-flex-new-public',1,4008,4009,1,NULL,NULL),(2147,'Robin new public 2','','',1,2145,'2019-10-09 05:21:30','2019-10-09 05:21:30','test-robin-new-public-2',1,4000,4001,1,NULL,NULL),(2150,'Alan_test','To test hg pull/push','',1,NULL,'2019-10-18 13:59:45','2019-10-22 20:13:53','alan_test',5,3997,3998,0,NULL,NULL),(2152,'aland_test','hg pull/push tests','',1,NULL,'2019-10-22 20:34:59','2019-10-22 20:34:59','aland_test',1,3995,3996,0,NULL,NULL),(2153,'tha-food2','','',1,NULL,'2019-10-24 07:06:20','2019-10-24 07:06:20','tha-food2',1,4023,4024,0,NULL,NULL),(2255,'New project via POST','testing POST','',1,NULL,'2021-02-18 10:50:31','2021-02-18 11:03:36','new-project-via-post',1,NULL,NULL,0,NULL,NULL);
+DROP TABLE IF EXISTS "projects_trackers";
 CREATE TABLE "projects_trackers" (
     "project_id" integer NOT NULL DEFAULT '0',
     "tracker_id" integer NOT NULL DEFAULT '0',
     UNIQUE ("project_id","tracker_id")
 );
 
+DROP TABLE IF EXISTS "queries";
 CREATE TABLE "queries" (
     "id" integer NOT NULL,
     "project_id" integer DEFAULT NULL,
@@ -440,12 +480,14 @@ CREATE TABLE "queries" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "queries_roles";
 CREATE TABLE "queries_roles" (
     "query_id" integer NOT NULL,
     "role_id" integer NOT NULL,
     UNIQUE ("query_id","role_id")
 );
 
+DROP TABLE IF EXISTS "repositories";
 CREATE TABLE "repositories" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL DEFAULT '0',
@@ -463,6 +505,7 @@ CREATE TABLE "repositories" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "roles";
 CREATE TABLE "roles" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
@@ -479,17 +522,20 @@ CREATE TABLE "roles" (
 );
 
 INSERT INTO "roles" VALUES (1,'Non member',1,1,1,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(2,'Anonymous',2,1,2,'--- \n- :view_documents\n- :view_files\n- :view_gantt\n- :view_calendar\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(3,'Manager',3,1,0,'--- \n- :edit_project\n- :select_project_modules\n- :manage_members\n- :manage_versions\n- :manage_boards\n- :add_messages\n- :edit_messages\n- :edit_own_messages\n- :delete_messages\n- :delete_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_issue_notes\n- :edit_own_issue_notes\n- :move_issues\n- :delete_issues\n- :manage_public_queries\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :add_issue_watchers\n- :manage_news\n- :comment_news\n- :manage_repository\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :edit_time_entries\n- :edit_own_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(4,'Contributor',4,1,0,'--- \n- :manage_versions\n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_own_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :manage_news\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(5,'Obv - do not use',5,1,0,'--- \n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :log_time\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(6,'LanguageDepotProgrammer',6,1,0,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :view_time_entries\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL);
+DROP TABLE IF EXISTS "roles_managed_roles";
 CREATE TABLE "roles_managed_roles" (
     "role_id" integer NOT NULL,
     "managed_role_id" integer NOT NULL,
     UNIQUE ("role_id","managed_role_id")
 );
 
+DROP TABLE IF EXISTS "schema_migrations";
 CREATE TABLE "schema_migrations" (
     "version" varchar(510) NOT NULL,
     UNIQUE ("version")
 );
 
+DROP TABLE IF EXISTS "settings";
 CREATE TABLE "settings" (
     "id" integer NOT NULL,
     "name" varchar(510) NOT NULL DEFAULT '',
@@ -498,6 +544,7 @@ CREATE TABLE "settings" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "time_entries";
 CREATE TABLE "time_entries" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL,
@@ -515,6 +562,7 @@ CREATE TABLE "time_entries" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "tokens";
 CREATE TABLE "tokens" (
     "id" integer NOT NULL,
     "user_id" integer NOT NULL DEFAULT '0',
@@ -526,6 +574,7 @@ CREATE TABLE "tokens" (
     UNIQUE ("value")
 );
 
+DROP TABLE IF EXISTS "trackers";
 CREATE TABLE "trackers" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
@@ -538,6 +587,7 @@ CREATE TABLE "trackers" (
 );
 
 INSERT INTO "trackers" VALUES (1,'Bug',1,1,0,0,1),(2,'Feature',1,2,1,0,1),(3,'Support',0,3,0,0,1);
+DROP TABLE IF EXISTS "user_preferences";
 CREATE TABLE "user_preferences" (
     "id" integer NOT NULL,
     "user_id" integer NOT NULL DEFAULT '0',
@@ -547,6 +597,7 @@ CREATE TABLE "user_preferences" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "users";
 CREATE TABLE "users" (
     "id" integer NOT NULL,
     "login" varchar(510) NOT NULL DEFAULT '',
@@ -570,6 +621,7 @@ CREATE TABLE "users" (
 );
 
 INSERT INTO "users" VALUES (1,'admin','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Admin','User',1,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'all','c5acc2da57548ddb2f1a228fab5c0071',0,'2019-10-15 07:45:50'),(2,'','','','Anonymous',0,0,NULL,'',NULL,'2009-07-22 08:44:34','2009-07-22 08:44:34','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(3,'richard','','Richard','Lionheart',1,1,'2019-05-31 07:05:05','en',NULL,'2009-07-23 08:40:51','2019-05-31 07:05:05','User',NULL,'only_my_events','3fd636ad724f378e648c343def141bcb',0,NULL),(4,'prince_john','','Prince','John',1,1,'2018-05-30 19:39:34','en',NULL,'2009-07-23 10:40:09','2018-05-30 19:39:34','User',NULL,'all','aa9ba054485f376979dfd561cd69dbf8',0,NULL),(5,'rmunn','','Robin','Munn',1,1,'2020-08-10 12:34:56','en',NULL,'2020-08-10 12:34:56','2020-08-10 12:34:56','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',0,NULL),(10,'manager1','bc852d2e71e76cf734e3a4b74619bc28d867c8bd','Manager1','User',0,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(11,'manager2','5857a28060d630a5ed9e0bfd4e6e17a76fa41b79','Manager2','User',0,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(20,'user1','02484720fe235a6fa352ffa0d5dac80897008ec0','User','One',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(21,'user2','3dd4ba95e5e68cd43d430a1a2d74a9ce75957be9','User','Two',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(22,'Upper','721c93a8a9238620123d3bcfa670ce56','Upper','Case',0,1,'2015-10-21 09:08:39','en',NULL,'2015-10-16 09:08:39','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(30,'modify','9f37b795e5468cdf3e4a0a4a2d54698e056556e7','Modify','User',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(170,'test','d8bebbafb32fbb0545773ce30dbcfb29e7573050','Test','Palaso',0,1,'2015-10-16 09:08:39','en',NULL,'2010-09-09 03:29:15','2012-08-30 09:49:02','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(234,'tuck','08099b4bf0670e72f2a1a364e417bcf9b8a8b681','Friar','Tuck',1,1,'2019-10-24 07:15:55','en',NULL,'2011-02-03 02:25:45','2019-08-23 04:38:34','User',NULL,'only_my_events','1713448be6bb43818d5067b3f3110052',0,NULL),(235,'guest','','Guest','Observer',0,1,'2013-02-27 08:43:53','en',NULL,'2011-02-03 06:48:14','2013-02-27 08:43:53','User',NULL,'only_my_events','0e2663561e75495bbe8f24d98c7b14af',0,NULL),(256,'guest-palaso','','Guest','Palaso',0,1,NULL,'en',NULL,'2011-03-10 08:20:05','2011-03-10 08:20:05','User',NULL,'only_my_events','75a51aa7977a4966ad775e90215d581e',0,NULL),(1094,'rhood','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Robin','Hood',1,1,'2019-10-30 08:07:45','en',NULL,'2014-02-04 03:59:06','2019-10-15 07:45:50','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',0,'2019-10-15 07:45:50'),(1947,'willscarlet','','Will','Scarlet',1,1,'2019-09-27 15:42:25','en',NULL,'2015-10-14 05:54:01','2019-09-27 15:42:25','User',NULL,'only_my_events','981f7ecfdb494e01a133ea5813cb4f3a',0,NULL),(4159,'adale','','Alan','a Dale',1,1,'2019-10-30 13:21:01','en',NULL,'2019-07-25 14:14:46','2019-10-03 22:05:18','User',NULL,'only_my_events','eebaa2330def4e51be7fe5587baf18d0',0,NULL);
+DROP TABLE IF EXISTS "versions";
 CREATE TABLE "versions" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL DEFAULT '0',
@@ -584,6 +636,7 @@ CREATE TABLE "versions" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "watchers";
 CREATE TABLE "watchers" (
     "id" integer NOT NULL,
     "watchable_type" varchar(510) NOT NULL DEFAULT '',
@@ -592,6 +645,7 @@ CREATE TABLE "watchers" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "wiki_content_versions";
 CREATE TABLE "wiki_content_versions" (
     "id" integer NOT NULL,
     "wiki_content_id" integer NOT NULL,
@@ -605,6 +659,7 @@ CREATE TABLE "wiki_content_versions" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "wiki_contents";
 CREATE TABLE "wiki_contents" (
     "id" integer NOT NULL,
     "page_id" integer NOT NULL,
@@ -616,6 +671,7 @@ CREATE TABLE "wiki_contents" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "wiki_pages";
 CREATE TABLE "wiki_pages" (
     "id" integer NOT NULL,
     "wiki_id" integer NOT NULL,
@@ -626,6 +682,7 @@ CREATE TABLE "wiki_pages" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "wiki_redirects";
 CREATE TABLE "wiki_redirects" (
     "id" integer NOT NULL,
     "wiki_id" integer NOT NULL,
@@ -636,6 +693,7 @@ CREATE TABLE "wiki_redirects" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "wikis";
 CREATE TABLE "wikis" (
     "id" integer NOT NULL,
     "project_id" integer NOT NULL,
@@ -644,6 +702,7 @@ CREATE TABLE "wikis" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "workflows";
 CREATE TABLE "workflows" (
     "id" integer NOT NULL,
     "tracker_id" integer NOT NULL DEFAULT '0',
