@@ -418,13 +418,13 @@ CREATE TABLE "open_id_authentication_nonces" (
     PRIMARY KEY ("id")
 );
 
+DROP TABLE IF EXISTS "phantom2";
 DROP TABLE IF EXISTS "phantom1";
 CREATE TABLE "phantom1" (
     "id" int4 NOT NULL,
     PRIMARY KEY ("id")
 );
 
-DROP TABLE IF EXISTS "phantom2";
 CREATE TABLE "phantom2" (
     "id" int4 NOT NULL,
     PRIMARY KEY ("id")
