@@ -1,6 +1,6 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const loginUtils = require('./loginUtils')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import { verifyToken } from './loginUtils.js'
 
 describe('GET /api/v2/login', function() {
 
@@ -45,7 +45,7 @@ describe('GET /api/v2/login', function() {
         expect(result.body.token_type).to.equal('JWT')
         this.token = result.body.access_token
         expect(this.token).to.be.a('string')
-        return loginUtils.verifyToken(this.token)  // Will cause test failure if verifyToken returns rejected promise
+        return verifyToken(this.token)  // Will cause test failure if verifyToken returns rejected promise
     })
 
     it('routes that require auth will return 401 when no token provided', async function() {

@@ -1,6 +1,6 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const jwt = require('jsonwebtoken')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import jwt from 'jsonwebtoken'
 
 // Some tests will construct a JWT and make sure it's accepted by the server,
 // so make sure CI passes the same signing key and audience to the tests as the server
@@ -40,4 +40,4 @@ async function getTokenFromCredentials({ username, password } = {}) {
 const managerRoleId = 3;
 const contributorRoleId = 4;
 
-module.exports = { makeJwt, verifyToken, getTokenFromCredentials, managerRoleId, contributorRoleId };
+export { makeJwt, verifyToken, getTokenFromCredentials, managerRoleId, contributorRoleId };

@@ -1,10 +1,10 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const loginUtils = require('./loginUtils')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import { makeJwt } from './loginUtils.js'
 
 describe('/users API route', function() {
     before('set up API', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.testUser = {
             username: 'newTestUser',
             firstname: 'New',
@@ -99,7 +99,7 @@ describe('/users API route', function() {
 
 describe('/users/[username] API route', function() {
     before('set up API', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.projectCode = 'project-for-users-username-route'
         this.projectDetails = {
             projectCode: this.projectCode,
@@ -165,12 +165,12 @@ describe('/users/[username] API route', function() {
     })
 
     it('GET requires authentication as either admin or as the user in question', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api(this.userUrl, {headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(200)
         const unAuthResult = await this.api(this.userUrl)
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api(this.userUrl, {headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
     })
@@ -207,12 +207,12 @@ describe('/users/[username] API route', function() {
     })
 
     it('PUT requires authentication as admin or as the user in question', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api.put(this.userUrl, {json: {...this.testUser, firstname: 'new-name'}, headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(200)
         const unAuthResult = await this.api.put(this.userUrl, {json: {...this.testUser, firstname: 'new-name'}})
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api.put(this.userUrl, {json: {...this.testUser, firstname: 'new-name'}, headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
     })
@@ -255,12 +255,12 @@ describe('/users/[username] API route', function() {
     })
 
     it('PATCH requires authentication as admin or as the user in question', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api.patch(this.userUrl, {json: {firstname: 'new-name'}, headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(200)
         const unAuthResult = await this.api.patch(this.userUrl, {json: {firstname: 'new-name'}})
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api.patch(this.userUrl, {json: {firstname: 'new-name'}, headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
     })
@@ -295,10 +295,10 @@ describe('/users/[username] API route', function() {
     it('DELETE requires authentication as admin or as the user in question', async function() {
         const unAuthResult = await this.api.delete(this.userUrl)
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api.delete(this.userUrl, {headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api.delete(this.userUrl, {headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(204)
         const adminResult = await this.asAdmin.delete(this.userUrl)
@@ -312,7 +312,7 @@ describe('/users/[username] API route', function() {
     })
 
     it('After a user is deleted, user\'s auth tokens are no longer accepted', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api(this.userUrl, {headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(403)
     })
@@ -320,7 +320,7 @@ describe('/users/[username] API route', function() {
 
 describe('/users/[username]/projects API route', function() {
     before('set up API', async function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.testUser = {
             username: 'newTestUser',
             firstname: 'New',
@@ -329,7 +329,7 @@ describe('/users/[username]/projects API route', function() {
             password: 'x',
             admin: 0,
         }
-        this.testUserToken = loginUtils.makeJwt(this.testUser.username)
+        this.testUserToken = makeJwt(this.testUser.username)
 
         this.projectCode = 'project-for-projects-route'
         this.projectDetails = {
@@ -375,12 +375,12 @@ describe('/users/[username]/projects API route', function() {
     })
 
     it('GET requires authentication as either admin or as the user in question', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api(this.userProjectsUrl, {headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(200)
         const unAuthResult = await this.api(this.userProjectsUrl)
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api(this.userProjectsUrl, {headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
     })
@@ -425,12 +425,12 @@ describe('/users/[username]/projects API route', function() {
     }
 
     it('GET of .../withRole/role endpoint requires authentication as either admin or as the user in question', async function() {
-        const userToken = loginUtils.makeJwt(this.testUser.username)
+        const userToken = makeJwt(this.testUser.username)
         const result = await this.api(`${this.userProjectsWithRoleUrl}/3`, {headers: {authorization: `Bearer ${userToken}`}})
         expect(result.statusCode).to.equal(200)
         const unAuthResult = await this.api(`${this.userProjectsWithRoleUrl}/3`)
         expect(unAuthResult.statusCode).to.equal(401)
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const wrongAuthResult = await this.api(`${this.userProjectsWithRoleUrl}/3`, {headers: {authorization: `Bearer ${manager1Token}`}})
         expect(wrongAuthResult.statusCode).to.equal(403)
     })

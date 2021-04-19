@@ -1,36 +1,36 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const loginUtils = require('./loginUtils')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import { makeJwt } from './loginUtils.js'
 
 describe('a project\'s membership list', function() {
     before('get membership list for tests', async function() {
-        this.adminToken = loginUtils.makeJwt('admin')
-        const result = await api('projects/tha-food', {headers: {authorization: `Bearer ${this.adminToken}`}})
-        this.project = result.body
+        this.test.ctx.adminToken = makeJwt('admin')
+        const result = await api('projects/tha-food', {headers: {authorization: `Bearer ${this.test.ctx.adminToken}`}})
+        this.test.ctx.project = result.body
     })
 
     it('should be an array', function() {
-        expect(this.project.members).to.be.an('array')
+        expect(this.test.ctx.project.members).to.be.an('array')
     })
 
     describe('each item in the membership array', function() {        
         it('should contain user and role properties', function() {
-            for (let i = 0; i < this.project.members.length; i++) {
-                const member = this.project.members[i];
+            for (let i = 0; i < this.test.ctx.project.members.length; i++) {
+                const member = this.test.ctx.project.members[i];
                 expect(member).to.have.all.keys('user', 'role')
             }
         })
         
         it('should have user properties with username, firstname, lastname, language and admin properties', function() {
-            for (let i = 0; i < this.project.members.length; i++) {
-                const member = this.project.members[i];
+            for (let i = 0; i < this.test.ctx.project.members.length; i++) {
+                const member = this.test.ctx.project.members[i];
                 expect(member.user).to.include.all.keys('username', 'firstname', 'lastname', 'language', 'admin')
             }
         })
         
         it('should have role properties that are strings', function() {
-            for (let i = 0; i < this.project.members.length; i++) {
-                const member = this.project.members[i];
+            for (let i = 0; i < this.test.ctx.project.members.length; i++) {
+                const member = this.test.ctx.project.members[i];
                 expect(member.role).to.be.a('string')
             }
         })
@@ -62,8 +62,8 @@ const invalidMembershipFormats = [
 
 describe('updating a project\'s membership list', function() {
     before(function() {
-        this.adminToken = loginUtils.makeJwt('admin')
-        this.api = api.extend({throwHttpErrors: false, headers: {authorization: `Bearer ${this.adminToken}`}})
+        this.test.ctx.adminToken = makeJwt('admin')
+        this.test.ctx.api = api.extend({throwHttpErrors: false, headers: {authorization: `Bearer ${this.test.ctx.adminToken}`}})
     })
     async function checkUserExists(expectedRole) {
         const response = await api('projects/tha-food/user/rhood', {throwHttpErrors: false, headers: {authorization: `Bearer ${this.adminToken}`}})
@@ -77,61 +77,61 @@ describe('updating a project\'s membership list', function() {
     }
 
     it('can be done by POST', async function() {
-        await this.api.delete('projects/tha-food/user/rhood')
-        const response = await this.api.post('projects/tha-food/user/rhood/withRole/Manager')
+        await this.test.ctx.api.delete('projects/tha-food/user/rhood')
+        const response = await this.test.ctx.api.post('projects/tha-food/user/rhood/withRole/Manager')
         expect(response.statusCode).to.be.within(200, 299);
-        await checkUserExists('Manager')
+        await checkUserExists.bind(this.test.ctx, 'Manager')
     })
 
     it('can be done by PATCH', async function() {
-        await this.api.delete('projects/tha-food/user/rhood')
-        const response = await this.api.patch('projects/tha-food', {json: {members: {add: { user: 'rhood', role: {name: 'Manager'} }}}})
+        await this.test.ctx.api.delete('projects/tha-food/user/rhood')
+        const response = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {add: { user: 'rhood', role: {name: 'Manager'} }}}})
         expect(response.statusCode).to.be.within(200, 299);
-        await checkUserExists('Manager')
+        await checkUserExists.bind(this.test.ctx, 'Manager')
     })
 
     for (const membership of validMembershipFormats) {
         it(`accepts multiple syntaxes: ${JSON.stringify(membership)}`, async function() {
-            const addResponse = await this.api.patch('projects/tha-food', {json: {members: {add: membership}}})
+            const addResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {add: membership}}})
             expect(addResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in add operation`);
-            await checkUserExists(membership.role ? 'Manager' : 'Contributor')
-            const removeResponse = await this.api.patch('projects/tha-food', {json: {members: {remove: membership}}})
+            await checkUserExists.bind(this.test.ctx, membership.role ? 'Manager' : 'Contributor')
+            const removeResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {remove: membership}}})
             expect(removeResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in remove operation`);
-            await checkUserDoesNotExist()
+            await checkUserDoesNotExist.bind(this.test.ctx)
         })
 
         if (typeof membership === 'string') {
             it('accepts backwards-compatibility removeUser syntax for strings only', async function() {
-                await this.api.post(`projects/tha-food/user/rhood/withRole/Manager`)
-                await checkUserExists('Manager')
-                const removeResponse = await this.api.patch('projects/tha-food', {json: {members: {removeUser: membership}}})
+                await this.test.ctx.api.post(`projects/tha-food/user/rhood/withRole/Manager`)
+                await checkUserExists.bind(this.test.ctx, 'Manager')
+                const removeResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {removeUser: membership}}})
                 expect(removeResponse.statusCode).to.be.within(200, 299, `${JSON.stringify(membership)} was not accepted as a syntax in removeUser operation`);
-                await checkUserDoesNotExist()
+                await checkUserDoesNotExist.bind(this.test.ctx)
             })
         } else {
             it(`rejects backwards-compatibility removeUser syntax for non-string membership formats: ${JSON.stringify(membership)}`, async function() {
-                await this.api.post(`projects/tha-food/user/rhood/withRole/Manager`)
-                await checkUserExists('Manager')
-                const removeResponse = await this.api.patch('projects/tha-food', {json: {members: {removeUser: membership}}})
+                await this.test.ctx.api.post(`projects/tha-food/user/rhood/withRole/Manager`)
+                await checkUserExists.bind(this.test.ctx, 'Manager')
+                const removeResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {removeUser: membership}}})
                 expect(removeResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in removeUser operation`);
-                await checkUserExists('Manager')
+                await checkUserExists.bind(this.test.ctx, 'Manager')
             })
         }
     }
 
     for (const membership of invalidMembershipFormats) {
         it(`rejects invalid syntaxes: ${JSON.stringify(membership)}`, async function() {
-            await this.api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
-            const addResponse = await this.api.patch('projects/tha-food', {json: {members: {add: membership}}})
+            await this.test.ctx.api.delete('projects/tha-food/user/rhood', {throwHttpErrors: false})
+            const addResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {add: membership}}})
             expect(addResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in add operation`);
-            await checkUserDoesNotExist()
+            await checkUserDoesNotExist.bind(this.test.ctx)
             // Now add the user with a valid syntax, then remove the user with an invalid syntax, and they should still exist in the project
-            const validAddResponse = await this.api.patch('projects/tha-food', {json: {members: {add: {user: 'rhood', role: 'Manager' }}}})
+            const validAddResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {add: {user: 'rhood', role: 'Manager' }}}})
             expect(validAddResponse.statusCode).to.be.within(200, 399, `failed to add user with valid syntax during the invalid-syntax test for ${JSON.stringify(membership)}`);
-            await checkUserExists('Manager')
-            const removeResponse = await this.api.patch('projects/tha-food', {json: {members: {remove: membership}}})
+            await checkUserExists.bind(this.test.ctx, 'Manager')
+            const removeResponse = await this.test.ctx.api.patch('projects/tha-food', {json: {members: {remove: membership}}})
             expect(removeResponse.statusCode).to.be.within(400, 599, `${JSON.stringify(membership)} was not rejected as a syntax error in remove operation`);
-            await checkUserExists('Manager')
+            await checkUserExists.bind(this.test.ctx, 'Manager')
         })
     }
 })

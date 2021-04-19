@@ -1,10 +1,10 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const loginUtils = require('./loginUtils')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import { makeJwt } from './loginUtils.js'
 
 describe('/projects API route', function() {
     before('set up API', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.projectCode = 'project-for-projects-route'
         this.projectDetails = {
             projectCode: this.projectCode,
@@ -60,7 +60,7 @@ describe('/projects API route', function() {
     })
 
     it('POST /projects when the project already exists requires a project manager', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await this.api.post('projects', {
             json: {...this.projectDetails, name: 'name-changed-by-non-manager'},
             headers: {authorization: `Bearer ${user1Token}`}
@@ -85,7 +85,7 @@ describe('/projects API route', function() {
 
 describe('/projects/[projectCode] API route', function() {
     before('set up API', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.projectCode = 'project-for-projects-projectCode-route'
         this.projectDetails = {
             projectCode: this.projectCode,
@@ -125,7 +125,7 @@ describe('/projects/[projectCode] API route', function() {
     })
 
     it('PUT when the project already exists requires a project manager', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await this.api.put(this.projectUrl, {
             json: {...this.projectDetails, name: 'name-changed-by-non-manager'},
             headers: {authorization: `Bearer ${user1Token}`}
@@ -157,7 +157,7 @@ describe('/projects/[projectCode] API route', function() {
     it('GET requires authenticated user who is either an admin or a project manager', async function() {
         const noAuth = await this.api(this.projectUrl, {headers: {authorization: undefined}})
         expect(noAuth.statusCode).to.equal(401)
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const wrongAuth = await this.api(this.projectUrl, {headers: {authorization: `Bearer ${user1Token}`}})
         expect(wrongAuth.statusCode).to.equal(403)
     })
@@ -178,7 +178,7 @@ describe('/projects/[projectCode] API route', function() {
     it('PATCH requires authenticated user who is either an admin or a project manager', async function() {
         const noAuth = await this.api.patch(this.projectUrl, {headers: {authorization: undefined}, json: {}})
         expect(noAuth.statusCode).to.equal(401)
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const wrongAuth = await this.api.patch(this.projectUrl, {headers: {authorization: `Bearer ${user1Token}`}, json: {}})
         expect(wrongAuth.statusCode).to.equal(403)
     })
@@ -197,7 +197,7 @@ describe('/projects/[projectCode] API route', function() {
 
 describe('/projects/[projectCode]/user/[username] API route', function() {
     before('set up', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.projectCode = 'project-for-projects-projectCode-user-username-route'
         this.projectDetails = {
             projectCode: this.projectCode,

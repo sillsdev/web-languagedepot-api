@@ -1,5 +1,5 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
 
 describe('GET /api/v2/roles', function() {
 

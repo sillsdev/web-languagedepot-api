@@ -1,10 +1,10 @@
-const api = require('./testsetup').apiv2
-const expect = require('chai').expect
-const loginUtils = require('./loginUtils')
+import { apiv2 as api } from './testsetup.js'
+import { expect } from 'chai'
+import { makeJwt, managerRoleId, contributorRoleId } from './loginUtils.js'
 
 describe('Scenario 1: admin creates new project, becomes manager of project by default, can add other managers later', function() {
     before('get login token', function() {
-        this.adminToken = loginUtils.makeJwt('admin')
+        this.adminToken = makeJwt('admin')
         this.projectCode = 'project-for-scenario-1'
     })
 
@@ -41,7 +41,7 @@ describe('Scenario 1: admin creates new project, becomes manager of project by d
     })
 
     it('step 3: manager1 should not have access to project', async function() {
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const result = await api(`projects/${this.projectCode}`, { headers: {authorization: `Bearer ${manager1Token}`}, throwHttpErrors: false })
         expect(result.statusCode).to.equal(403)
     })
@@ -51,55 +51,55 @@ describe('Scenario 1: admin creates new project, becomes manager of project by d
             headers: {authorization: `Bearer ${this.adminToken}`},
             throwHttpErrors: false,
             json: {
-                members: { add: { user: 'manager1', role: loginUtils.managerRoleId }}
+                members: { add: { user: 'manager1', role: managerRoleId }}
             }
         })
         expect(result.statusCode).to.equal(200)
     })
 
     it('step 5: manager1 should have access to project now', async function() {
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const result = await api(`projects/${this.projectCode}`, { headers: {authorization: `Bearer ${manager1Token}`}, throwHttpErrors: false })
         expect(result.statusCode).to.equal(200)
     })
 
     it('step 6: manager1 can add user1 to project as regular contributor', async function() {
-        const manager1Token = loginUtils.makeJwt('manager1')
+        const manager1Token = makeJwt('manager1')
         const result = await api.patch(`projects/${this.projectCode}`, {
             headers: {authorization: `Bearer ${manager1Token}`},
             throwHttpErrors: false,
             json: {
-                members: { add: { user: 'user1', role: loginUtils.contributorRoleId }}
+                members: { add: { user: 'user1', role: contributorRoleId }}
             }
         })
         expect(result.statusCode).to.equal(200)
     })
 
     it('step 7: user1 can not access project membership list the way the manager can', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await api(`projects/${this.projectCode}`, { headers: {authorization: `Bearer ${user1Token}`}, throwHttpErrors: false })
         expect(result.statusCode).to.equal(403)
     })
 
     it('step 8: user1 can not add other people to the project', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await api.patch(`projects/${this.projectCode}`, {
             headers: {authorization: `Bearer ${user1Token}`},
             throwHttpErrors: false,
             json: {
-                members: { add: { user: 'user2', role: loginUtils.managerRoleId }}
+                members: { add: { user: 'user2', role: managerRoleId }}
             }
         })
         expect(result.statusCode).to.equal(403)
     })
 
     it('step 9: user1 can not promote himself to manager', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await api.patch(`projects/${this.projectCode}`, {
             headers: {authorization: `Bearer ${user1Token}`},
             throwHttpErrors: false,
             json: {
-                members: { add: { user: 'user1', role: loginUtils.managerRoleId }}
+                members: { add: { user: 'user1', role: managerRoleId }}
             }
         })
         expect(result.statusCode).to.equal(403)
@@ -115,12 +115,12 @@ describe('Scenario 1: admin creates new project, becomes manager of project by d
     })
 
     it('step 11: user1 can remove himself from the project', async function() {
-        const user1Token = loginUtils.makeJwt('user1')
+        const user1Token = makeJwt('user1')
         const result = await api.delete(`projects/${this.projectCode}/user/user1`, {
             headers: {authorization: `Bearer ${user1Token}`},
             throwHttpErrors: false,
             json: {
-                members: { add: { user: 'user1', role: loginUtils.managerRoleId }}
+                members: { add: { user: 'user1', role: managerRoleId }}
             }
         })
         expect(result.statusCode).to.be.within(200, 299)
