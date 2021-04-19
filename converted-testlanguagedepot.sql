@@ -43,11 +43,11 @@ CREATE TABLE "auth_sources" (
     "attr_firstname" varchar(60) DEFAULT NULL,
     "attr_lastname" varchar(60) DEFAULT NULL,
     "attr_mail" varchar(60) DEFAULT NULL,
-    "onthefly_register" int4 NOT NULL DEFAULT '0',
-    "tls" int4 NOT NULL DEFAULT '0',
+    "onthefly_register" boolean NOT NULL DEFAULT false,
+    "tls" boolean NOT NULL DEFAULT false,
     "filter" text ,
     "timeout" integer DEFAULT NULL,
-    "verify_peer" int4 NOT NULL DEFAULT '1',
+    "verify_peer" boolean NOT NULL DEFAULT true,
     PRIMARY KEY ("id")
 );
 
@@ -116,7 +116,7 @@ CREATE TABLE "custom_field_enumerations" (
     "id" integer NOT NULL,
     "custom_field_id" integer NOT NULL,
     "name" varchar(510) NOT NULL,
-    "active" int4 NOT NULL DEFAULT '1',
+    "active" boolean NOT NULL DEFAULT true,
     "position" integer NOT NULL DEFAULT '1',
     PRIMARY KEY ("id")
 );
@@ -130,14 +130,14 @@ CREATE TABLE "custom_fields" (
     "regexp" varchar(510) DEFAULT '',
     "min_length" integer DEFAULT NULL,
     "max_length" integer DEFAULT NULL,
-    "is_required" int4 NOT NULL DEFAULT '0',
-    "is_for_all" int4 NOT NULL DEFAULT '0',
-    "is_filter" int4 NOT NULL DEFAULT '0',
+    "is_required" boolean NOT NULL DEFAULT false,
+    "is_for_all" boolean NOT NULL DEFAULT false,
+    "is_filter" boolean NOT NULL DEFAULT false,
     "position" integer DEFAULT NULL,
     "searchable" int4 DEFAULT '0',
     "default_value" text ,
     "editable" int4 DEFAULT '1',
-    "visible" int4 NOT NULL DEFAULT '1',
+    "visible" boolean NOT NULL DEFAULT true,
     "multiple" int4 DEFAULT '0',
     "format_store" text ,
     "description" text ,
@@ -185,8 +185,8 @@ CREATE TABLE "email_addresses" (
     "id" integer NOT NULL,
     "user_id" integer NOT NULL,
     "address" varchar(510) NOT NULL,
-    "is_default" int4 NOT NULL DEFAULT '0',
-    "notify" int4 NOT NULL DEFAULT '1',
+    "is_default" boolean NOT NULL DEFAULT false,
+    "notify" boolean NOT NULL DEFAULT true,
     "created_on" timestamp with time zone NOT NULL,
     "updated_on" timestamp with time zone NOT NULL,
     PRIMARY KEY ("id")
@@ -204,9 +204,9 @@ CREATE TABLE "enumerations" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
     "position" integer DEFAULT NULL,
-    "is_default" int4 NOT NULL DEFAULT '0',
+    "is_default" boolean NOT NULL DEFAULT false,
     "type" varchar(510) DEFAULT NULL,
-    "active" int4 NOT NULL DEFAULT '1',
+    "active" boolean NOT NULL DEFAULT true,
     "project_id" integer DEFAULT NULL,
     "parent_id" integer DEFAULT NULL,
     "position_name" varchar(60) DEFAULT NULL,
@@ -235,7 +235,7 @@ CREATE TABLE "imports" (
     "filename" varchar(510) DEFAULT NULL,
     "settings" text ,
     "total_items" integer DEFAULT NULL,
-    "finished" int4 NOT NULL DEFAULT '0',
+    "finished" boolean NOT NULL DEFAULT false,
     "created_at" timestamp with time zone NOT NULL,
     "updated_at" timestamp with time zone NOT NULL,
     PRIMARY KEY ("id")
@@ -262,7 +262,7 @@ CREATE TABLE "issue_relations" (
 CREATE TABLE "issue_statuses" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
-    "is_closed" int4 NOT NULL DEFAULT '0',
+    "is_closed" boolean NOT NULL DEFAULT false,
     "position" integer DEFAULT NULL,
     "default_done_ratio" integer DEFAULT NULL,
     PRIMARY KEY ("id")
@@ -291,7 +291,7 @@ CREATE TABLE "issues" (
     "root_id" integer DEFAULT NULL,
     "lft" integer DEFAULT NULL,
     "rgt" integer DEFAULT NULL,
-    "is_private" int4 NOT NULL DEFAULT '0',
+    "is_private" boolean NOT NULL DEFAULT false,
     "closed_on" timestamp with time zone DEFAULT NULL,
     PRIMARY KEY ("id")
 );
@@ -313,7 +313,7 @@ CREATE TABLE "journals" (
     "user_id" integer NOT NULL DEFAULT '0',
     "notes" text ,
     "created_on" timestamp with time zone NOT NULL,
-    "private_notes" int4 NOT NULL DEFAULT '0',
+    "private_notes" boolean NOT NULL DEFAULT false,
     PRIMARY KEY ("id")
 );
 
@@ -331,7 +331,7 @@ CREATE TABLE "members" (
     "user_id" integer NOT NULL DEFAULT '0',
     "project_id" integer NOT NULL DEFAULT '0',
     "created_on" timestamp with time zone DEFAULT NULL,
-    "mail_notification" int4 NOT NULL DEFAULT '0',
+    "mail_notification" boolean NOT NULL DEFAULT false,
     PRIMARY KEY ("id"),
     UNIQUE ("user_id","project_id")
 );
@@ -404,7 +404,7 @@ CREATE TABLE "projects" (
     "name" varchar(510) NOT NULL DEFAULT '',
     "description" text ,
     "homepage" varchar(510) DEFAULT '',
-    "is_public" int4 NOT NULL DEFAULT '1',
+    "is_public" boolean NOT NULL DEFAULT true,
     "parent_id" integer DEFAULT NULL,
     "created_on" timestamp with time zone DEFAULT NULL,
     "updated_on" timestamp with time zone DEFAULT NULL,
@@ -412,7 +412,7 @@ CREATE TABLE "projects" (
     "status" integer NOT NULL DEFAULT '1',
     "lft" integer DEFAULT NULL,
     "rgt" integer DEFAULT NULL,
-    "inherit_members" int4 NOT NULL DEFAULT '0',
+    "inherit_members" boolean NOT NULL DEFAULT false,
     "default_version_id" integer DEFAULT NULL,
     "default_assigned_to_id" integer DEFAULT NULL,
     PRIMARY KEY ("id")
@@ -473,7 +473,7 @@ CREATE TABLE "roles" (
     "issues_visibility" varchar(60) NOT NULL DEFAULT 'default',
     "users_visibility" varchar(60) NOT NULL DEFAULT 'all',
     "time_entries_visibility" varchar(60) NOT NULL DEFAULT 'all',
-    "all_roles_managed" int4 NOT NULL DEFAULT '1',
+    "all_roles_managed" boolean NOT NULL DEFAULT true,
     "settings" text ,
     PRIMARY KEY ("id")
 );
@@ -529,9 +529,9 @@ CREATE TABLE "tokens" (
 CREATE TABLE "trackers" (
     "id" integer NOT NULL,
     "name" varchar(60) NOT NULL DEFAULT '',
-    "is_in_chlog" int4 NOT NULL DEFAULT '0',
+    "is_in_chlog" boolean NOT NULL DEFAULT false,
     "position" integer DEFAULT NULL,
-    "is_in_roadmap" int4 NOT NULL DEFAULT '1',
+    "is_in_roadmap" boolean NOT NULL DEFAULT true,
     "fields_bits" integer DEFAULT '0',
     "default_status_id" integer DEFAULT NULL,
     PRIMARY KEY ("id")
@@ -553,7 +553,7 @@ CREATE TABLE "users" (
     "hashed_password" varchar(80) NOT NULL DEFAULT '',
     "firstname" varchar(60) NOT NULL DEFAULT '',
     "lastname" varchar(510) NOT NULL DEFAULT '',
-    "admin" int4 NOT NULL DEFAULT '0',
+    "admin" boolean NOT NULL DEFAULT false,
     "status" integer NOT NULL DEFAULT '1',
     "last_login_on" timestamp with time zone DEFAULT NULL,
     "language" varchar(10) DEFAULT '',
@@ -564,7 +564,7 @@ CREATE TABLE "users" (
     "identity_url" varchar(510) DEFAULT NULL,
     "mail_notification" varchar(510) NOT NULL DEFAULT '',
     "salt" varchar(128) DEFAULT NULL,
-    "must_change_passwd" int4 NOT NULL DEFAULT '0',
+    "must_change_passwd" boolean NOT NULL DEFAULT false,
     "passwd_changed_on" timestamp with time zone DEFAULT NULL,
     PRIMARY KEY ("id")
 );
@@ -621,7 +621,7 @@ CREATE TABLE "wiki_pages" (
     "wiki_id" integer NOT NULL,
     "title" varchar(510) NOT NULL,
     "created_on" timestamp with time zone NOT NULL,
-    "protected" int4 NOT NULL DEFAULT '0',
+    "protected" boolean NOT NULL DEFAULT false,
     "parent_id" integer DEFAULT NULL,
     PRIMARY KEY ("id")
 );
@@ -650,8 +650,8 @@ CREATE TABLE "workflows" (
     "old_status_id" integer NOT NULL DEFAULT '0',
     "new_status_id" integer NOT NULL DEFAULT '0',
     "role_id" integer NOT NULL DEFAULT '0',
-    "assignee" int4 NOT NULL DEFAULT '0',
-    "author" int4 NOT NULL DEFAULT '0',
+    "assignee" boolean NOT NULL DEFAULT false,
+    "author" boolean NOT NULL DEFAULT false,
     "type" varchar(60) DEFAULT NULL,
     "field_name" varchar(60) DEFAULT NULL,
     "rule" varchar(60) DEFAULT NULL,
@@ -662,44 +662,6 @@ CREATE TABLE "workflows" (
 -- Post-data save --
 COMMIT;
 START TRANSACTION;
-
--- Typecasts --
-ALTER TABLE "auth_sources" ALTER COLUMN "onthefly_register" DROP DEFAULT, ALTER COLUMN "onthefly_register" TYPE boolean USING CAST("onthefly_register" as boolean);
-ALTER TABLE "auth_sources" ALTER COLUMN "tls" DROP DEFAULT, ALTER COLUMN "tls" TYPE boolean USING CAST("tls" as boolean);
-ALTER TABLE "auth_sources" ALTER COLUMN "verify_peer" DROP DEFAULT, ALTER COLUMN "verify_peer" TYPE boolean USING CAST("verify_peer" as boolean);
-ALTER TABLE "custom_field_enumerations" ALTER COLUMN "active" DROP DEFAULT, ALTER COLUMN "active" TYPE boolean USING CAST("active" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "is_required" DROP DEFAULT, ALTER COLUMN "is_required" TYPE boolean USING CAST("is_required" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "is_for_all" DROP DEFAULT, ALTER COLUMN "is_for_all" TYPE boolean USING CAST("is_for_all" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "is_filter" DROP DEFAULT, ALTER COLUMN "is_filter" TYPE boolean USING CAST("is_filter" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "searchable" DROP DEFAULT, ALTER COLUMN "searchable" TYPE boolean USING CAST("searchable" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "editable" DROP DEFAULT, ALTER COLUMN "editable" TYPE boolean USING CAST("editable" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "visible" DROP DEFAULT, ALTER COLUMN "visible" TYPE boolean USING CAST("visible" as boolean);
-ALTER TABLE "custom_fields" ALTER COLUMN "multiple" DROP DEFAULT, ALTER COLUMN "multiple" TYPE boolean USING CAST("multiple" as boolean);
-ALTER TABLE "email_addresses" ALTER COLUMN "is_default" DROP DEFAULT, ALTER COLUMN "is_default" TYPE boolean USING CAST("is_default" as boolean);
-ALTER TABLE "email_addresses" ALTER COLUMN "notify" DROP DEFAULT, ALTER COLUMN "notify" TYPE boolean USING CAST("notify" as boolean);
-ALTER TABLE "enumerations" ALTER COLUMN "is_default" DROP DEFAULT, ALTER COLUMN "is_default" TYPE boolean USING CAST("is_default" as boolean);
-ALTER TABLE "enumerations" ALTER COLUMN "active" DROP DEFAULT, ALTER COLUMN "active" TYPE boolean USING CAST("active" as boolean);
-ALTER TABLE "imports" ALTER COLUMN "finished" DROP DEFAULT, ALTER COLUMN "finished" TYPE boolean USING CAST("finished" as boolean);
-ALTER TABLE "issue_statuses" ALTER COLUMN "is_closed" DROP DEFAULT, ALTER COLUMN "is_closed" TYPE boolean USING CAST("is_closed" as boolean);
-ALTER TABLE "issues" ALTER COLUMN "is_private" DROP DEFAULT, ALTER COLUMN "is_private" TYPE boolean USING CAST("is_private" as boolean);
-ALTER TABLE "journals" ALTER COLUMN "private_notes" DROP DEFAULT, ALTER COLUMN "private_notes" TYPE boolean USING CAST("private_notes" as boolean);
-ALTER TABLE "members" ALTER COLUMN "mail_notification" DROP DEFAULT, ALTER COLUMN "mail_notification" TYPE boolean USING CAST("mail_notification" as boolean);
-ALTER TABLE "messages" ALTER COLUMN "locked" DROP DEFAULT, ALTER COLUMN "locked" TYPE boolean USING CAST("locked" as boolean);
-ALTER TABLE "phantom1" ALTER COLUMN "id" DROP DEFAULT, ALTER COLUMN "id" TYPE boolean USING CAST("id" as boolean);
-ALTER TABLE "phantom2" ALTER COLUMN "id" DROP DEFAULT, ALTER COLUMN "id" TYPE boolean USING CAST("id" as boolean);
-ALTER TABLE "projects" ALTER COLUMN "is_public" DROP DEFAULT, ALTER COLUMN "is_public" TYPE boolean USING CAST("is_public" as boolean);
-ALTER TABLE "projects" ALTER COLUMN "inherit_members" DROP DEFAULT, ALTER COLUMN "inherit_members" TYPE boolean USING CAST("inherit_members" as boolean);
-ALTER TABLE "repositories" ALTER COLUMN "is_default" DROP DEFAULT, ALTER COLUMN "is_default" TYPE boolean USING CAST("is_default" as boolean);
-ALTER TABLE "roles" ALTER COLUMN "assignable" DROP DEFAULT, ALTER COLUMN "assignable" TYPE boolean USING CAST("assignable" as boolean);
-ALTER TABLE "roles" ALTER COLUMN "all_roles_managed" DROP DEFAULT, ALTER COLUMN "all_roles_managed" TYPE boolean USING CAST("all_roles_managed" as boolean);
-ALTER TABLE "trackers" ALTER COLUMN "is_in_chlog" DROP DEFAULT, ALTER COLUMN "is_in_chlog" TYPE boolean USING CAST("is_in_chlog" as boolean);
-ALTER TABLE "trackers" ALTER COLUMN "is_in_roadmap" DROP DEFAULT, ALTER COLUMN "is_in_roadmap" TYPE boolean USING CAST("is_in_roadmap" as boolean);
-ALTER TABLE "user_preferences" ALTER COLUMN "hide_mail" DROP DEFAULT, ALTER COLUMN "hide_mail" TYPE boolean USING CAST("hide_mail" as boolean);
-ALTER TABLE "users" ALTER COLUMN "admin" DROP DEFAULT, ALTER COLUMN "admin" TYPE boolean USING CAST("admin" as boolean);
-ALTER TABLE "users" ALTER COLUMN "must_change_passwd" DROP DEFAULT, ALTER COLUMN "must_change_passwd" TYPE boolean USING CAST("must_change_passwd" as boolean);
-ALTER TABLE "wiki_pages" ALTER COLUMN "protected" DROP DEFAULT, ALTER COLUMN "protected" TYPE boolean USING CAST("protected" as boolean);
-ALTER TABLE "workflows" ALTER COLUMN "assignee" DROP DEFAULT, ALTER COLUMN "assignee" TYPE boolean USING CAST("assignee" as boolean);
-ALTER TABLE "workflows" ALTER COLUMN "author" DROP DEFAULT, ALTER COLUMN "author" TYPE boolean USING CAST("author" as boolean);
 
 -- Foreign keys --
 ALTER TABLE "phantom2" ADD CONSTRAINT "id_fkey" FOREIGN KEY ("id") REFERENCES "phantom1" ("id") DEFERRABLE INITIALLY DEFERRED;
