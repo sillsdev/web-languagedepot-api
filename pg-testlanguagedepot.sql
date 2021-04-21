@@ -1,1777 +1,921 @@
--- MySQL dump 10.13  Distrib 5.7.33, for Linux (x86_64)
---
--- Host: localhost    Database: testldapi
--- ------------------------------------------------------
--- Server version	5.7.33-0ubuntu0.18.04.1
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO,POSTGRESQL' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table "ar_internal_metadata"
---
+-- Converted by db_converter
+START TRANSACTION;
+SET standard_conforming_strings=off;
+SET escape_string_warning=off;
+SET CONSTRAINTS ALL DEFERRED;
 
 DROP TABLE IF EXISTS "ar_internal_metadata";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "ar_internal_metadata" (
-  "key" varchar(255) NOT NULL,
-  "value" varchar(255) DEFAULT NULL,
-  "created_at" datetime NOT NULL,
-  "updated_at" datetime NOT NULL,
-  PRIMARY KEY ("key")
+    "key" varchar(510) NOT NULL,
+    "value" varchar(510) DEFAULT NULL,
+    "created_at" timestamp with time zone NOT NULL,
+    "updated_at" timestamp with time zone NOT NULL,
+    PRIMARY KEY ("key")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "ar_internal_metadata"
---
-
-LOCK TABLES "ar_internal_metadata" WRITE;
-/*!40000 ALTER TABLE "ar_internal_metadata" DISABLE KEYS */;
 INSERT INTO "ar_internal_metadata" VALUES ('environment','production_languagedepot','2019-10-04 14:08:08','2019-10-04 14:08:08');
-/*!40000 ALTER TABLE "ar_internal_metadata" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "attachments"
---
-
 DROP TABLE IF EXISTS "attachments";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "attachments" (
-  "id" int(11) NOT NULL,
-  "container_id" int(11) DEFAULT NULL,
-  "container_type" varchar(30) DEFAULT NULL,
-  "filename" varchar(255) NOT NULL DEFAULT '',
-  "disk_filename" varchar(255) NOT NULL DEFAULT '',
-  "filesize" bigint(20) NOT NULL DEFAULT '0',
-  "content_type" varchar(255) DEFAULT '',
-  "digest" varchar(64) NOT NULL DEFAULT '',
-  "downloads" int(11) NOT NULL DEFAULT '0',
-  "author_id" int(11) NOT NULL DEFAULT '0',
-  "created_on" datetime DEFAULT NULL,
-  "description" varchar(255) DEFAULT NULL,
-  "disk_directory" varchar(255) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_attachments_on_author_id" ("author_id"),
-  KEY "index_attachments_on_created_on" ("created_on"),
-  KEY "index_attachments_on_container_id_and_container_type" ("container_id","container_type"),
-  KEY "index_attachments_on_disk_filename" ("disk_filename")
+    "id" integer NOT NULL,
+    "container_id" integer DEFAULT NULL,
+    "container_type" varchar(60) DEFAULT NULL,
+    "filename" varchar(510) NOT NULL DEFAULT '',
+    "disk_filename" varchar(510) NOT NULL DEFAULT '',
+    "filesize" bigint NOT NULL DEFAULT '0',
+    "content_type" varchar(510) DEFAULT '',
+    "digest" varchar(128) NOT NULL DEFAULT '',
+    "downloads" integer NOT NULL DEFAULT '0',
+    "author_id" integer NOT NULL DEFAULT '0',
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "description" varchar(510) DEFAULT NULL,
+    "disk_directory" varchar(510) DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "attachments"
---
-
-LOCK TABLES "attachments" WRITE;
-/*!40000 ALTER TABLE "attachments" DISABLE KEYS */;
-/*!40000 ALTER TABLE "attachments" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "auth_sources"
---
 
 DROP TABLE IF EXISTS "auth_sources";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "auth_sources" (
-  "id" int(11) NOT NULL,
-  "type" varchar(30) NOT NULL DEFAULT '',
-  "name" varchar(60) NOT NULL DEFAULT '',
-  "host" varchar(60) DEFAULT NULL,
-  "port" int(11) DEFAULT NULL,
-  "account" varchar(255) DEFAULT NULL,
-  "account_password" varchar(255) DEFAULT '',
-  "base_dn" varchar(255) DEFAULT NULL,
-  "attr_login" varchar(30) DEFAULT NULL,
-  "attr_firstname" varchar(30) DEFAULT NULL,
-  "attr_lastname" varchar(30) DEFAULT NULL,
-  "attr_mail" varchar(30) DEFAULT NULL,
-  "onthefly_register" tinyint(1) NOT NULL DEFAULT '0',
-  "tls" tinyint(1) NOT NULL DEFAULT '0',
-  "filter" text,
-  "timeout" int(11) DEFAULT NULL,
-  "verify_peer" tinyint(1) NOT NULL DEFAULT '1',
-  PRIMARY KEY ("id"),
-  KEY "index_auth_sources_on_id_and_type" ("id","type")
+    "id" integer NOT NULL,
+    "type" varchar(60) NOT NULL DEFAULT '',
+    "name" varchar(120) NOT NULL DEFAULT '',
+    "host" varchar(120) DEFAULT NULL,
+    "port" integer DEFAULT NULL,
+    "account" varchar(510) DEFAULT NULL,
+    "account_password" varchar(510) DEFAULT '',
+    "base_dn" varchar(510) DEFAULT NULL,
+    "attr_login" varchar(60) DEFAULT NULL,
+    "attr_firstname" varchar(60) DEFAULT NULL,
+    "attr_lastname" varchar(60) DEFAULT NULL,
+    "attr_mail" varchar(60) DEFAULT NULL,
+    "onthefly_register" boolean NOT NULL DEFAULT false,
+    "tls" boolean NOT NULL DEFAULT false,
+    "filter" text ,
+    "timeout" integer DEFAULT NULL,
+    "verify_peer" boolean NOT NULL DEFAULT true,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "auth_sources"
---
-
-LOCK TABLES "auth_sources" WRITE;
-/*!40000 ALTER TABLE "auth_sources" DISABLE KEYS */;
-/*!40000 ALTER TABLE "auth_sources" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "boards"
---
 
 DROP TABLE IF EXISTS "boards";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "boards" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL,
-  "name" varchar(255) NOT NULL DEFAULT '',
-  "description" varchar(255) DEFAULT NULL,
-  "position" int(11) DEFAULT NULL,
-  "topics_count" int(11) NOT NULL DEFAULT '0',
-  "messages_count" int(11) NOT NULL DEFAULT '0',
-  "last_message_id" int(11) DEFAULT NULL,
-  "parent_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "boards_project_id" ("project_id"),
-  KEY "index_boards_on_last_message_id" ("last_message_id")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL,
+    "name" varchar(510) NOT NULL DEFAULT '',
+    "description" varchar(510) DEFAULT NULL,
+    "position" integer DEFAULT NULL,
+    "topics_count" integer NOT NULL DEFAULT '0',
+    "messages_count" integer NOT NULL DEFAULT '0',
+    "last_message_id" integer DEFAULT NULL,
+    "parent_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "boards"
---
-
-LOCK TABLES "boards" WRITE;
-/*!40000 ALTER TABLE "boards" DISABLE KEYS */;
-/*!40000 ALTER TABLE "boards" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "changes"
---
 
 DROP TABLE IF EXISTS "changes";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "changes" (
-  "id" int(11) NOT NULL,
-  "changeset_id" int(11) NOT NULL,
-  "action" varchar(1) NOT NULL DEFAULT '',
-  "path" text NOT NULL,
-  "from_path" text,
-  "from_revision" varchar(255) DEFAULT NULL,
-  "revision" varchar(255) DEFAULT NULL,
-  "branch" varchar(255) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "changesets_changeset_id" ("changeset_id")
+    "id" integer NOT NULL,
+    "changeset_id" integer NOT NULL,
+    "action" varchar(2) NOT NULL DEFAULT '',
+    "path" text NOT NULL,
+    "from_path" text ,
+    "from_revision" varchar(510) DEFAULT NULL,
+    "revision" varchar(510) DEFAULT NULL,
+    "branch" varchar(510) DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "changes"
---
-
-LOCK TABLES "changes" WRITE;
-/*!40000 ALTER TABLE "changes" DISABLE KEYS */;
-/*!40000 ALTER TABLE "changes" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "changeset_parents"
---
 
 DROP TABLE IF EXISTS "changeset_parents";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "changeset_parents" (
-  "changeset_id" int(11) NOT NULL,
-  "parent_id" int(11) NOT NULL,
-  KEY "changeset_parents_changeset_ids" ("changeset_id"),
-  KEY "changeset_parents_parent_ids" ("parent_id")
+    "changeset_id" integer NOT NULL,
+    "parent_id" integer NOT NULL
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "changeset_parents"
---
-
-LOCK TABLES "changeset_parents" WRITE;
-/*!40000 ALTER TABLE "changeset_parents" DISABLE KEYS */;
-/*!40000 ALTER TABLE "changeset_parents" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "changesets"
---
 
 DROP TABLE IF EXISTS "changesets";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "changesets" (
-  "id" int(11) NOT NULL,
-  "repository_id" int(11) NOT NULL,
-  "revision" varchar(255) NOT NULL,
-  "committer" varchar(255) DEFAULT NULL,
-  "committed_on" datetime NOT NULL,
-  "comments" longtext,
-  "commit_date" date DEFAULT NULL,
-  "scmid" varchar(255) DEFAULT NULL,
-  "user_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  UNIQUE KEY "changesets_repos_rev" ("repository_id","revision"),
-  KEY "index_changesets_on_user_id" ("user_id"),
-  KEY "index_changesets_on_repository_id" ("repository_id"),
-  KEY "index_changesets_on_committed_on" ("committed_on"),
-  KEY "changesets_repos_scmid" ("repository_id","scmid")
+    "id" integer NOT NULL,
+    "repository_id" integer NOT NULL,
+    "revision" varchar(510) NOT NULL,
+    "committer" varchar(510) DEFAULT NULL,
+    "committed_on" timestamp with time zone NOT NULL,
+    "comments" text ,
+    "commit_date" date DEFAULT NULL,
+    "scmid" varchar(510) DEFAULT NULL,
+    "user_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id"),
+    UNIQUE ("repository_id","revision")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "changesets"
---
-
-LOCK TABLES "changesets" WRITE;
-/*!40000 ALTER TABLE "changesets" DISABLE KEYS */;
-/*!40000 ALTER TABLE "changesets" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "changesets_issues"
---
 
 DROP TABLE IF EXISTS "changesets_issues";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "changesets_issues" (
-  "changeset_id" int(11) NOT NULL,
-  "issue_id" int(11) NOT NULL,
-  UNIQUE KEY "changesets_issues_ids" ("changeset_id","issue_id"),
-  KEY "index_changesets_issues_on_issue_id" ("issue_id")
+    "changeset_id" integer NOT NULL,
+    "issue_id" integer NOT NULL,
+    UNIQUE ("changeset_id","issue_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "changesets_issues"
---
-
-LOCK TABLES "changesets_issues" WRITE;
-/*!40000 ALTER TABLE "changesets_issues" DISABLE KEYS */;
-/*!40000 ALTER TABLE "changesets_issues" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "comments"
---
 
 DROP TABLE IF EXISTS "comments";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "comments" (
-  "id" int(11) NOT NULL,
-  "commented_type" varchar(30) NOT NULL DEFAULT '',
-  "commented_id" int(11) NOT NULL DEFAULT '0',
-  "author_id" int(11) NOT NULL DEFAULT '0',
-  "content" text,
-  "created_on" datetime NOT NULL,
-  "updated_on" datetime NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_comments_on_commented_id_and_commented_type" ("commented_id","commented_type"),
-  KEY "index_comments_on_author_id" ("author_id")
+    "id" integer NOT NULL,
+    "commented_type" varchar(60) NOT NULL DEFAULT '',
+    "commented_id" integer NOT NULL DEFAULT '0',
+    "author_id" integer NOT NULL DEFAULT '0',
+    "content" text ,
+    "created_on" timestamp with time zone NOT NULL,
+    "updated_on" timestamp with time zone NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "comments"
---
-
-LOCK TABLES "comments" WRITE;
-/*!40000 ALTER TABLE "comments" DISABLE KEYS */;
-/*!40000 ALTER TABLE "comments" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_field_enumerations"
---
 
 DROP TABLE IF EXISTS "custom_field_enumerations";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_field_enumerations" (
-  "id" int(11) NOT NULL,
-  "custom_field_id" int(11) NOT NULL,
-  "name" varchar(255) NOT NULL,
-  "active" tinyint(1) NOT NULL DEFAULT '1',
-  "position" int(11) NOT NULL DEFAULT '1',
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "custom_field_id" integer NOT NULL,
+    "name" varchar(510) NOT NULL,
+    "active" boolean NOT NULL DEFAULT true,
+    "position" integer NOT NULL DEFAULT '1',
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_field_enumerations"
---
-
-LOCK TABLES "custom_field_enumerations" WRITE;
-/*!40000 ALTER TABLE "custom_field_enumerations" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_field_enumerations" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_fields"
---
 
 DROP TABLE IF EXISTS "custom_fields";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_fields" (
-  "id" int(11) NOT NULL,
-  "type" varchar(30) NOT NULL DEFAULT '',
-  "name" varchar(30) NOT NULL DEFAULT '',
-  "field_format" varchar(30) NOT NULL DEFAULT '',
-  "possible_values" text,
-  "regexp" varchar(255) DEFAULT '',
-  "min_length" int(11) DEFAULT NULL,
-  "max_length" int(11) DEFAULT NULL,
-  "is_required" tinyint(1) NOT NULL DEFAULT '0',
-  "is_for_all" tinyint(1) NOT NULL DEFAULT '0',
-  "is_filter" tinyint(1) NOT NULL DEFAULT '0',
-  "position" int(11) DEFAULT NULL,
-  "searchable" tinyint(1) DEFAULT '0',
-  "default_value" text,
-  "editable" tinyint(1) DEFAULT '1',
-  "visible" tinyint(1) NOT NULL DEFAULT '1',
-  "multiple" tinyint(1) DEFAULT '0',
-  "format_store" text,
-  "description" text,
-  PRIMARY KEY ("id"),
-  KEY "index_custom_fields_on_id_and_type" ("id","type")
+    "id" integer NOT NULL,
+    "type" varchar(60) NOT NULL DEFAULT '',
+    "name" varchar(60) NOT NULL DEFAULT '',
+    "field_format" varchar(60) NOT NULL DEFAULT '',
+    "possible_values" text ,
+    "regexp" varchar(510) DEFAULT '',
+    "min_length" integer DEFAULT NULL,
+    "max_length" integer DEFAULT NULL,
+    "is_required" boolean NOT NULL DEFAULT false,
+    "is_for_all" boolean NOT NULL DEFAULT false,
+    "is_filter" boolean NOT NULL DEFAULT false,
+    "position" integer DEFAULT NULL,
+    "searchable" int4 DEFAULT '0',
+    "default_value" text ,
+    "editable" int4 DEFAULT '1',
+    "visible" boolean NOT NULL DEFAULT true,
+    "multiple" int4 DEFAULT '0',
+    "format_store" text ,
+    "description" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_fields"
---
-
-LOCK TABLES "custom_fields" WRITE;
-/*!40000 ALTER TABLE "custom_fields" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_fields" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_fields_projects"
---
 
 DROP TABLE IF EXISTS "custom_fields_projects";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_fields_projects" (
-  "custom_field_id" int(11) NOT NULL DEFAULT '0',
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  UNIQUE KEY "index_custom_fields_projects_on_custom_field_id_and_project_id" ("custom_field_id","project_id")
+    "custom_field_id" integer NOT NULL DEFAULT '0',
+    "project_id" integer NOT NULL DEFAULT '0',
+    UNIQUE ("custom_field_id","project_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_fields_projects"
---
-
-LOCK TABLES "custom_fields_projects" WRITE;
-/*!40000 ALTER TABLE "custom_fields_projects" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_fields_projects" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_fields_roles"
---
 
 DROP TABLE IF EXISTS "custom_fields_roles";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_fields_roles" (
-  "custom_field_id" int(11) NOT NULL,
-  "role_id" int(11) NOT NULL,
-  UNIQUE KEY "custom_fields_roles_ids" ("custom_field_id","role_id")
+    "custom_field_id" integer NOT NULL,
+    "role_id" integer NOT NULL,
+    UNIQUE ("custom_field_id","role_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_fields_roles"
---
-
-LOCK TABLES "custom_fields_roles" WRITE;
-/*!40000 ALTER TABLE "custom_fields_roles" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_fields_roles" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_fields_trackers"
---
 
 DROP TABLE IF EXISTS "custom_fields_trackers";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_fields_trackers" (
-  "custom_field_id" int(11) NOT NULL DEFAULT '0',
-  "tracker_id" int(11) NOT NULL DEFAULT '0',
-  UNIQUE KEY "index_custom_fields_trackers_on_custom_field_id_and_tracker_id" ("custom_field_id","tracker_id")
+    "custom_field_id" integer NOT NULL DEFAULT '0',
+    "tracker_id" integer NOT NULL DEFAULT '0',
+    UNIQUE ("custom_field_id","tracker_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_fields_trackers"
---
-
-LOCK TABLES "custom_fields_trackers" WRITE;
-/*!40000 ALTER TABLE "custom_fields_trackers" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_fields_trackers" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "custom_values"
---
 
 DROP TABLE IF EXISTS "custom_values";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "custom_values" (
-  "id" int(11) NOT NULL,
-  "customized_type" varchar(30) NOT NULL DEFAULT '',
-  "customized_id" int(11) NOT NULL DEFAULT '0',
-  "custom_field_id" int(11) NOT NULL DEFAULT '0',
-  "value" text,
-  PRIMARY KEY ("id"),
-  KEY "custom_values_customized" ("customized_type","customized_id"),
-  KEY "index_custom_values_on_custom_field_id" ("custom_field_id")
+    "id" integer NOT NULL,
+    "customized_type" varchar(60) NOT NULL DEFAULT '',
+    "customized_id" integer NOT NULL DEFAULT '0',
+    "custom_field_id" integer NOT NULL DEFAULT '0',
+    "value" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "custom_values"
---
-
-LOCK TABLES "custom_values" WRITE;
-/*!40000 ALTER TABLE "custom_values" DISABLE KEYS */;
-/*!40000 ALTER TABLE "custom_values" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "documents"
---
 
 DROP TABLE IF EXISTS "documents";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "documents" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "category_id" int(11) NOT NULL DEFAULT '0',
-  "title" varchar(255) NOT NULL DEFAULT '',
-  "description" text,
-  "created_on" datetime DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "documents_project_id" ("project_id"),
-  KEY "index_documents_on_category_id" ("category_id"),
-  KEY "index_documents_on_created_on" ("created_on")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL DEFAULT '0',
+    "category_id" integer NOT NULL DEFAULT '0',
+    "title" varchar(510) NOT NULL DEFAULT '',
+    "description" text ,
+    "created_on" timestamp with time zone DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "documents"
---
-
-LOCK TABLES "documents" WRITE;
-/*!40000 ALTER TABLE "documents" DISABLE KEYS */;
-/*!40000 ALTER TABLE "documents" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "email_addresses"
---
 
 DROP TABLE IF EXISTS "email_addresses";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "email_addresses" (
-  "id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL,
-  "address" varchar(255) NOT NULL,
-  "is_default" tinyint(1) NOT NULL DEFAULT '0',
-  "notify" tinyint(1) NOT NULL DEFAULT '1',
-  "created_on" datetime NOT NULL,
-  "updated_on" datetime NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_email_addresses_on_user_id" ("user_id")
+    "id" integer NOT NULL,
+    "user_id" integer NOT NULL,
+    "address" varchar(510) NOT NULL,
+    "is_default" boolean NOT NULL DEFAULT false,
+    "notify" boolean NOT NULL DEFAULT true,
+    "created_on" timestamp with time zone NOT NULL,
+    "updated_on" timestamp with time zone NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "email_addresses"
---
-
-LOCK TABLES "email_addresses" WRITE;
-/*!40000 ALTER TABLE "email_addresses" DISABLE KEYS */;
-INSERT INTO "email_addresses" VALUES (1,1,'admin@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(2,3,'king.richard@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(3,4,'princejohn@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(4,10,'manager1@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(5,11,'manager2@example.net',1,1,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(6,20,'user1@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(7,21,'user2@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(8,22,'UPPER@example.net',1,1,'2015-10-16 09:08:39','2015-10-16 09:08:39'),(9,30,'modify@example.net',1,1,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(10,170,'Test@example.net',1,1,'2010-09-09 03:29:15','2012-08-30 09:49:02'),(11,234,'friar_tuck@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(12,235,'noone@example.com',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(13,236,'nobody@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(14,1094,'robin_hood@example.org',0,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(16,1947,'ws1@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(17,4159,'alan_a_dale@example.org',1,1,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(18,5,'robin_munn@sil.org',1,1,'2020-08-14 12:34:56','2020-08-14 12:34:56');
-/*!40000 ALTER TABLE "email_addresses" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "enabled_modules"
---
-
+INSERT INTO "email_addresses" VALUES (1,1,'admin@example.net',true,true,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(2,3,'king.richard@example.com',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(3,4,'princejohn@example.com',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(4,10,'manager1@example.net',true,true,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(5,11,'manager2@example.net',true,true,'2009-07-22 06:32:07','2009-07-23 08:45:37'),(6,20,'user1@example.net',true,true,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(7,21,'user2@example.net',true,true,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(8,22,'UPPER@example.net',true,true,'2015-10-16 09:08:39','2015-10-16 09:08:39'),(9,30,'modify@example.net',true,true,'2009-07-23 08:40:51','2015-10-16 09:08:39'),(10,170,'Test@example.net',true,true,'2010-09-09 03:29:15','2012-08-30 09:49:02'),(11,234,'friar_tuck@example.org',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(12,235,'noone@example.com',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(13,236,'nobody@example.org',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(14,1094,'robin_hood@example.org',false,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(16,1947,'ws1@example.org',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(17,4159,'alan_a_dale@example.org',true,true,'2019-10-04 13:27:30','2019-10-04 13:27:30'),(18,5,'robin_munn@sil.org',true,true,'2020-08-14 12:34:56','2020-08-14 12:34:56');
 DROP TABLE IF EXISTS "enabled_modules";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "enabled_modules" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) DEFAULT NULL,
-  "name" varchar(255) NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "enabled_modules_project_id" ("project_id")
+    "id" integer NOT NULL,
+    "project_id" integer DEFAULT NULL,
+    "name" varchar(510) NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "enabled_modules"
---
-
-LOCK TABLES "enabled_modules" WRITE;
-/*!40000 ALTER TABLE "enabled_modules" DISABLE KEYS */;
-/*!40000 ALTER TABLE "enabled_modules" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "enumerations"
---
 
 DROP TABLE IF EXISTS "enumerations";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "enumerations" (
-  "id" int(11) NOT NULL,
-  "name" varchar(30) NOT NULL DEFAULT '',
-  "position" int(11) DEFAULT NULL,
-  "is_default" tinyint(1) NOT NULL DEFAULT '0',
-  "type" varchar(255) DEFAULT NULL,
-  "active" tinyint(1) NOT NULL DEFAULT '1',
-  "project_id" int(11) DEFAULT NULL,
-  "parent_id" int(11) DEFAULT NULL,
-  "position_name" varchar(30) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_enumerations_on_project_id" ("project_id"),
-  KEY "index_enumerations_on_id_and_type" ("id","type")
+    "id" integer NOT NULL,
+    "name" varchar(60) NOT NULL DEFAULT '',
+    "position" integer DEFAULT NULL,
+    "is_default" boolean NOT NULL DEFAULT false,
+    "type" varchar(510) DEFAULT NULL,
+    "active" boolean NOT NULL DEFAULT true,
+    "project_id" integer DEFAULT NULL,
+    "parent_id" integer DEFAULT NULL,
+    "position_name" varchar(60) DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "enumerations"
---
-
-LOCK TABLES "enumerations" WRITE;
-/*!40000 ALTER TABLE "enumerations" DISABLE KEYS */;
-/*!40000 ALTER TABLE "enumerations" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "groups_users"
---
 
 DROP TABLE IF EXISTS "groups_users";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "groups_users" (
-  "group_id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL,
-  UNIQUE KEY "groups_users_ids" ("group_id","user_id")
+    "group_id" integer NOT NULL,
+    "user_id" integer NOT NULL,
+    UNIQUE ("group_id","user_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "groups_users"
---
-
-LOCK TABLES "groups_users" WRITE;
-/*!40000 ALTER TABLE "groups_users" DISABLE KEYS */;
-/*!40000 ALTER TABLE "groups_users" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "import_items"
---
 
 DROP TABLE IF EXISTS "import_items";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "import_items" (
-  "id" int(11) NOT NULL,
-  "import_id" int(11) NOT NULL,
-  "position" int(11) NOT NULL,
-  "obj_id" int(11) DEFAULT NULL,
-  "message" text,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "import_id" integer NOT NULL,
+    "position" integer NOT NULL,
+    "obj_id" integer DEFAULT NULL,
+    "message" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "import_items"
---
-
-LOCK TABLES "import_items" WRITE;
-/*!40000 ALTER TABLE "import_items" DISABLE KEYS */;
-/*!40000 ALTER TABLE "import_items" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "imports"
---
 
 DROP TABLE IF EXISTS "imports";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "imports" (
-  "id" int(11) NOT NULL,
-  "type" varchar(255) DEFAULT NULL,
-  "user_id" int(11) NOT NULL,
-  "filename" varchar(255) DEFAULT NULL,
-  "settings" text,
-  "total_items" int(11) DEFAULT NULL,
-  "finished" tinyint(1) NOT NULL DEFAULT '0',
-  "created_at" datetime NOT NULL,
-  "updated_at" datetime NOT NULL,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "type" varchar(510) DEFAULT NULL,
+    "user_id" integer NOT NULL,
+    "filename" varchar(510) DEFAULT NULL,
+    "settings" text ,
+    "total_items" integer DEFAULT NULL,
+    "finished" boolean NOT NULL DEFAULT false,
+    "created_at" timestamp with time zone NOT NULL,
+    "updated_at" timestamp with time zone NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "imports"
---
-
-LOCK TABLES "imports" WRITE;
-/*!40000 ALTER TABLE "imports" DISABLE KEYS */;
-/*!40000 ALTER TABLE "imports" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "issue_categories"
---
 
 DROP TABLE IF EXISTS "issue_categories";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "issue_categories" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "name" varchar(60) NOT NULL DEFAULT '',
-  "assigned_to_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "issue_categories_project_id" ("project_id"),
-  KEY "index_issue_categories_on_assigned_to_id" ("assigned_to_id")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL DEFAULT '0',
+    "name" varchar(120) NOT NULL DEFAULT '',
+    "assigned_to_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "issue_categories"
---
-
-LOCK TABLES "issue_categories" WRITE;
-/*!40000 ALTER TABLE "issue_categories" DISABLE KEYS */;
-/*!40000 ALTER TABLE "issue_categories" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "issue_relations"
---
 
 DROP TABLE IF EXISTS "issue_relations";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "issue_relations" (
-  "id" int(11) NOT NULL,
-  "issue_from_id" int(11) NOT NULL,
-  "issue_to_id" int(11) NOT NULL,
-  "relation_type" varchar(255) NOT NULL DEFAULT '',
-  "delay" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  UNIQUE KEY "index_issue_relations_on_issue_from_id_and_issue_to_id" ("issue_from_id","issue_to_id"),
-  KEY "index_issue_relations_on_issue_from_id" ("issue_from_id"),
-  KEY "index_issue_relations_on_issue_to_id" ("issue_to_id")
+    "id" integer NOT NULL,
+    "issue_from_id" integer NOT NULL,
+    "issue_to_id" integer NOT NULL,
+    "relation_type" varchar(510) NOT NULL DEFAULT '',
+    "delay" integer DEFAULT NULL,
+    PRIMARY KEY ("id"),
+    UNIQUE ("issue_from_id","issue_to_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "issue_relations"
---
-
-LOCK TABLES "issue_relations" WRITE;
-/*!40000 ALTER TABLE "issue_relations" DISABLE KEYS */;
-/*!40000 ALTER TABLE "issue_relations" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "issue_statuses"
---
 
 DROP TABLE IF EXISTS "issue_statuses";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "issue_statuses" (
-  "id" int(11) NOT NULL,
-  "name" varchar(30) NOT NULL DEFAULT '',
-  "is_closed" tinyint(1) NOT NULL DEFAULT '0',
-  "position" int(11) DEFAULT NULL,
-  "default_done_ratio" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_issue_statuses_on_position" ("position"),
-  KEY "index_issue_statuses_on_is_closed" ("is_closed")
+    "id" integer NOT NULL,
+    "name" varchar(60) NOT NULL DEFAULT '',
+    "is_closed" boolean NOT NULL DEFAULT false,
+    "position" integer DEFAULT NULL,
+    "default_done_ratio" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "issue_statuses"
---
-
-LOCK TABLES "issue_statuses" WRITE;
-/*!40000 ALTER TABLE "issue_statuses" DISABLE KEYS */;
-/*!40000 ALTER TABLE "issue_statuses" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "issues"
---
 
 DROP TABLE IF EXISTS "issues";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "issues" (
-  "id" int(11) NOT NULL,
-  "tracker_id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL,
-  "subject" varchar(255) NOT NULL DEFAULT '',
-  "description" longtext,
-  "due_date" date DEFAULT NULL,
-  "category_id" int(11) DEFAULT NULL,
-  "status_id" int(11) NOT NULL,
-  "assigned_to_id" int(11) DEFAULT NULL,
-  "priority_id" int(11) NOT NULL,
-  "fixed_version_id" int(11) DEFAULT NULL,
-  "author_id" int(11) NOT NULL,
-  "lock_version" int(11) NOT NULL DEFAULT '0',
-  "created_on" datetime DEFAULT NULL,
-  "updated_on" datetime DEFAULT NULL,
-  "start_date" date DEFAULT NULL,
-  "done_ratio" int(11) NOT NULL DEFAULT '0',
-  "estimated_hours" float DEFAULT NULL,
-  "parent_id" int(11) DEFAULT NULL,
-  "root_id" int(11) DEFAULT NULL,
-  "lft" int(11) DEFAULT NULL,
-  "rgt" int(11) DEFAULT NULL,
-  "is_private" tinyint(1) NOT NULL DEFAULT '0',
-  "closed_on" datetime DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "issues_project_id" ("project_id"),
-  KEY "index_issues_on_status_id" ("status_id"),
-  KEY "index_issues_on_category_id" ("category_id"),
-  KEY "index_issues_on_assigned_to_id" ("assigned_to_id"),
-  KEY "index_issues_on_fixed_version_id" ("fixed_version_id"),
-  KEY "index_issues_on_tracker_id" ("tracker_id"),
-  KEY "index_issues_on_priority_id" ("priority_id"),
-  KEY "index_issues_on_author_id" ("author_id"),
-  KEY "index_issues_on_created_on" ("created_on"),
-  KEY "index_issues_on_root_id_and_lft_and_rgt" ("root_id","lft","rgt"),
-  KEY "index_issues_on_parent_id" ("parent_id")
+    "id" integer NOT NULL,
+    "tracker_id" integer NOT NULL,
+    "project_id" integer NOT NULL,
+    "subject" varchar(510) NOT NULL DEFAULT '',
+    "description" text ,
+    "due_date" date DEFAULT NULL,
+    "category_id" integer DEFAULT NULL,
+    "status_id" integer NOT NULL,
+    "assigned_to_id" integer DEFAULT NULL,
+    "priority_id" integer NOT NULL,
+    "fixed_version_id" integer DEFAULT NULL,
+    "author_id" integer NOT NULL,
+    "lock_version" integer NOT NULL DEFAULT '0',
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "updated_on" timestamp with time zone DEFAULT NULL,
+    "start_date" date DEFAULT NULL,
+    "done_ratio" integer NOT NULL DEFAULT '0',
+    "estimated_hours" float DEFAULT NULL,
+    "parent_id" integer DEFAULT NULL,
+    "root_id" integer DEFAULT NULL,
+    "lft" integer DEFAULT NULL,
+    "rgt" integer DEFAULT NULL,
+    "is_private" boolean NOT NULL DEFAULT false,
+    "closed_on" timestamp with time zone DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "issues"
---
-
-LOCK TABLES "issues" WRITE;
-/*!40000 ALTER TABLE "issues" DISABLE KEYS */;
-/*!40000 ALTER TABLE "issues" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "journal_details"
---
 
 DROP TABLE IF EXISTS "journal_details";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "journal_details" (
-  "id" int(11) NOT NULL,
-  "journal_id" int(11) NOT NULL DEFAULT '0',
-  "property" varchar(30) NOT NULL DEFAULT '',
-  "prop_key" varchar(30) NOT NULL DEFAULT '',
-  "old_value" longtext,
-  "value" longtext,
-  PRIMARY KEY ("id"),
-  KEY "journal_details_journal_id" ("journal_id")
+    "id" integer NOT NULL,
+    "journal_id" integer NOT NULL DEFAULT '0',
+    "property" varchar(60) NOT NULL DEFAULT '',
+    "prop_key" varchar(60) NOT NULL DEFAULT '',
+    "old_value" text ,
+    "value" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "journal_details"
---
-
-LOCK TABLES "journal_details" WRITE;
-/*!40000 ALTER TABLE "journal_details" DISABLE KEYS */;
-/*!40000 ALTER TABLE "journal_details" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "journals"
---
 
 DROP TABLE IF EXISTS "journals";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "journals" (
-  "id" int(11) NOT NULL,
-  "journalized_id" int(11) NOT NULL DEFAULT '0',
-  "journalized_type" varchar(30) NOT NULL DEFAULT '',
-  "user_id" int(11) NOT NULL DEFAULT '0',
-  "notes" longtext,
-  "created_on" datetime NOT NULL,
-  "private_notes" tinyint(1) NOT NULL DEFAULT '0',
-  PRIMARY KEY ("id"),
-  KEY "journals_journalized_id" ("journalized_id","journalized_type"),
-  KEY "index_journals_on_user_id" ("user_id"),
-  KEY "index_journals_on_journalized_id" ("journalized_id"),
-  KEY "index_journals_on_created_on" ("created_on")
+    "id" integer NOT NULL,
+    "journalized_id" integer NOT NULL DEFAULT '0',
+    "journalized_type" varchar(60) NOT NULL DEFAULT '',
+    "user_id" integer NOT NULL DEFAULT '0',
+    "notes" text ,
+    "created_on" timestamp with time zone NOT NULL,
+    "private_notes" boolean NOT NULL DEFAULT false,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "journals"
---
-
-LOCK TABLES "journals" WRITE;
-/*!40000 ALTER TABLE "journals" DISABLE KEYS */;
-/*!40000 ALTER TABLE "journals" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "member_roles"
---
 
 DROP TABLE IF EXISTS "member_roles";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "member_roles" (
-  "id" int(11) NOT NULL,
-  "member_id" int(11) NOT NULL,
-  "role_id" int(11) NOT NULL,
-  "inherited_from" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_member_roles_on_member_id" ("member_id"),
-  KEY "index_member_roles_on_role_id" ("role_id"),
-  KEY "index_member_roles_on_inherited_from" ("inherited_from")
+    "id" integer NOT NULL,
+    "member_id" integer NOT NULL,
+    "role_id" integer NOT NULL,
+    "inherited_from" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "member_roles"
---
-
-LOCK TABLES "member_roles" WRITE;
-/*!40000 ALTER TABLE "member_roles" DISABLE KEYS */;
 INSERT INTO "member_roles" VALUES (1,2,3,NULL),(2,3,4,NULL),(3,4,4,NULL),(4,5,3,NULL),(5,6,4,NULL),(6,7,3,NULL),(7,8,6,NULL),(8,8,3,NULL),(9,9,3,NULL),(45,69,3,NULL),(46,70,4,NULL),(352,500,3,NULL),(361,509,5,NULL),(3715,4822,4,NULL),(5606,7115,3,NULL),(6605,8250,3,NULL),(6607,8251,3,6605),(6608,8252,3,6605),(6614,8259,3,NULL),(6617,8262,3,NULL),(6618,8263,3,NULL),(7047,8692,3,NULL),(7102,8747,6,NULL),(7162,8807,4,NULL),(7795,9440,3,NULL);
-/*!40000 ALTER TABLE "member_roles" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "members"
---
-
 DROP TABLE IF EXISTS "members";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "members" (
-  "id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL DEFAULT '0',
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "created_on" datetime DEFAULT NULL,
-  "mail_notification" tinyint(1) NOT NULL DEFAULT '0',
-  PRIMARY KEY ("id"),
-  UNIQUE KEY "index_members_on_user_id_and_project_id" ("user_id","project_id"),
-  KEY "index_members_on_user_id" ("user_id"),
-  KEY "index_members_on_project_id" ("project_id")
+    "id" integer NOT NULL,
+    "user_id" integer NOT NULL DEFAULT '0',
+    "project_id" integer NOT NULL DEFAULT '0',
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "mail_notification" boolean NOT NULL DEFAULT false,
+    PRIMARY KEY ("id"),
+    UNIQUE ("user_id","project_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "members"
---
-
-LOCK TABLES "members" WRITE;
-/*!40000 ALTER TABLE "members" DISABLE KEYS */;
-INSERT INTO "members" VALUES (2,10,2,'2009-07-27 02:03:33',0),(3,20,2,'2009-07-27 02:03:33',0),(4,170,2,'2017-01-02 03:04:55',0),(5,11,3,'2009-07-27 02:03:33',0),(6,21,3,'2009-07-27 02:03:33',0),(7,170,3,'2017-01-02 03:04:55',0),(8,170,4,'2017-02-02 04:04:55',0),(9,170,7,'2017-02-02 04:04:55',0),(69,3,9,'2009-10-12 03:42:10',0),(70,20,9,'2009-10-12 03:42:19',0),(500,234,9,'2011-09-13 06:26:57',0),(509,256,9,'2011-10-12 06:03:49',0),(4822,234,1289,'2016-08-29 09:55:07',0),(7115,1947,1894,'2018-07-23 10:11:19',0),(8250,1094,2145,'2019-10-08 04:06:52',0),(8251,1094,2146,'2019-10-08 04:09:24',0),(8252,1094,2147,'2019-10-09 05:21:30',0),(8259,4159,2150,'2019-10-18 14:00:00',0),(8262,4159,2152,'2019-10-22 20:36:13',0),(8263,234,2153,'2019-10-24 07:09:46',0),(8692,1094,2255,'2021-02-18 10:50:32',0),(8747,5,1289,'2021-02-18 17:12:08',0),(8807,1094,1289,'2021-02-23 11:33:58',0),(9440,1094,9,'2021-04-19 14:24:47',0);
-/*!40000 ALTER TABLE "members" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "messages"
---
-
+INSERT INTO "members" VALUES (2,10,2,'2009-07-27 02:03:33',false),(3,20,2,'2009-07-27 02:03:33',false),(4,170,2,'2017-01-02 03:04:55',false),(5,11,3,'2009-07-27 02:03:33',false),(6,21,3,'2009-07-27 02:03:33',false),(7,170,3,'2017-01-02 03:04:55',false),(8,170,4,'2017-02-02 04:04:55',false),(9,170,7,'2017-02-02 04:04:55',false),(69,3,9,'2009-10-12 03:42:10',false),(70,20,9,'2009-10-12 03:42:19',false),(500,234,9,'2011-09-13 06:26:57',false),(509,256,9,'2011-10-12 06:03:49',false),(4822,234,1289,'2016-08-29 09:55:07',false),(7115,1947,1894,'2018-07-23 10:11:19',false),(8250,1094,2145,'2019-10-08 04:06:52',false),(8251,1094,2146,'2019-10-08 04:09:24',false),(8252,1094,2147,'2019-10-09 05:21:30',false),(8259,4159,2150,'2019-10-18 14:00:00',false),(8262,4159,2152,'2019-10-22 20:36:13',false),(8263,234,2153,'2019-10-24 07:09:46',false),(8692,1094,2255,'2021-02-18 10:50:32',false),(8747,5,1289,'2021-02-18 17:12:08',false),(8807,1094,1289,'2021-02-23 11:33:58',false),(9440,1094,9,'2021-04-19 14:24:47',false);
 DROP TABLE IF EXISTS "messages";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "messages" (
-  "id" int(11) NOT NULL,
-  "board_id" int(11) NOT NULL,
-  "parent_id" int(11) DEFAULT NULL,
-  "subject" varchar(255) NOT NULL DEFAULT '',
-  "content" text,
-  "author_id" int(11) DEFAULT NULL,
-  "replies_count" int(11) NOT NULL DEFAULT '0',
-  "last_reply_id" int(11) DEFAULT NULL,
-  "created_on" datetime NOT NULL,
-  "updated_on" datetime NOT NULL,
-  "locked" tinyint(1) DEFAULT '0',
-  "sticky" int(11) DEFAULT '0',
-  PRIMARY KEY ("id"),
-  KEY "messages_board_id" ("board_id"),
-  KEY "messages_parent_id" ("parent_id"),
-  KEY "index_messages_on_last_reply_id" ("last_reply_id"),
-  KEY "index_messages_on_author_id" ("author_id"),
-  KEY "index_messages_on_created_on" ("created_on")
+    "id" integer NOT NULL,
+    "board_id" integer NOT NULL,
+    "parent_id" integer DEFAULT NULL,
+    "subject" varchar(510) NOT NULL DEFAULT '',
+    "content" text ,
+    "author_id" integer DEFAULT NULL,
+    "replies_count" integer NOT NULL DEFAULT '0',
+    "last_reply_id" integer DEFAULT NULL,
+    "created_on" timestamp with time zone NOT NULL,
+    "updated_on" timestamp with time zone NOT NULL,
+    "locked" int4 DEFAULT '0',
+    "sticky" integer DEFAULT '0',
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "messages"
---
-
-LOCK TABLES "messages" WRITE;
-/*!40000 ALTER TABLE "messages" DISABLE KEYS */;
-/*!40000 ALTER TABLE "messages" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "news"
---
 
 DROP TABLE IF EXISTS "news";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "news" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) DEFAULT NULL,
-  "title" varchar(60) NOT NULL DEFAULT '',
-  "summary" varchar(255) DEFAULT '',
-  "description" text,
-  "author_id" int(11) NOT NULL DEFAULT '0',
-  "created_on" datetime DEFAULT NULL,
-  "comments_count" int(11) NOT NULL DEFAULT '0',
-  PRIMARY KEY ("id"),
-  KEY "news_project_id" ("project_id"),
-  KEY "index_news_on_author_id" ("author_id"),
-  KEY "index_news_on_created_on" ("created_on")
+    "id" integer NOT NULL,
+    "project_id" integer DEFAULT NULL,
+    "title" varchar(120) NOT NULL DEFAULT '',
+    "summary" varchar(510) DEFAULT '',
+    "description" text ,
+    "author_id" integer NOT NULL DEFAULT '0',
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "comments_count" integer NOT NULL DEFAULT '0',
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "news"
---
-
-LOCK TABLES "news" WRITE;
-/*!40000 ALTER TABLE "news" DISABLE KEYS */;
-/*!40000 ALTER TABLE "news" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "open_id_authentication_associations"
---
 
 DROP TABLE IF EXISTS "open_id_authentication_associations";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "open_id_authentication_associations" (
-  "id" int(11) NOT NULL,
-  "issued" int(11) DEFAULT NULL,
-  "lifetime" int(11) DEFAULT NULL,
-  "handle" varchar(255) DEFAULT NULL,
-  "assoc_type" varchar(255) DEFAULT NULL,
-  "server_url" blob,
-  "secret" blob,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "issued" integer DEFAULT NULL,
+    "lifetime" integer DEFAULT NULL,
+    "handle" varchar(510) DEFAULT NULL,
+    "assoc_type" varchar(510) DEFAULT NULL,
+    "server_url" bytea ,
+    "secret" bytea ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "open_id_authentication_associations"
---
-
-LOCK TABLES "open_id_authentication_associations" WRITE;
-/*!40000 ALTER TABLE "open_id_authentication_associations" DISABLE KEYS */;
-/*!40000 ALTER TABLE "open_id_authentication_associations" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "open_id_authentication_nonces"
---
 
 DROP TABLE IF EXISTS "open_id_authentication_nonces";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "open_id_authentication_nonces" (
-  "id" int(11) NOT NULL,
-  "timestamp" int(11) NOT NULL,
-  "server_url" varchar(255) DEFAULT NULL,
-  "salt" varchar(255) NOT NULL,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "timestamp" integer NOT NULL,
+    "server_url" varchar(510) DEFAULT NULL,
+    "salt" varchar(510) NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "open_id_authentication_nonces"
---
-
-LOCK TABLES "open_id_authentication_nonces" WRITE;
-/*!40000 ALTER TABLE "open_id_authentication_nonces" DISABLE KEYS */;
-/*!40000 ALTER TABLE "open_id_authentication_nonces" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "phantom1"
---
-
-DROP TABLE IF EXISTS "phantom1";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE "phantom1" (
-  "id" tinyint(4) NOT NULL,
-  PRIMARY KEY ("id")
-);
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "phantom1"
---
-
-LOCK TABLES "phantom1" WRITE;
-/*!40000 ALTER TABLE "phantom1" DISABLE KEYS */;
-/*!40000 ALTER TABLE "phantom1" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "phantom2"
---
 
 DROP TABLE IF EXISTS "phantom2";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE "phantom2" (
-  "id" tinyint(4) NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "id" ("id"),
-  CONSTRAINT "id_fkey" FOREIGN KEY ("id") REFERENCES "phantom1" ("id")
+DROP TABLE IF EXISTS "phantom1";
+CREATE TABLE "phantom1" (
+    "id" int4 NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "phantom2"
---
-
-LOCK TABLES "phantom2" WRITE;
-/*!40000 ALTER TABLE "phantom2" DISABLE KEYS */;
-/*!40000 ALTER TABLE "phantom2" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "plugin_schema_info"
---
+CREATE TABLE "phantom2" (
+    "id" int4 NOT NULL,
+    PRIMARY KEY ("id")
+);
 
 DROP TABLE IF EXISTS "plugin_schema_info";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "plugin_schema_info" (
-  "plugin_name" varchar(255) DEFAULT NULL,
-  "version" int(11) DEFAULT NULL
+    "plugin_name" varchar(510) DEFAULT NULL,
+    "version" integer DEFAULT NULL
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "plugin_schema_info"
---
-
-LOCK TABLES "plugin_schema_info" WRITE;
-/*!40000 ALTER TABLE "plugin_schema_info" DISABLE KEYS */;
-/*!40000 ALTER TABLE "plugin_schema_info" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "projects"
---
 
 DROP TABLE IF EXISTS "projects";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "projects" (
-  "id" int(11) NOT NULL,
-  "name" varchar(255) NOT NULL DEFAULT '',
-  "description" text,
-  "homepage" varchar(255) DEFAULT '',
-  "is_public" tinyint(1) NOT NULL DEFAULT '1',
-  "parent_id" int(11) DEFAULT NULL,
-  "created_on" datetime DEFAULT NULL,
-  "updated_on" datetime DEFAULT NULL,
-  "identifier" varchar(255) DEFAULT NULL,
-  "status" int(11) NOT NULL DEFAULT '1',
-  "lft" int(11) DEFAULT NULL,
-  "rgt" int(11) DEFAULT NULL,
-  "inherit_members" tinyint(1) NOT NULL DEFAULT '0',
-  "default_version_id" int(11) DEFAULT NULL,
-  "default_assigned_to_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_projects_on_lft" ("lft"),
-  KEY "index_projects_on_rgt" ("rgt")
+    "id" integer NOT NULL,
+    "name" varchar(510) NOT NULL DEFAULT '',
+    "description" text ,
+    "homepage" varchar(510) DEFAULT '',
+    "is_public" boolean NOT NULL DEFAULT true,
+    "parent_id" integer DEFAULT NULL,
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "updated_on" timestamp with time zone DEFAULT NULL,
+    "identifier" varchar(510) DEFAULT NULL,
+    "status" integer NOT NULL DEFAULT '1',
+    "lft" integer DEFAULT NULL,
+    "rgt" integer DEFAULT NULL,
+    "inherit_members" boolean NOT NULL DEFAULT false,
+    "default_version_id" integer DEFAULT NULL,
+    "default_assigned_to_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "projects"
---
-
-LOCK TABLES "projects" WRITE;
-/*!40000 ALTER TABLE "projects" DISABLE KEYS */;
-INSERT INTO "projects" VALUES (1,'LD Test','LD API Test project','',0,NULL,'2009-07-23 09:56:52','2017-02-24 09:56:52','ld-test',1,NULL,NULL,0,NULL,NULL),(2,'LD Test Dictionary','LD API Test Dictionary project','',1,NULL,'2011-07-24 05:24:19','2017-02-24 02:33:33','test-ld-dictionary',1,3,4,0,NULL,NULL),(3,'LD API Test Flex','LD API Test FLEx project','',1,NULL,'2012-09-21 02:44:47','2017-02-24 02:44:47','test-ld-flex',1,5,6,0,NULL,NULL),(4,'LD API Test Demo','LD API Test Demo project','',1,NULL,'2013-09-21 02:44:47','2017-02-24 02:44:47','test-ld-demo',1,7,8,0,NULL,NULL),(5,'LD API Test AdaptIT','LD API Test AdaptIT project','',1,NULL,'2014-09-21 02:44:47','2017-02-24 02:44:47','test-ld-adapt',1,9,10,0,NULL,NULL),(6,'LD API Test Training','LD API Test Training project','',1,NULL,'2015-09-21 02:44:47','2017-02-24 02:44:47','test-ld-training',1,11,12,0,NULL,NULL),(7,'LD API UTF8 E�coding','LD API Test UTF8 E�coding project','',1,NULL,'2016-08-10 07:30:45','2017-03-01 08:10:20','test-ld-�tf8',1,13,14,0,NULL,NULL),(9,'Thai Food Dictionary','A picture dictionary of Thai food.','',1,NULL,'2009-10-12 03:41:53','2021-04-19 14:24:47','tha-food',1,17,18,0,NULL,NULL),(1289,'Sherwood TestSena3 03','','',1,NULL,'2016-08-25 07:58:11','2021-02-23 11:33:58','test-sherwood-sena-03',1,2379,2380,0,NULL,NULL),(1894,'test-ws-1-flex','','',1,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,0,NULL,NULL),(2145,'Robin Test Projects','Test projects for Robin Hood testing Send/Receive scenarios','',1,NULL,'2019-10-08 04:06:32','2019-10-08 04:06:32','robin-test-projects',1,3999,4022,0,NULL,NULL),(2146,'Robin Test FLEx new public','','',1,2145,'2019-10-08 04:09:24','2019-10-08 04:09:24','test-robin-flex-new-public',1,4008,4009,1,NULL,NULL),(2147,'Robin new public 2','','',1,2145,'2019-10-09 05:21:30','2019-10-09 05:21:30','test-robin-new-public-2',1,4000,4001,1,NULL,NULL),(2150,'Alan_test','To test hg pull/push','',1,NULL,'2019-10-18 13:59:45','2019-10-22 20:13:53','alan_test',5,3997,3998,0,NULL,NULL),(2152,'aland_test','hg pull/push tests','',1,NULL,'2019-10-22 20:34:59','2019-10-22 20:34:59','aland_test',1,3995,3996,0,NULL,NULL),(2153,'tha-food2','','',1,NULL,'2019-10-24 07:06:20','2019-10-24 07:06:20','tha-food2',1,4023,4024,0,NULL,NULL),(2255,'New project via POST','testing POST','',1,NULL,'2021-02-18 10:50:31','2021-02-18 11:03:36','new-project-via-post',1,NULL,NULL,0,NULL,NULL);
-/*!40000 ALTER TABLE "projects" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "projects_trackers"
---
-
+INSERT INTO "projects" VALUES (1,'LD Test','LD API Test project','',false,NULL,'2009-07-23 09:56:52','2017-02-24 09:56:52','ld-test',1,NULL,NULL,false,NULL,NULL),(2,'LD Test Dictionary','LD API Test Dictionary project','',true,NULL,'2011-07-24 05:24:19','2017-02-24 02:33:33','test-ld-dictionary',1,3,4,false,NULL,NULL),(3,'LD API Test Flex','LD API Test FLEx project','',true,NULL,'2012-09-21 02:44:47','2017-02-24 02:44:47','test-ld-flex',1,5,6,false,NULL,NULL),(4,'LD API Test Demo','LD API Test Demo project','',true,NULL,'2013-09-21 02:44:47','2017-02-24 02:44:47','test-ld-demo',1,7,8,false,NULL,NULL),(5,'LD API Test AdaptIT','LD API Test AdaptIT project','',true,NULL,'2014-09-21 02:44:47','2017-02-24 02:44:47','test-ld-adapt',1,9,10,false,NULL,NULL),(6,'LD API Test Training','LD API Test Training project','',true,NULL,'2015-09-21 02:44:47','2017-02-24 02:44:47','test-ld-training',1,11,12,false,NULL,NULL),(7,'LD API UTF8 E�coding','LD API Test UTF8 E�coding project','',true,NULL,'2016-08-10 07:30:45','2017-03-01 08:10:20','test-ld-�tf8',1,13,14,false,NULL,NULL),(9,'Thai Food Dictionary','A picture dictionary of Thai food.','',true,NULL,'2009-10-12 03:41:53','2021-04-19 14:24:47','tha-food',1,17,18,false,NULL,NULL),(1289,'Sherwood TestSena3 03','','',true,NULL,'2016-08-25 07:58:11','2021-02-23 11:33:58','test-sherwood-sena-03',1,2379,2380,false,NULL,NULL),(1894,'test-ws-1-flex','','',true,NULL,'2018-07-23 09:31:24','2019-10-04 13:22:26','test-ws-1-flex',1,3513,3514,false,NULL,NULL),(2145,'Robin Test Projects','Test projects for Robin Hood testing Send/Receive scenarios','',true,NULL,'2019-10-08 04:06:32','2019-10-08 04:06:32','robin-test-projects',1,3999,4022,false,NULL,NULL),(2146,'Robin Test FLEx new public','','',true,2145,'2019-10-08 04:09:24','2019-10-08 04:09:24','test-robin-flex-new-public',1,4008,4009,true,NULL,NULL),(2147,'Robin new public 2','','',true,2145,'2019-10-09 05:21:30','2019-10-09 05:21:30','test-robin-new-public-2',1,4000,4001,true,NULL,NULL),(2150,'Alan_test','To test hg pull/push','',true,NULL,'2019-10-18 13:59:45','2019-10-22 20:13:53','alan_test',5,3997,3998,false,NULL,NULL),(2152,'aland_test','hg pull/push tests','',true,NULL,'2019-10-22 20:34:59','2019-10-22 20:34:59','aland_test',1,3995,3996,false,NULL,NULL),(2153,'tha-food2','','',true,NULL,'2019-10-24 07:06:20','2019-10-24 07:06:20','tha-food2',1,4023,4024,false,NULL,NULL),(2255,'New project via POST','testing POST','',true,NULL,'2021-02-18 10:50:31','2021-02-18 11:03:36','new-project-via-post',1,NULL,NULL,false,NULL,NULL);
 DROP TABLE IF EXISTS "projects_trackers";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "projects_trackers" (
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "tracker_id" int(11) NOT NULL DEFAULT '0',
-  UNIQUE KEY "projects_trackers_unique" ("project_id","tracker_id"),
-  KEY "projects_trackers_project_id" ("project_id")
+    "project_id" integer NOT NULL DEFAULT '0',
+    "tracker_id" integer NOT NULL DEFAULT '0',
+    UNIQUE ("project_id","tracker_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "projects_trackers"
---
-
-LOCK TABLES "projects_trackers" WRITE;
-/*!40000 ALTER TABLE "projects_trackers" DISABLE KEYS */;
-/*!40000 ALTER TABLE "projects_trackers" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "queries"
---
 
 DROP TABLE IF EXISTS "queries";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "queries" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) DEFAULT NULL,
-  "name" varchar(255) NOT NULL DEFAULT '',
-  "filters" text,
-  "user_id" int(11) NOT NULL DEFAULT '0',
-  "column_names" text,
-  "sort_criteria" text,
-  "group_by" varchar(255) DEFAULT NULL,
-  "type" varchar(255) DEFAULT NULL,
-  "visibility" int(11) DEFAULT '0',
-  "options" text,
-  PRIMARY KEY ("id"),
-  KEY "index_queries_on_project_id" ("project_id"),
-  KEY "index_queries_on_user_id" ("user_id")
+    "id" integer NOT NULL,
+    "project_id" integer DEFAULT NULL,
+    "name" varchar(510) NOT NULL DEFAULT '',
+    "filters" text ,
+    "user_id" integer NOT NULL DEFAULT '0',
+    "column_names" text ,
+    "sort_criteria" text ,
+    "group_by" varchar(510) DEFAULT NULL,
+    "type" varchar(510) DEFAULT NULL,
+    "visibility" integer DEFAULT '0',
+    "options" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "queries"
---
-
-LOCK TABLES "queries" WRITE;
-/*!40000 ALTER TABLE "queries" DISABLE KEYS */;
-/*!40000 ALTER TABLE "queries" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "queries_roles"
---
 
 DROP TABLE IF EXISTS "queries_roles";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "queries_roles" (
-  "query_id" int(11) NOT NULL,
-  "role_id" int(11) NOT NULL,
-  UNIQUE KEY "queries_roles_ids" ("query_id","role_id")
+    "query_id" integer NOT NULL,
+    "role_id" integer NOT NULL,
+    UNIQUE ("query_id","role_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "queries_roles"
---
-
-LOCK TABLES "queries_roles" WRITE;
-/*!40000 ALTER TABLE "queries_roles" DISABLE KEYS */;
-/*!40000 ALTER TABLE "queries_roles" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "repositories"
---
 
 DROP TABLE IF EXISTS "repositories";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "repositories" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "url" varchar(255) NOT NULL DEFAULT '',
-  "login" varchar(60) DEFAULT '',
-  "password" varchar(255) DEFAULT '',
-  "root_url" varchar(255) DEFAULT '',
-  "type" varchar(255) DEFAULT NULL,
-  "path_encoding" varchar(64) DEFAULT NULL,
-  "log_encoding" varchar(64) DEFAULT NULL,
-  "extra_info" longtext,
-  "identifier" varchar(255) DEFAULT NULL,
-  "is_default" tinyint(1) DEFAULT '0',
-  "created_on" datetime DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_repositories_on_project_id" ("project_id")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL DEFAULT '0',
+    "url" varchar(510) NOT NULL DEFAULT '',
+    "login" varchar(120) DEFAULT '',
+    "password" varchar(510) DEFAULT '',
+    "root_url" varchar(510) DEFAULT '',
+    "type" varchar(510) DEFAULT NULL,
+    "path_encoding" varchar(128) DEFAULT NULL,
+    "log_encoding" varchar(128) DEFAULT NULL,
+    "extra_info" text ,
+    "identifier" varchar(510) DEFAULT NULL,
+    "is_default" int4 DEFAULT '0',
+    "created_on" timestamp with time zone DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "repositories"
---
-
-LOCK TABLES "repositories" WRITE;
-/*!40000 ALTER TABLE "repositories" DISABLE KEYS */;
-/*!40000 ALTER TABLE "repositories" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "roles"
---
 
 DROP TABLE IF EXISTS "roles";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "roles" (
-  "id" int(11) NOT NULL,
-  "name" varchar(30) NOT NULL DEFAULT '',
-  "position" int(11) DEFAULT NULL,
-  "assignable" tinyint(1) DEFAULT '1',
-  "builtin" int(11) NOT NULL DEFAULT '0',
-  "permissions" text,
-  "issues_visibility" varchar(30) NOT NULL DEFAULT 'default',
-  "users_visibility" varchar(30) NOT NULL DEFAULT 'all',
-  "time_entries_visibility" varchar(30) NOT NULL DEFAULT 'all',
-  "all_roles_managed" tinyint(1) NOT NULL DEFAULT '1',
-  "settings" text,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "name" varchar(60) NOT NULL DEFAULT '',
+    "position" integer DEFAULT NULL,
+    "assignable" int4 DEFAULT '1',
+    "builtin" integer NOT NULL DEFAULT '0',
+    "permissions" text ,
+    "issues_visibility" varchar(60) NOT NULL DEFAULT 'default',
+    "users_visibility" varchar(60) NOT NULL DEFAULT 'all',
+    "time_entries_visibility" varchar(60) NOT NULL DEFAULT 'all',
+    "all_roles_managed" boolean NOT NULL DEFAULT true,
+    "settings" text ,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "roles"
---
-
-LOCK TABLES "roles" WRITE;
-/*!40000 ALTER TABLE "roles" DISABLE KEYS */;
-INSERT INTO "roles" VALUES (1,'Non member',1,1,1,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(2,'Anonymous',2,1,2,'--- \n- :view_documents\n- :view_files\n- :view_gantt\n- :view_calendar\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(3,'Manager',3,1,0,'--- \n- :edit_project\n- :select_project_modules\n- :manage_members\n- :manage_versions\n- :manage_boards\n- :add_messages\n- :edit_messages\n- :edit_own_messages\n- :delete_messages\n- :delete_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_issue_notes\n- :edit_own_issue_notes\n- :move_issues\n- :delete_issues\n- :manage_public_queries\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :add_issue_watchers\n- :manage_news\n- :comment_news\n- :manage_repository\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :edit_time_entries\n- :edit_own_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(4,'Contributor',4,1,0,'--- \n- :manage_versions\n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_own_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :manage_news\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(5,'Obv - do not use',5,1,0,'--- \n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :log_time\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL),(6,'LanguageDepotProgrammer',6,1,0,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :view_time_entries\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',1,NULL);
-/*!40000 ALTER TABLE "roles" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "roles_managed_roles"
---
-
+INSERT INTO "roles" VALUES (1,'Non member',1,1,1,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',true,NULL),(2,'Anonymous',2,1,2,'--- \n- :view_documents\n- :view_files\n- :view_gantt\n- :view_calendar\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',true,NULL),(3,'Manager',3,1,0,'--- \n- :edit_project\n- :select_project_modules\n- :manage_members\n- :manage_versions\n- :manage_boards\n- :add_messages\n- :edit_messages\n- :edit_own_messages\n- :delete_messages\n- :delete_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_issue_notes\n- :edit_own_issue_notes\n- :move_issues\n- :delete_issues\n- :manage_public_queries\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :add_issue_watchers\n- :manage_news\n- :comment_news\n- :manage_repository\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :edit_time_entries\n- :edit_own_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',true,NULL),(4,'Contributor',4,1,0,'--- \n- :manage_versions\n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :manage_files\n- :view_files\n- :manage_categories\n- :add_issues\n- :edit_issues\n- :manage_issue_relations\n- :add_issue_notes\n- :edit_own_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :view_issue_watchers\n- :manage_news\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :commit_access\n- :log_time\n- :view_time_entries\n- :rename_wiki_pages\n- :delete_wiki_pages\n- :view_wiki_pages\n- :view_wiki_edits\n- :edit_wiki_pages\n- :delete_wiki_pages_attachments\n- :protect_wiki_pages\n- :view_issues\n- :add_documents\n- :edit_documents\n- :delete_documents\n- :view_news\n- :view_messages\n','default','all','all',true,NULL),(5,'Obv - do not use',5,1,0,'--- \n- :add_messages\n- :edit_own_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :log_time\n- :view_time_entries\n- :view_wiki_pages\n- :view_wiki_edits\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',true,NULL),(6,'LanguageDepotProgrammer',6,1,0,'--- \n- :add_messages\n- :view_documents\n- :view_files\n- :add_issues\n- :add_issue_notes\n- :save_queries\n- :view_gantt\n- :view_calendar\n- :comment_news\n- :browse_repository\n- :view_changesets\n- :view_time_entries\n- :view_issues\n- :view_news\n- :view_messages\n','default','all','all',true,NULL);
 DROP TABLE IF EXISTS "roles_managed_roles";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "roles_managed_roles" (
-  "role_id" int(11) NOT NULL,
-  "managed_role_id" int(11) NOT NULL,
-  UNIQUE KEY "index_roles_managed_roles_on_role_id_and_managed_role_id" ("role_id","managed_role_id")
+    "role_id" integer NOT NULL,
+    "managed_role_id" integer NOT NULL,
+    UNIQUE ("role_id","managed_role_id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "roles_managed_roles"
---
-
-LOCK TABLES "roles_managed_roles" WRITE;
-/*!40000 ALTER TABLE "roles_managed_roles" DISABLE KEYS */;
-/*!40000 ALTER TABLE "roles_managed_roles" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "schema_migrations"
---
 
 DROP TABLE IF EXISTS "schema_migrations";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "schema_migrations" (
-  "version" varchar(255) NOT NULL,
-  UNIQUE KEY "unique_schema_migrations" ("version")
+    "version" varchar(510) NOT NULL,
+    UNIQUE ("version")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "schema_migrations"
---
-
-LOCK TABLES "schema_migrations" WRITE;
-/*!40000 ALTER TABLE "schema_migrations" DISABLE KEYS */;
-/*!40000 ALTER TABLE "schema_migrations" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "settings"
---
 
 DROP TABLE IF EXISTS "settings";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "settings" (
-  "id" int(11) NOT NULL,
-  "name" varchar(255) NOT NULL DEFAULT '',
-  "value" text,
-  "updated_on" datetime DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_settings_on_name" ("name")
+    "id" integer NOT NULL,
+    "name" varchar(510) NOT NULL DEFAULT '',
+    "value" text ,
+    "updated_on" timestamp with time zone DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "settings"
---
-
-LOCK TABLES "settings" WRITE;
-/*!40000 ALTER TABLE "settings" DISABLE KEYS */;
-/*!40000 ALTER TABLE "settings" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "time_entries"
---
 
 DROP TABLE IF EXISTS "time_entries";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "time_entries" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL,
-  "issue_id" int(11) DEFAULT NULL,
-  "hours" float NOT NULL,
-  "comments" varchar(1024) DEFAULT NULL,
-  "activity_id" int(11) NOT NULL,
-  "spent_on" date NOT NULL,
-  "tyear" int(11) NOT NULL,
-  "tmonth" int(11) NOT NULL,
-  "tweek" int(11) NOT NULL,
-  "created_on" datetime NOT NULL,
-  "updated_on" datetime NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "time_entries_project_id" ("project_id"),
-  KEY "time_entries_issue_id" ("issue_id"),
-  KEY "index_time_entries_on_activity_id" ("activity_id"),
-  KEY "index_time_entries_on_user_id" ("user_id"),
-  KEY "index_time_entries_on_created_on" ("created_on")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL,
+    "user_id" integer NOT NULL,
+    "issue_id" integer DEFAULT NULL,
+    "hours" float NOT NULL,
+    "comments" varchar(2048) DEFAULT NULL,
+    "activity_id" integer NOT NULL,
+    "spent_on" date NOT NULL,
+    "tyear" integer NOT NULL,
+    "tmonth" integer NOT NULL,
+    "tweek" integer NOT NULL,
+    "created_on" timestamp with time zone NOT NULL,
+    "updated_on" timestamp with time zone NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "time_entries"
---
-
-LOCK TABLES "time_entries" WRITE;
-/*!40000 ALTER TABLE "time_entries" DISABLE KEYS */;
-/*!40000 ALTER TABLE "time_entries" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "tokens"
---
 
 DROP TABLE IF EXISTS "tokens";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "tokens" (
-  "id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL DEFAULT '0',
-  "action" varchar(30) NOT NULL DEFAULT '',
-  "value" varchar(40) NOT NULL DEFAULT '',
-  "created_on" datetime NOT NULL,
-  "updated_on" timestamp NULL DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  UNIQUE KEY "tokens_value" ("value"),
-  KEY "index_tokens_on_user_id" ("user_id")
+    "id" integer NOT NULL,
+    "user_id" integer NOT NULL DEFAULT '0',
+    "action" varchar(60) NOT NULL DEFAULT '',
+    "value" varchar(80) NOT NULL DEFAULT '',
+    "created_on" timestamp with time zone NOT NULL,
+    "updated_on" timestamp NULL DEFAULT NULL,
+    PRIMARY KEY ("id"),
+    UNIQUE ("value")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "tokens"
---
-
-LOCK TABLES "tokens" WRITE;
-/*!40000 ALTER TABLE "tokens" DISABLE KEYS */;
-/*!40000 ALTER TABLE "tokens" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "trackers"
---
 
 DROP TABLE IF EXISTS "trackers";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "trackers" (
-  "id" int(11) NOT NULL,
-  "name" varchar(30) NOT NULL DEFAULT '',
-  "is_in_chlog" tinyint(1) NOT NULL DEFAULT '0',
-  "position" int(11) DEFAULT NULL,
-  "is_in_roadmap" tinyint(1) NOT NULL DEFAULT '1',
-  "fields_bits" int(11) DEFAULT '0',
-  "default_status_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id")
+    "id" integer NOT NULL,
+    "name" varchar(60) NOT NULL DEFAULT '',
+    "is_in_chlog" boolean NOT NULL DEFAULT false,
+    "position" integer DEFAULT NULL,
+    "is_in_roadmap" boolean NOT NULL DEFAULT true,
+    "fields_bits" integer DEFAULT '0',
+    "default_status_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "trackers"
---
-
-LOCK TABLES "trackers" WRITE;
-/*!40000 ALTER TABLE "trackers" DISABLE KEYS */;
-INSERT INTO "trackers" VALUES (1,'Bug',1,1,0,0,1),(2,'Feature',1,2,1,0,1),(3,'Support',0,3,0,0,1);
-/*!40000 ALTER TABLE "trackers" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "user_preferences"
---
-
+INSERT INTO "trackers" VALUES (1,'Bug',true,1,false,0,1),(2,'Feature',true,2,true,0,1),(3,'Support',false,3,false,0,1);
 DROP TABLE IF EXISTS "user_preferences";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "user_preferences" (
-  "id" int(11) NOT NULL,
-  "user_id" int(11) NOT NULL DEFAULT '0',
-  "others" text,
-  "hide_mail" tinyint(1) DEFAULT '1',
-  "time_zone" varchar(255) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_user_preferences_on_user_id" ("user_id")
+    "id" integer NOT NULL,
+    "user_id" integer NOT NULL DEFAULT '0',
+    "others" text ,
+    "hide_mail" int4 DEFAULT '1',
+    "time_zone" varchar(510) DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "user_preferences"
---
-
-LOCK TABLES "user_preferences" WRITE;
-/*!40000 ALTER TABLE "user_preferences" DISABLE KEYS */;
-/*!40000 ALTER TABLE "user_preferences" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "users"
---
 
 DROP TABLE IF EXISTS "users";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "users" (
-  "id" int(11) NOT NULL,
-  "login" varchar(255) NOT NULL DEFAULT '',
-  "hashed_password" varchar(40) NOT NULL DEFAULT '',
-  "firstname" varchar(30) NOT NULL DEFAULT '',
-  "lastname" varchar(255) NOT NULL DEFAULT '',
-  "admin" tinyint(1) NOT NULL DEFAULT '0',
-  "status" int(11) NOT NULL DEFAULT '1',
-  "last_login_on" datetime DEFAULT NULL,
-  "language" varchar(5) DEFAULT '',
-  "auth_source_id" int(11) DEFAULT NULL,
-  "created_on" datetime DEFAULT NULL,
-  "updated_on" datetime DEFAULT NULL,
-  "type" varchar(255) DEFAULT NULL,
-  "identity_url" varchar(255) DEFAULT NULL,
-  "mail_notification" varchar(255) NOT NULL DEFAULT '',
-  "salt" varchar(64) DEFAULT NULL,
-  "must_change_passwd" tinyint(1) NOT NULL DEFAULT '0',
-  "passwd_changed_on" datetime DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "index_users_on_id_and_type" ("id","type"),
-  KEY "index_users_on_auth_source_id" ("auth_source_id"),
-  KEY "index_users_on_type" ("type")
+    "id" integer NOT NULL,
+    "login" varchar(510) NOT NULL DEFAULT '',
+    "hashed_password" varchar(80) NOT NULL DEFAULT '',
+    "firstname" varchar(60) NOT NULL DEFAULT '',
+    "lastname" varchar(510) NOT NULL DEFAULT '',
+    "admin" boolean NOT NULL DEFAULT false,
+    "status" integer NOT NULL DEFAULT '1',
+    "last_login_on" timestamp with time zone DEFAULT NULL,
+    "language" varchar(10) DEFAULT '',
+    "auth_source_id" integer DEFAULT NULL,
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "updated_on" timestamp with time zone DEFAULT NULL,
+    "type" varchar(510) DEFAULT NULL,
+    "identity_url" varchar(510) DEFAULT NULL,
+    "mail_notification" varchar(510) NOT NULL DEFAULT '',
+    "salt" varchar(128) DEFAULT NULL,
+    "must_change_passwd" boolean NOT NULL DEFAULT false,
+    "passwd_changed_on" timestamp with time zone DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "users"
---
-
-LOCK TABLES "users" WRITE;
-/*!40000 ALTER TABLE "users" DISABLE KEYS */;
-INSERT INTO "users" VALUES (1,'admin','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Admin','User',1,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'all','c5acc2da57548ddb2f1a228fab5c0071',0,'2019-10-15 07:45:50'),(2,'','','','Anonymous',0,0,NULL,'',NULL,'2009-07-22 08:44:34','2009-07-22 08:44:34','AnonymousUser',NULL,'only_my_events',NULL,0,NULL),(3,'richard','','Richard','Lionheart',1,1,'2019-05-31 07:05:05','en',NULL,'2009-07-23 08:40:51','2019-05-31 07:05:05','User',NULL,'only_my_events','3fd636ad724f378e648c343def141bcb',0,NULL),(4,'prince_john','','Prince','John',1,1,'2018-05-30 19:39:34','en',NULL,'2009-07-23 10:40:09','2018-05-30 19:39:34','User',NULL,'all','aa9ba054485f376979dfd561cd69dbf8',0,NULL),(5,'rmunn','','Robin','Munn',1,1,'2020-08-10 12:34:56','en',NULL,'2020-08-10 12:34:56','2020-08-10 12:34:56','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',0,NULL),(10,'manager1','bc852d2e71e76cf734e3a4b74619bc28d867c8bd','Manager1','User',0,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(11,'manager2','5857a28060d630a5ed9e0bfd4e6e17a76fa41b79','Manager2','User',0,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(20,'user1','02484720fe235a6fa352ffa0d5dac80897008ec0','User','One',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(21,'user2','3dd4ba95e5e68cd43d430a1a2d74a9ce75957be9','User','Two',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(22,'Upper','721c93a8a9238620123d3bcfa670ce56','Upper','Case',0,1,'2015-10-21 09:08:39','en',NULL,'2015-10-16 09:08:39','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(30,'modify','9f37b795e5468cdf3e4a0a4a2d54698e056556e7','Modify','User',0,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(170,'test','d8bebbafb32fbb0545773ce30dbcfb29e7573050','Test','Palaso',0,1,'2015-10-16 09:08:39','en',NULL,'2010-09-09 03:29:15','2012-08-30 09:49:02','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',0,NULL),(234,'tuck','08099b4bf0670e72f2a1a364e417bcf9b8a8b681','Friar','Tuck',1,1,'2019-10-24 07:15:55','en',NULL,'2011-02-03 02:25:45','2019-08-23 04:38:34','User',NULL,'only_my_events','1713448be6bb43818d5067b3f3110052',0,NULL),(235,'guest','','Guest','Observer',0,1,'2013-02-27 08:43:53','en',NULL,'2011-02-03 06:48:14','2013-02-27 08:43:53','User',NULL,'only_my_events','0e2663561e75495bbe8f24d98c7b14af',0,NULL),(256,'guest-palaso','','Guest','Palaso',0,1,NULL,'en',NULL,'2011-03-10 08:20:05','2011-03-10 08:20:05','User',NULL,'only_my_events','75a51aa7977a4966ad775e90215d581e',0,NULL),(1094,'rhood','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Robin','Hood',1,1,'2019-10-30 08:07:45','en',NULL,'2014-02-04 03:59:06','2019-10-15 07:45:50','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',0,'2019-10-15 07:45:50'),(1947,'willscarlet','','Will','Scarlet',1,1,'2019-09-27 15:42:25','en',NULL,'2015-10-14 05:54:01','2019-09-27 15:42:25','User',NULL,'only_my_events','981f7ecfdb494e01a133ea5813cb4f3a',0,NULL),(4159,'adale','','Alan','a Dale',1,1,'2019-10-30 13:21:01','en',NULL,'2019-07-25 14:14:46','2019-10-03 22:05:18','User',NULL,'only_my_events','eebaa2330def4e51be7fe5587baf18d0',0,NULL);
-/*!40000 ALTER TABLE "users" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "versions"
---
-
+INSERT INTO "users" VALUES (1,'admin','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Admin','User',true,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'all','c5acc2da57548ddb2f1a228fab5c0071',false,'2019-10-15 07:45:50'),(2,'','','','Anonymous',false,0,NULL,'',NULL,'2009-07-22 08:44:34','2009-07-22 08:44:34','AnonymousUser',NULL,'only_my_events',NULL,false,NULL),(3,'richard','','Richard','Lionheart',true,1,'2019-05-31 07:05:05','en',NULL,'2009-07-23 08:40:51','2019-05-31 07:05:05','User',NULL,'only_my_events','3fd636ad724f378e648c343def141bcb',false,NULL),(4,'prince_john','','Prince','John',true,1,'2018-05-30 19:39:34','en',NULL,'2009-07-23 10:40:09','2018-05-30 19:39:34','User',NULL,'all','aa9ba054485f376979dfd561cd69dbf8',false,NULL),(5,'rmunn','','Robin','Munn',true,1,'2020-08-10 12:34:56','en',NULL,'2020-08-10 12:34:56','2020-08-10 12:34:56','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',false,NULL),(10,'manager1','bc852d2e71e76cf734e3a4b74619bc28d867c8bd','Manager1','User',false,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(11,'manager2','5857a28060d630a5ed9e0bfd4e6e17a76fa41b79','Manager2','User',false,1,'2009-07-23 08:44:48','en',NULL,'2009-07-22 06:32:07','2009-07-23 08:45:37','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(20,'user1','02484720fe235a6fa352ffa0d5dac80897008ec0','User','One',false,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(21,'user2','3dd4ba95e5e68cd43d430a1a2d74a9ce75957be9','User','Two',false,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(22,'Upper','721c93a8a9238620123d3bcfa670ce56','Upper','Case',false,1,'2015-10-21 09:08:39','en',NULL,'2015-10-16 09:08:39','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(30,'modify','9f37b795e5468cdf3e4a0a4a2d54698e056556e7','Modify','User',false,1,'2015-10-16 09:08:39','en',NULL,'2009-07-23 08:40:51','2015-10-16 09:08:39','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(170,'test','d8bebbafb32fbb0545773ce30dbcfb29e7573050','Test','Palaso',false,1,'2015-10-16 09:08:39','en',NULL,'2010-09-09 03:29:15','2012-08-30 09:49:02','User',NULL,'only_my_events','dd903a045f4537436a257ce31b0c680c',false,NULL),(234,'tuck','08099b4bf0670e72f2a1a364e417bcf9b8a8b681','Friar','Tuck',true,1,'2019-10-24 07:15:55','en',NULL,'2011-02-03 02:25:45','2019-08-23 04:38:34','User',NULL,'only_my_events','1713448be6bb43818d5067b3f3110052',false,NULL),(235,'guest','','Guest','Observer',false,1,'2013-02-27 08:43:53','en',NULL,'2011-02-03 06:48:14','2013-02-27 08:43:53','User',NULL,'only_my_events','0e2663561e75495bbe8f24d98c7b14af',false,NULL),(256,'guest-palaso','','Guest','Palaso',false,1,NULL,'en',NULL,'2011-03-10 08:20:05','2011-03-10 08:20:05','User',NULL,'only_my_events','75a51aa7977a4966ad775e90215d581e',false,NULL),(1094,'rhood','7eeae5aa145d3ab61ff0e80d07ba02d573537a35','Robin','Hood',true,1,'2019-10-30 08:07:45','en',NULL,'2014-02-04 03:59:06','2019-10-15 07:45:50','User',NULL,'only_my_events','c5acc2da57548ddb2f1a228fab5c0071',false,'2019-10-15 07:45:50'),(1947,'willscarlet','','Will','Scarlet',true,1,'2019-09-27 15:42:25','en',NULL,'2015-10-14 05:54:01','2019-09-27 15:42:25','User',NULL,'only_my_events','981f7ecfdb494e01a133ea5813cb4f3a',false,NULL),(4159,'adale','','Alan','a Dale',true,1,'2019-10-30 13:21:01','en',NULL,'2019-07-25 14:14:46','2019-10-03 22:05:18','User',NULL,'only_my_events','eebaa2330def4e51be7fe5587baf18d0',false,NULL);
 DROP TABLE IF EXISTS "versions";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "versions" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL DEFAULT '0',
-  "name" varchar(255) NOT NULL DEFAULT '',
-  "description" varchar(255) DEFAULT '',
-  "effective_date" date DEFAULT NULL,
-  "created_on" datetime DEFAULT NULL,
-  "updated_on" datetime DEFAULT NULL,
-  "wiki_page_title" varchar(255) DEFAULT NULL,
-  "status" varchar(255) DEFAULT 'open',
-  "sharing" varchar(255) NOT NULL DEFAULT 'none',
-  PRIMARY KEY ("id"),
-  KEY "versions_project_id" ("project_id"),
-  KEY "index_versions_on_sharing" ("sharing")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL DEFAULT '0',
+    "name" varchar(510) NOT NULL DEFAULT '',
+    "description" varchar(510) DEFAULT '',
+    "effective_date" date DEFAULT NULL,
+    "created_on" timestamp with time zone DEFAULT NULL,
+    "updated_on" timestamp with time zone DEFAULT NULL,
+    "wiki_page_title" varchar(510) DEFAULT NULL,
+    "status" varchar(510) DEFAULT 'open',
+    "sharing" varchar(510) NOT NULL DEFAULT 'none',
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "versions"
---
-
-LOCK TABLES "versions" WRITE;
-/*!40000 ALTER TABLE "versions" DISABLE KEYS */;
-/*!40000 ALTER TABLE "versions" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "watchers"
---
 
 DROP TABLE IF EXISTS "watchers";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "watchers" (
-  "id" int(11) NOT NULL,
-  "watchable_type" varchar(255) NOT NULL DEFAULT '',
-  "watchable_id" int(11) NOT NULL DEFAULT '0',
-  "user_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "watchers_user_id_type" ("user_id","watchable_type"),
-  KEY "index_watchers_on_user_id" ("user_id"),
-  KEY "index_watchers_on_watchable_id_and_watchable_type" ("watchable_id","watchable_type")
+    "id" integer NOT NULL,
+    "watchable_type" varchar(510) NOT NULL DEFAULT '',
+    "watchable_id" integer NOT NULL DEFAULT '0',
+    "user_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "watchers"
---
-
-LOCK TABLES "watchers" WRITE;
-/*!40000 ALTER TABLE "watchers" DISABLE KEYS */;
-/*!40000 ALTER TABLE "watchers" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "wiki_content_versions"
---
 
 DROP TABLE IF EXISTS "wiki_content_versions";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "wiki_content_versions" (
-  "id" int(11) NOT NULL,
-  "wiki_content_id" int(11) NOT NULL,
-  "page_id" int(11) NOT NULL,
-  "author_id" int(11) DEFAULT NULL,
-  "data" longblob,
-  "compression" varchar(6) DEFAULT '',
-  "comments" varchar(1024) DEFAULT '',
-  "updated_on" datetime NOT NULL,
-  "version" int(11) NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "wiki_content_versions_wcid" ("wiki_content_id"),
-  KEY "index_wiki_content_versions_on_updated_on" ("updated_on")
+    "id" integer NOT NULL,
+    "wiki_content_id" integer NOT NULL,
+    "page_id" integer NOT NULL,
+    "author_id" integer DEFAULT NULL,
+    "data" bytea ,
+    "compression" varchar(12) DEFAULT '',
+    "comments" varchar(2048) DEFAULT '',
+    "updated_on" timestamp with time zone NOT NULL,
+    "version" integer NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "wiki_content_versions"
---
-
-LOCK TABLES "wiki_content_versions" WRITE;
-/*!40000 ALTER TABLE "wiki_content_versions" DISABLE KEYS */;
-/*!40000 ALTER TABLE "wiki_content_versions" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "wiki_contents"
---
 
 DROP TABLE IF EXISTS "wiki_contents";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "wiki_contents" (
-  "id" int(11) NOT NULL,
-  "page_id" int(11) NOT NULL,
-  "author_id" int(11) DEFAULT NULL,
-  "text" longtext,
-  "comments" varchar(1024) DEFAULT '',
-  "updated_on" datetime NOT NULL,
-  "version" int(11) NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "wiki_contents_page_id" ("page_id"),
-  KEY "index_wiki_contents_on_author_id" ("author_id")
+    "id" integer NOT NULL,
+    "page_id" integer NOT NULL,
+    "author_id" integer DEFAULT NULL,
+    "text" text ,
+    "comments" varchar(2048) DEFAULT '',
+    "updated_on" timestamp with time zone NOT NULL,
+    "version" integer NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "wiki_contents"
---
-
-LOCK TABLES "wiki_contents" WRITE;
-/*!40000 ALTER TABLE "wiki_contents" DISABLE KEYS */;
-/*!40000 ALTER TABLE "wiki_contents" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "wiki_pages"
---
 
 DROP TABLE IF EXISTS "wiki_pages";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "wiki_pages" (
-  "id" int(11) NOT NULL,
-  "wiki_id" int(11) NOT NULL,
-  "title" varchar(255) NOT NULL,
-  "created_on" datetime NOT NULL,
-  "protected" tinyint(1) NOT NULL DEFAULT '0',
-  "parent_id" int(11) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "wiki_pages_wiki_id_title" ("wiki_id","title"),
-  KEY "index_wiki_pages_on_wiki_id" ("wiki_id"),
-  KEY "index_wiki_pages_on_parent_id" ("parent_id")
+    "id" integer NOT NULL,
+    "wiki_id" integer NOT NULL,
+    "title" varchar(510) NOT NULL,
+    "created_on" timestamp with time zone NOT NULL,
+    "protected" boolean NOT NULL DEFAULT false,
+    "parent_id" integer DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "wiki_pages"
---
-
-LOCK TABLES "wiki_pages" WRITE;
-/*!40000 ALTER TABLE "wiki_pages" DISABLE KEYS */;
-/*!40000 ALTER TABLE "wiki_pages" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "wiki_redirects"
---
 
 DROP TABLE IF EXISTS "wiki_redirects";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "wiki_redirects" (
-  "id" int(11) NOT NULL,
-  "wiki_id" int(11) NOT NULL,
-  "title" varchar(255) DEFAULT NULL,
-  "redirects_to" varchar(255) DEFAULT NULL,
-  "created_on" datetime NOT NULL,
-  "redirects_to_wiki_id" int(11) NOT NULL,
-  PRIMARY KEY ("id"),
-  KEY "wiki_redirects_wiki_id_title" ("wiki_id","title"),
-  KEY "index_wiki_redirects_on_wiki_id" ("wiki_id")
+    "id" integer NOT NULL,
+    "wiki_id" integer NOT NULL,
+    "title" varchar(510) DEFAULT NULL,
+    "redirects_to" varchar(510) DEFAULT NULL,
+    "created_on" timestamp with time zone NOT NULL,
+    "redirects_to_wiki_id" integer NOT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "wiki_redirects"
---
-
-LOCK TABLES "wiki_redirects" WRITE;
-/*!40000 ALTER TABLE "wiki_redirects" DISABLE KEYS */;
-/*!40000 ALTER TABLE "wiki_redirects" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "wikis"
---
 
 DROP TABLE IF EXISTS "wikis";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "wikis" (
-  "id" int(11) NOT NULL,
-  "project_id" int(11) NOT NULL,
-  "start_page" varchar(255) NOT NULL,
-  "status" int(11) NOT NULL DEFAULT '1',
-  PRIMARY KEY ("id"),
-  KEY "wikis_project_id" ("project_id")
+    "id" integer NOT NULL,
+    "project_id" integer NOT NULL,
+    "start_page" varchar(510) NOT NULL,
+    "status" integer NOT NULL DEFAULT '1',
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table "wikis"
---
-
-LOCK TABLES "wikis" WRITE;
-/*!40000 ALTER TABLE "wikis" DISABLE KEYS */;
-/*!40000 ALTER TABLE "wikis" ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table "workflows"
---
 
 DROP TABLE IF EXISTS "workflows";
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE "workflows" (
-  "id" int(11) NOT NULL,
-  "tracker_id" int(11) NOT NULL DEFAULT '0',
-  "old_status_id" int(11) NOT NULL DEFAULT '0',
-  "new_status_id" int(11) NOT NULL DEFAULT '0',
-  "role_id" int(11) NOT NULL DEFAULT '0',
-  "assignee" tinyint(1) NOT NULL DEFAULT '0',
-  "author" tinyint(1) NOT NULL DEFAULT '0',
-  "type" varchar(30) DEFAULT NULL,
-  "field_name" varchar(30) DEFAULT NULL,
-  "rule" varchar(30) DEFAULT NULL,
-  PRIMARY KEY ("id"),
-  KEY "wkfs_role_tracker_old_status" ("role_id","tracker_id","old_status_id"),
-  KEY "index_workflows_on_old_status_id" ("old_status_id"),
-  KEY "index_workflows_on_role_id" ("role_id"),
-  KEY "index_workflows_on_new_status_id" ("new_status_id"),
-  KEY "index_workflows_on_tracker_id" ("tracker_id")
+    "id" integer NOT NULL,
+    "tracker_id" integer NOT NULL DEFAULT '0',
+    "old_status_id" integer NOT NULL DEFAULT '0',
+    "new_status_id" integer NOT NULL DEFAULT '0',
+    "role_id" integer NOT NULL DEFAULT '0',
+    "assignee" boolean NOT NULL DEFAULT false,
+    "author" boolean NOT NULL DEFAULT false,
+    "type" varchar(60) DEFAULT NULL,
+    "field_name" varchar(60) DEFAULT NULL,
+    "rule" varchar(60) DEFAULT NULL,
+    PRIMARY KEY ("id")
 );
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table "workflows"
---
 
-LOCK TABLES "workflows" WRITE;
-/*!40000 ALTER TABLE "workflows" DISABLE KEYS */;
-/*!40000 ALTER TABLE "workflows" ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+-- Post-data save --
+COMMIT;
+START TRANSACTION;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+-- Foreign keys --
+ALTER TABLE "phantom2" ADD CONSTRAINT "id_fkey" FOREIGN KEY ("id") REFERENCES "phantom1" ("id") DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX ON "phantom2" ("id");
 
--- Dump completed on 2021-04-19 14:26:53
+-- Sequences --
+DROP SEQUENCE IF EXISTS attachments_id_seq;
+CREATE SEQUENCE attachments_id_seq;
+SELECT setval('attachments_id_seq', max(id)) FROM attachments;
+ALTER TABLE "attachments" ALTER COLUMN "id" SET DEFAULT nextval('attachments_id_seq');
+DROP SEQUENCE IF EXISTS auth_sources_id_seq;
+CREATE SEQUENCE auth_sources_id_seq;
+SELECT setval('auth_sources_id_seq', max(id)) FROM auth_sources;
+ALTER TABLE "auth_sources" ALTER COLUMN "id" SET DEFAULT nextval('auth_sources_id_seq');
+DROP SEQUENCE IF EXISTS boards_id_seq;
+CREATE SEQUENCE boards_id_seq;
+SELECT setval('boards_id_seq', max(id)) FROM boards;
+ALTER TABLE "boards" ALTER COLUMN "id" SET DEFAULT nextval('boards_id_seq');
+DROP SEQUENCE IF EXISTS changes_id_seq;
+CREATE SEQUENCE changes_id_seq;
+SELECT setval('changes_id_seq', max(id)) FROM changes;
+ALTER TABLE "changes" ALTER COLUMN "id" SET DEFAULT nextval('changes_id_seq');
+DROP SEQUENCE IF EXISTS changesets_id_seq;
+CREATE SEQUENCE changesets_id_seq;
+SELECT setval('changesets_id_seq', max(id)) FROM changesets;
+ALTER TABLE "changesets" ALTER COLUMN "id" SET DEFAULT nextval('changesets_id_seq');
+DROP SEQUENCE IF EXISTS comments_id_seq;
+CREATE SEQUENCE comments_id_seq;
+SELECT setval('comments_id_seq', max(id)) FROM comments;
+ALTER TABLE "comments" ALTER COLUMN "id" SET DEFAULT nextval('comments_id_seq');
+DROP SEQUENCE IF EXISTS custom_field_enumerations_id_seq;
+CREATE SEQUENCE custom_field_enumerations_id_seq;
+SELECT setval('custom_field_enumerations_id_seq', max(id)) FROM custom_field_enumerations;
+ALTER TABLE "custom_field_enumerations" ALTER COLUMN "id" SET DEFAULT nextval('custom_field_enumerations_id_seq');
+DROP SEQUENCE IF EXISTS custom_fields_id_seq;
+CREATE SEQUENCE custom_fields_id_seq;
+SELECT setval('custom_fields_id_seq', max(id)) FROM custom_fields;
+ALTER TABLE "custom_fields" ALTER COLUMN "id" SET DEFAULT nextval('custom_fields_id_seq');
+DROP SEQUENCE IF EXISTS custom_values_id_seq;
+CREATE SEQUENCE custom_values_id_seq;
+SELECT setval('custom_values_id_seq', max(id)) FROM custom_values;
+ALTER TABLE "custom_values" ALTER COLUMN "id" SET DEFAULT nextval('custom_values_id_seq');
+DROP SEQUENCE IF EXISTS documents_id_seq;
+CREATE SEQUENCE documents_id_seq;
+SELECT setval('documents_id_seq', max(id)) FROM documents;
+ALTER TABLE "documents" ALTER COLUMN "id" SET DEFAULT nextval('documents_id_seq');
+DROP SEQUENCE IF EXISTS email_addresses_id_seq;
+CREATE SEQUENCE email_addresses_id_seq;
+SELECT setval('email_addresses_id_seq', max(id)) FROM email_addresses;
+ALTER TABLE "email_addresses" ALTER COLUMN "id" SET DEFAULT nextval('email_addresses_id_seq');
+DROP SEQUENCE IF EXISTS enabled_modules_id_seq;
+CREATE SEQUENCE enabled_modules_id_seq;
+SELECT setval('enabled_modules_id_seq', max(id)) FROM enabled_modules;
+ALTER TABLE "enabled_modules" ALTER COLUMN "id" SET DEFAULT nextval('enabled_modules_id_seq');
+DROP SEQUENCE IF EXISTS enumerations_id_seq;
+CREATE SEQUENCE enumerations_id_seq;
+SELECT setval('enumerations_id_seq', max(id)) FROM enumerations;
+ALTER TABLE "enumerations" ALTER COLUMN "id" SET DEFAULT nextval('enumerations_id_seq');
+DROP SEQUENCE IF EXISTS import_items_id_seq;
+CREATE SEQUENCE import_items_id_seq;
+SELECT setval('import_items_id_seq', max(id)) FROM import_items;
+ALTER TABLE "import_items" ALTER COLUMN "id" SET DEFAULT nextval('import_items_id_seq');
+DROP SEQUENCE IF EXISTS imports_id_seq;
+CREATE SEQUENCE imports_id_seq;
+SELECT setval('imports_id_seq', max(id)) FROM imports;
+ALTER TABLE "imports" ALTER COLUMN "id" SET DEFAULT nextval('imports_id_seq');
+DROP SEQUENCE IF EXISTS issue_categories_id_seq;
+CREATE SEQUENCE issue_categories_id_seq;
+SELECT setval('issue_categories_id_seq', max(id)) FROM issue_categories;
+ALTER TABLE "issue_categories" ALTER COLUMN "id" SET DEFAULT nextval('issue_categories_id_seq');
+DROP SEQUENCE IF EXISTS issue_relations_id_seq;
+CREATE SEQUENCE issue_relations_id_seq;
+SELECT setval('issue_relations_id_seq', max(id)) FROM issue_relations;
+ALTER TABLE "issue_relations" ALTER COLUMN "id" SET DEFAULT nextval('issue_relations_id_seq');
+DROP SEQUENCE IF EXISTS issue_statuses_id_seq;
+CREATE SEQUENCE issue_statuses_id_seq;
+SELECT setval('issue_statuses_id_seq', max(id)) FROM issue_statuses;
+ALTER TABLE "issue_statuses" ALTER COLUMN "id" SET DEFAULT nextval('issue_statuses_id_seq');
+DROP SEQUENCE IF EXISTS issues_id_seq;
+CREATE SEQUENCE issues_id_seq;
+SELECT setval('issues_id_seq', max(id)) FROM issues;
+ALTER TABLE "issues" ALTER COLUMN "id" SET DEFAULT nextval('issues_id_seq');
+DROP SEQUENCE IF EXISTS journal_details_id_seq;
+CREATE SEQUENCE journal_details_id_seq;
+SELECT setval('journal_details_id_seq', max(id)) FROM journal_details;
+ALTER TABLE "journal_details" ALTER COLUMN "id" SET DEFAULT nextval('journal_details_id_seq');
+DROP SEQUENCE IF EXISTS journals_id_seq;
+CREATE SEQUENCE journals_id_seq;
+SELECT setval('journals_id_seq', max(id)) FROM journals;
+ALTER TABLE "journals" ALTER COLUMN "id" SET DEFAULT nextval('journals_id_seq');
+DROP SEQUENCE IF EXISTS member_roles_id_seq;
+CREATE SEQUENCE member_roles_id_seq;
+SELECT setval('member_roles_id_seq', max(id)) FROM member_roles;
+ALTER TABLE "member_roles" ALTER COLUMN "id" SET DEFAULT nextval('member_roles_id_seq');
+DROP SEQUENCE IF EXISTS members_id_seq;
+CREATE SEQUENCE members_id_seq;
+SELECT setval('members_id_seq', max(id)) FROM members;
+ALTER TABLE "members" ALTER COLUMN "id" SET DEFAULT nextval('members_id_seq');
+DROP SEQUENCE IF EXISTS messages_id_seq;
+CREATE SEQUENCE messages_id_seq;
+SELECT setval('messages_id_seq', max(id)) FROM messages;
+ALTER TABLE "messages" ALTER COLUMN "id" SET DEFAULT nextval('messages_id_seq');
+DROP SEQUENCE IF EXISTS news_id_seq;
+CREATE SEQUENCE news_id_seq;
+SELECT setval('news_id_seq', max(id)) FROM news;
+ALTER TABLE "news" ALTER COLUMN "id" SET DEFAULT nextval('news_id_seq');
+DROP SEQUENCE IF EXISTS open_id_authentication_associations_id_seq;
+CREATE SEQUENCE open_id_authentication_associations_id_seq;
+SELECT setval('open_id_authentication_associations_id_seq', max(id)) FROM open_id_authentication_associations;
+ALTER TABLE "open_id_authentication_associations" ALTER COLUMN "id" SET DEFAULT nextval('open_id_authentication_associations_id_seq');
+DROP SEQUENCE IF EXISTS open_id_authentication_nonces_id_seq;
+CREATE SEQUENCE open_id_authentication_nonces_id_seq;
+SELECT setval('open_id_authentication_nonces_id_seq', max(id)) FROM open_id_authentication_nonces;
+ALTER TABLE "open_id_authentication_nonces" ALTER COLUMN "id" SET DEFAULT nextval('open_id_authentication_nonces_id_seq');
+DROP SEQUENCE IF EXISTS phantom1_id_seq;
+CREATE SEQUENCE phantom1_id_seq;
+SELECT setval('phantom1_id_seq', max(id)) FROM phantom1;
+ALTER TABLE "phantom1" ALTER COLUMN "id" SET DEFAULT nextval('phantom1_id_seq');
+DROP SEQUENCE IF EXISTS phantom2_id_seq;
+CREATE SEQUENCE phantom2_id_seq;
+SELECT setval('phantom2_id_seq', max(id)) FROM phantom2;
+ALTER TABLE "phantom2" ALTER COLUMN "id" SET DEFAULT nextval('phantom2_id_seq');
+DROP SEQUENCE IF EXISTS projects_id_seq;
+CREATE SEQUENCE projects_id_seq;
+SELECT setval('projects_id_seq', max(id)) FROM projects;
+ALTER TABLE "projects" ALTER COLUMN "id" SET DEFAULT nextval('projects_id_seq');
+DROP SEQUENCE IF EXISTS queries_id_seq;
+CREATE SEQUENCE queries_id_seq;
+SELECT setval('queries_id_seq', max(id)) FROM queries;
+ALTER TABLE "queries" ALTER COLUMN "id" SET DEFAULT nextval('queries_id_seq');
+DROP SEQUENCE IF EXISTS repositories_id_seq;
+CREATE SEQUENCE repositories_id_seq;
+SELECT setval('repositories_id_seq', max(id)) FROM repositories;
+ALTER TABLE "repositories" ALTER COLUMN "id" SET DEFAULT nextval('repositories_id_seq');
+DROP SEQUENCE IF EXISTS roles_id_seq;
+CREATE SEQUENCE roles_id_seq;
+SELECT setval('roles_id_seq', max(id)) FROM roles;
+ALTER TABLE "roles" ALTER COLUMN "id" SET DEFAULT nextval('roles_id_seq');
+DROP SEQUENCE IF EXISTS settings_id_seq;
+CREATE SEQUENCE settings_id_seq;
+SELECT setval('settings_id_seq', max(id)) FROM settings;
+ALTER TABLE "settings" ALTER COLUMN "id" SET DEFAULT nextval('settings_id_seq');
+DROP SEQUENCE IF EXISTS time_entries_id_seq;
+CREATE SEQUENCE time_entries_id_seq;
+SELECT setval('time_entries_id_seq', max(id)) FROM time_entries;
+ALTER TABLE "time_entries" ALTER COLUMN "id" SET DEFAULT nextval('time_entries_id_seq');
+DROP SEQUENCE IF EXISTS tokens_id_seq;
+CREATE SEQUENCE tokens_id_seq;
+SELECT setval('tokens_id_seq', max(id)) FROM tokens;
+ALTER TABLE "tokens" ALTER COLUMN "id" SET DEFAULT nextval('tokens_id_seq');
+DROP SEQUENCE IF EXISTS trackers_id_seq;
+CREATE SEQUENCE trackers_id_seq;
+SELECT setval('trackers_id_seq', max(id)) FROM trackers;
+ALTER TABLE "trackers" ALTER COLUMN "id" SET DEFAULT nextval('trackers_id_seq');
+DROP SEQUENCE IF EXISTS user_preferences_id_seq;
+CREATE SEQUENCE user_preferences_id_seq;
+SELECT setval('user_preferences_id_seq', max(id)) FROM user_preferences;
+ALTER TABLE "user_preferences" ALTER COLUMN "id" SET DEFAULT nextval('user_preferences_id_seq');
+DROP SEQUENCE IF EXISTS users_id_seq;
+CREATE SEQUENCE users_id_seq;
+SELECT setval('users_id_seq', max(id)) FROM users;
+ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT nextval('users_id_seq');
+DROP SEQUENCE IF EXISTS versions_id_seq;
+CREATE SEQUENCE versions_id_seq;
+SELECT setval('versions_id_seq', max(id)) FROM versions;
+ALTER TABLE "versions" ALTER COLUMN "id" SET DEFAULT nextval('versions_id_seq');
+DROP SEQUENCE IF EXISTS watchers_id_seq;
+CREATE SEQUENCE watchers_id_seq;
+SELECT setval('watchers_id_seq', max(id)) FROM watchers;
+ALTER TABLE "watchers" ALTER COLUMN "id" SET DEFAULT nextval('watchers_id_seq');
+DROP SEQUENCE IF EXISTS wiki_content_versions_id_seq;
+CREATE SEQUENCE wiki_content_versions_id_seq;
+SELECT setval('wiki_content_versions_id_seq', max(id)) FROM wiki_content_versions;
+ALTER TABLE "wiki_content_versions" ALTER COLUMN "id" SET DEFAULT nextval('wiki_content_versions_id_seq');
+DROP SEQUENCE IF EXISTS wiki_contents_id_seq;
+CREATE SEQUENCE wiki_contents_id_seq;
+SELECT setval('wiki_contents_id_seq', max(id)) FROM wiki_contents;
+ALTER TABLE "wiki_contents" ALTER COLUMN "id" SET DEFAULT nextval('wiki_contents_id_seq');
+DROP SEQUENCE IF EXISTS wiki_pages_id_seq;
+CREATE SEQUENCE wiki_pages_id_seq;
+SELECT setval('wiki_pages_id_seq', max(id)) FROM wiki_pages;
+ALTER TABLE "wiki_pages" ALTER COLUMN "id" SET DEFAULT nextval('wiki_pages_id_seq');
+DROP SEQUENCE IF EXISTS wiki_redirects_id_seq;
+CREATE SEQUENCE wiki_redirects_id_seq;
+SELECT setval('wiki_redirects_id_seq', max(id)) FROM wiki_redirects;
+ALTER TABLE "wiki_redirects" ALTER COLUMN "id" SET DEFAULT nextval('wiki_redirects_id_seq');
+DROP SEQUENCE IF EXISTS wikis_id_seq;
+CREATE SEQUENCE wikis_id_seq;
+SELECT setval('wikis_id_seq', max(id)) FROM wikis;
+ALTER TABLE "wikis" ALTER COLUMN "id" SET DEFAULT nextval('wikis_id_seq');
+DROP SEQUENCE IF EXISTS workflows_id_seq;
+CREATE SEQUENCE workflows_id_seq;
+SELECT setval('workflows_id_seq', max(id)) FROM workflows;
+ALTER TABLE "workflows" ALTER COLUMN "id" SET DEFAULT nextval('workflows_id_seq');
+
+-- Full Text keys --
+
+COMMIT;
