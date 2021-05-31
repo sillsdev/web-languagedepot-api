@@ -11,7 +11,7 @@ describe('/users API route', function() {
             lastname: 'User',
             language: 'en',
             password: 'x',
-            admin: 0,
+            admin: false,
         }
         this.api = api.extend({
             throwHttpErrors: false,
@@ -47,6 +47,11 @@ describe('/users API route', function() {
             // API never returns passwords
             delete expected['password']
         }
+        if (postResult && postResult.body != undefined && typeof postResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            postResult.body.admin = !! postResult.body.admin
+        }
         expect(postResult.statusCode).to.equal(201)
         expect(postResult.body).not.to.contain.keys('password')
         expect(postResult.body).to.deep.equal(expected)
@@ -66,6 +71,11 @@ describe('/users API route', function() {
             // API never returns passwords
             delete expected['password']
         }
+        if (postResult && postResult.body != undefined && typeof postResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            postResult.body.admin = !! postResult.body.admin
+        }
         expect(postResult.statusCode).to.equal(200)
         expect(postResult.body).not.to.contain.keys('password')
         expect(postResult.body).to.deep.equal(expected)
@@ -77,6 +87,11 @@ describe('/users API route', function() {
         if (expected.password) {
             // API never returns passwords
             delete expected['password']
+        }
+        if (postResult && postResult.body != undefined && typeof postResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            postResult.body.admin = !! postResult.body.admin
         }
         expect(postResult.statusCode).to.equal(200)
         expect(postResult.body).not.to.contain.keys('password')
@@ -112,7 +127,7 @@ describe('/users/[username] API route', function() {
             lastname: 'User',
             language: 'en',
             password: 'x',
-            admin: 0,
+            admin: false,
         }
         this.api = api.extend({
             throwHttpErrors: false,
@@ -147,6 +162,11 @@ describe('/users/[username] API route', function() {
             // API never returns passwords
             delete expected['password']
         }
+        if (putResult && putResult.body != undefined && typeof putResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            putResult.body.admin = !! putResult.body.admin
+        }
         expect(putResult.statusCode).to.equal(201)
         expect(putResult.body).not.to.contain.keys('password')
         expect(putResult.body).to.deep.equal(expected)
@@ -158,6 +178,11 @@ describe('/users/[username] API route', function() {
         if (expected.password) {
             // API never returns passwords
             delete expected['password']
+        }
+        if (result && result.body != undefined && typeof result.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            result.body.admin = !! result.body.admin
         }
         expect(result.statusCode).to.equal(200)
         expect(result.body).to.contain.keys('username', 'firstname', 'lastname', 'language')
@@ -201,6 +226,11 @@ describe('/users/[username] API route', function() {
             // API never returns passwords
             delete expected['password']
         }
+        if (putResult && putResult.body != undefined && typeof putResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            putResult.body.admin = !! putResult.body.admin
+        }
         expect(putResult.statusCode).to.equal(200)
         expect(putResult.body).not.to.contain.keys('password')
         expect(putResult.body).to.deep.equal(expected)
@@ -223,6 +253,11 @@ describe('/users/[username] API route', function() {
         if (expected.password) {
             // API never returns passwords
             delete expected['password']
+        }
+        if (postResult && postResult.body != undefined && typeof postResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            postResult.body.admin = !! postResult.body.admin
         }
         expect(postResult.statusCode).to.equal(200)
         expect(postResult.body).not.to.contain.keys('password')
@@ -249,6 +284,11 @@ describe('/users/[username] API route', function() {
             // API never returns passwords
             delete expected['password']
         }
+        if (putResult && putResult.body != undefined && typeof putResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            putResult.body.admin = !! putResult.body.admin
+        }
         expect(putResult.statusCode).to.equal(200)
         expect(putResult.body).not.to.contain.keys('password')
         expect(putResult.body).to.deep.equal(expected)
@@ -271,6 +311,11 @@ describe('/users/[username] API route', function() {
         if (expected.password) {
             // API never returns passwords
             delete expected['password']
+        }
+        if (postResult && postResult.body != undefined && typeof postResult.body.admin === 'number') {
+            // MySQL returns ints but we want booleans. TODO: Delete this at some point to ensure that both MySQL and PostgreSQL will
+            // return a similar JSON shape with real booleans in it, but for now we're okay with the JSON being either an int or a bool
+            postResult.body.admin = !! postResult.body.admin
         }
         expect(postResult.statusCode).to.equal(200)
         expect(postResult.body).not.to.contain.keys('password')
@@ -327,7 +372,7 @@ describe('/users/[username]/projects API route', function() {
             lastname: 'User',
             language: 'en',
             password: 'x',
-            admin: 0,
+            admin: false,
         }
         this.testUserToken = makeJwt(this.testUser.username)
 
