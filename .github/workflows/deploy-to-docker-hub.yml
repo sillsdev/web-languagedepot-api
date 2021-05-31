@@ -1,0 +1,29 @@
+name: Deploy to Docker Hub
+
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#on
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build app
+        # We use "npm run" so that we can get the version number out of package.json
+        run: npm run docker
+
+      - name: List images
+        run: docker images
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Publish to Docker Hub
+        run: docker image push --all-tags sillsdev/web-languagedepot-api
