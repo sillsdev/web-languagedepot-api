@@ -17,8 +17,8 @@
 		"require": "test/pretest.mjs"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "next",
-		"@sveltejs/kit": "next",
+		"@sveltejs/adapter-node": "^1.0.0-next.23",
+		"@sveltejs/kit": "1.0.0-next.111",
 		"@typescript-eslint/eslint-plugin": "^4.22.0",
 		"@typescript-eslint/parser": "^4.22.0",
 		"chai": "^4.3.4",
@@ -29,13 +29,13 @@
 		"prettier": "~2.2.1",
 		"prettier-plugin-svelte": "^2.2.0",
 		"svelte": "^3.37.0",
-		"svelte-preprocess": "^4.7.2",
+		"svelte-preprocess": "^4.7.3",
 		"typescript": "^4.2.4",
-		"vite": "^2.2.1"
+		"vite": "^2.3.4"
 	},
 	"dependencies": {
-		"date-fns": "^2.21.1",
-		"dotenv": "^8.2.0",
+		"date-fns": "^2.22.1",
+		"dotenv": "^10.0.0",
 		"jsonwebtoken": "^8.5.1",
 		"knex": "^0.21.19",
 		"mysql2": "^2.2.5",

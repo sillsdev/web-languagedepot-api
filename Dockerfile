@@ -8,19 +8,19 @@ FROM node:14.15.4-alpine AS builder
 # MYSQL_USER=mysqlusername
 # MYSQL_PASSWORD=mysqlpassword
 
-RUN npm i -g pnpm
+RUN npm i -g pnpm@6.6.2
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
 COPY static ./static
-COPY svelte.config.cjs tsconfig.json ./
+COPY svelte.config.js tsconfig.json ./
 COPY src ./src
 RUN pnpm run build
 
 FROM node:14.15.4-alpine
 COPY --from=builder /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.js /usr/local/bin/pnpm && \
-    ln -s ../lib/node_modules/pnpm/bin/pnpx.js /usr/local/bin/pnpx
+RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && \
+    ln -s ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
 WORKDIR /app
 COPY static assets
 COPY package.json pnpm-lock.yaml ./
