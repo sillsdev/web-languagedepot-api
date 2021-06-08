@@ -1,6 +1,6 @@
 {
 	"name": "node-ldapi",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "An API for Language Depot, written in node.js",
 	"main": "build/index.js",
 	"author": "Robin Munn <robin_munn@sil.org>",
@@ -18,7 +18,7 @@
 		"require": "test/pretest.mjs"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "^1.0.0-next.23",
+		"@sveltejs/adapter-node": "1.0.0-next.24",
 		"@typescript-eslint/eslint-plugin": "^4.22.0",
 		"@typescript-eslint/parser": "^4.22.0",
 		"chai": "^4.3.4",
@@ -30,10 +30,10 @@
 		"prettier-plugin-svelte": "^2.2.0",
 		"svelte-preprocess": "^4.7.3",
 		"typescript": "^4.2.4",
-		"vite": "^2.3.4"
+		"vite": "^2.3.6"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "1.0.0-next.111",
+		"@sveltejs/kit": "1.0.0-next.112",
 		"date-fns": "^2.22.1",
 		"dotenv": "^10.0.0",
 		"jsonwebtoken": "^8.5.1",
