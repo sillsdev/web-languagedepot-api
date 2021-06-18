@@ -77,6 +77,10 @@
                 if (cols.has(parent0) && cols.has(parent1)) {
                     pcol0 = cols.get(parent0)
                     pcol1 = cols.get(parent1)
+                    if (pcol0 !== col && pcol1 !== col) {
+                        // This column is ending and is available for reuse
+                        availCols.add(col)
+                    }
                 } else if (cols.has(parent0)) {
                     // Unseen parent gets our column
                     pcol0 = cols.get(parent0)
