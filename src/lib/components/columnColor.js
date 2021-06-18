@@ -1,16 +1,7 @@
-// Single-color graph for now
-export const columnColor = col => "#330000"
+// 12 colors, spaced evenly around the color wheel
+export const loContrastColor = col => `hsl(${(col % 12) * 30}, 80%, 50%)`
 
-// Later we might do something like this:
-// const colorScheme = [
-//     "red",
-//     "green",
-//     "blue",
-//     "orange",
-//     "purple",
-//     "yellow"
-// ]
+// 12 colors, picking every 5th one around the wheel so there's high contrast
+export const hiContrastColor = col => `hsl(${((col * 5) % 12) * 30}, 80%, 50%)`
 
-// const colorCount = colorScheme.length
-
-// export const columnColor = col => colorScheme[col % colorCount]
+export const columnColor = loContrastColor

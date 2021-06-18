@@ -1,5 +1,4 @@
 <script lang="ts">
-    // import { onMount } from 'svelte';
     import { columnColor } from './columnColor'
 
     export let parentData: Map<number, number[]>
@@ -28,6 +27,8 @@
         }
         let maxRev = undefined
         let maxCol = 0
+        // Guess header height. TODO: Consider passing in tableElem instead, or at least pass in header height
+        let firstRowHeight = tableBody.rows?.length > 0 ? tableBody.rows[0].clientHeight : 0
         for (const [rev, colData] of parentData.entries()) {
             let col, p0rev, p0col, p1rev, p1col, parentCount
             if (maxRev === undefined) {
@@ -59,21 +60,19 @@
             const row = maxRev - rev
             const rowElem = tableBody.rows[row]
             const cx = col * columnWidth + halfColumnWidth
-            const cy = rowElem.offsetTop + (rowElem.clientHeight / 2)
+            const cy = rowElem.offsetTop - firstRowHeight + (rowElem.clientHeight / 2)
             centersByRow[row] = [cx,cy]
-            console.log('Calculated circle position at ', [cx,cy], ' for rev =', rev, ' and col =', col)
             colorsByRow[row] = columnColor(col)
             if (parentCount > 0) {
                 const p0row = maxRev - p0rev
                 const p0RowElem = tableBody.rows[p0row]
                 const p0x = p0col * columnWidth + halfColumnWidth
-                const p0y = p0RowElem.offsetTop + (p0RowElem.clientHeight / 2)
+                const p0y = p0RowElem.offsetTop - firstRowHeight + (p0RowElem.clientHeight / 2)
                 if (parentCount > 1) {
                     const p1row = maxRev - p1rev
                     const p1RowElem = tableBody.rows[p1row]
-                    // TODO: Deal with p1rev being -1 (off the chart), because the above will fail in that case
                     const p1x = p1col * columnWidth + halfColumnWidth
-                    const p1y = p1RowElem.offsetTop + (p1RowElem.clientHeight / 2)
+                    const p1y = p1RowElem.offsetTop - firstRowHeight + (p1RowElem.clientHeight / 2)
                     parentsByRow[row] = [[p0x,p0y],[p1x,p1y]]
                 } else {
                     parentsByRow[row] = [[p0x,p0y]]
@@ -81,20 +80,19 @@
             } else {
                 parentsByRow[row] = []
             }
-            // TODO: Include colors in the parentsByRow[] structure so we can match colors to *parent* column
             maxCol = maxCol < col ? col : maxCol
         }
         svgHeight = tableBody.clientHeight
-        svgWidth = maxCol * columnWidth
+        svgWidth = (maxCol + 1) * columnWidth
         ready = true
     }
 
     function curve([cx,cy],[px,py]) {
         const hx = (cx + px) / 2, hy = (cy + py) / 2
         return `M ${cx} ${cy} C ${cx} ${cy}, ${cx} ${hy}, ${hx} ${hy} C ${hx} ${hy}, ${px} ${hy}, ${px} ${py}`
-        // - M child X,Y
-        // - C Cx,Cy to Cx,Hy to Hx,Hy
-        // - C Hx,Hy to Px,Hy to Px,Py
+        // Could also try:
+        // return `M ${cx} ${cy} S ${cx} ${hy}, ${hx} ${hy} S ${px} ${hy}, ${px} ${py}`
+        // Although I find I prefer the version with C in it as the S version isn't quite equivalent
     }
 
     $: { calculateCenters(parentData, tableBody); if (ready) { console.log('Parent data:', parentData); console.log('parentsByRow:', parentsByRow) } }
@@ -107,7 +105,6 @@
 {#each tableBody.rows as row, i}
     <circle cx={centersByRow[i][0]} cy={centersByRow[i][1]} r={dotRadius} fill={colorsByRow[i]} stroke="none"></circle>
     {#each parentsByRow[i] as [px,py]}
-    <!-- TODO: Include colors in the parentsByRow[] structure so we can match colors to *parent* column -->
     <path d={curve(centersByRow[i], [px,py])} fill="none" stroke={colorsByRow[i]} stroke-width={trackWidth}></path>
     {/each}
 {/each}
