@@ -4,10 +4,9 @@
     export let hglog: Record<string, any>[]
     export let tableBody: HTMLTableSectionElement
 
-    // TODO: Define return type
-    function buildParentData(hglog: Record<string, any>[]) : any {
+    function buildParentData(hglog: Record<string, any>[]): Map<number, number[]> {
         if (!hglog || hglog.length <= 0) {
-            return []
+            return new Map()
         }
 
         const result = new Map<number, any>()
@@ -30,7 +29,6 @@
         const cols = new Map<number, number>()
 
         for (const commit of hglog) {
-            // console.log(commit)
             const { rev } = commit
             // Mercurial log returns empty parents array in the common case (one parent, and parent is previous revision)
             const parents: number[] = (commit.parents?.length === 0 && rev > 0) ? [rev - 1] : commit.parents
