@@ -17,7 +17,15 @@
     let parentsByRow = new Map<number, [number, number][]>()
     let colorsByRow = new Map<number, string>()
 
-    function calculateCenters(parentData: Map<number, number[]>, tableBody: HTMLTableSectionElement) {
+    function calculateCenter(col: number, rev: number, maxRev: number, subtractY: number) {
+        const row = maxRev - rev
+        const rowElem = tableBody.rows[row]
+        const x = col * columnWidth + halfColumnWidth
+        const y = rowElem.offsetTop - subtractY + (rowElem.clientHeight / 2)
+        return [x,y]
+    }
+
+    function calculateCenters(parentData: Map<number, number[]>) {
         if (!tableBody) {
             // Component is created before the parent table element can finish mounting, so this will be called at least once with tableBody being null
             return
@@ -38,27 +46,16 @@
                 [col, p0rev] = colData
             }
             const row = maxRev - rev
-            const rowElem = tableBody.rows[row]
-            const cx = col * columnWidth + halfColumnWidth
-            const cy = rowElem.offsetTop - firstRowHeight + (rowElem.clientHeight / 2)
-            centersByRow[row] = [cx,cy]
+            centersByRow[row] = calculateCenter(col, rev, maxRev, firstRowHeight)
             colorsByRow[row] = columnColor(col)
             const parents = []
             if (p0rev >= 0 && parentData.has(p0rev)) {
                 const p0col = parentData.get(p0rev)[0]
-                const p0row = maxRev - p0rev
-                const p0RowElem = tableBody.rows[p0row]
-                const p0x = p0col * columnWidth + halfColumnWidth
-                const p0y = p0RowElem.offsetTop - firstRowHeight + (p0RowElem.clientHeight / 2)
-                parents.push([p0x,p0y])
+                parents.push(calculateCenter(p0col, p0rev, maxRev, firstRowHeight))
             }
             if (p1rev >= 0 && parentData.has(p1rev)) {
                 const p1col = parentData.get(p1rev)[0]
-                const p1row = maxRev - p1rev
-                const p1RowElem = tableBody.rows[p1row]
-                const p1x = p1col * columnWidth + halfColumnWidth
-                const p1y = p1RowElem.offsetTop - firstRowHeight + (p1RowElem.clientHeight / 2)
-                parents.push([p1x,p1y])
+                parents.push(calculateCenter(p1col, p1rev, maxRev, firstRowHeight))
             }
             parentsByRow[row] = parents
             maxCol = maxCol < col ? col : maxCol
@@ -75,7 +72,7 @@
         // Although I find I prefer the version with C in it as the S version isn't quite equivalent
     }
 
-    $: { calculateCenters(parentData, tableBody) }
+    $: { calculateCenters(parentData) }
     // TODO: Also bind to clientHeight and recalculate when it changes... but debounce that so that changes of a single pixel in devtools don't go into an infinite re-render loop
 </script>
 
