@@ -27,30 +27,15 @@
         // Guess header height. TODO: Consider passing in tableElem instead, or at least pass in header height
         let firstRowHeight = tableBody.rows?.length > 0 ? tableBody.rows[0].clientHeight : 0
         for (const [rev, colData] of parentData.entries()) {
-            let col, p0rev, p0col, p1rev, p1col, parentCount
+            let col, p0rev = -1, p1rev = -1
             if (maxRev === undefined) {
                 // Parent data has highest rev first
                 maxRev = rev
             }
             if (colData.length === 3) {
                 [col, p0rev, p1rev] = colData
-                parentCount = 2
-                // Deal with having either (or both) parents off the chart
-                if (p1rev === -1) {
-                    // Second parent off the chart
-                    parentCount -= 1
-                }
-                if (p0rev === -1) {
-                    p0rev = p1rev  // If this is also -1, that's okay because parentCount will become 0
-                    parentCount -= 1
-                }
             } else {
                 [col, p0rev] = colData
-                parentCount = 1
-                if (p0rev === -1) {
-                    p0rev = p1rev  // If this is also -1, that's okay because parentCount will become 0
-                    parentCount -= 1
-                }
             }
             const row = maxRev - rev
             const rowElem = tableBody.rows[row]
@@ -58,25 +43,24 @@
             const cy = rowElem.offsetTop - firstRowHeight + (rowElem.clientHeight / 2)
             centersByRow[row] = [cx,cy]
             colorsByRow[row] = columnColor(col)
-            if (parentCount > 0 && parentData.has(p0rev)) {
-                p0col = parentData.get(p0rev)[0]
+            const parents = []
+            if (p0rev >= 0 && parentData.has(p0rev)) {
+                const p0col = parentData.get(p0rev)[0]
                 const p0row = maxRev - p0rev
                 const p0RowElem = tableBody.rows[p0row]
                 const p0x = p0col * columnWidth + halfColumnWidth
                 const p0y = p0RowElem.offsetTop - firstRowHeight + (p0RowElem.clientHeight / 2)
-                if (parentCount > 1 && parentData.has(p1rev)) {
-                    p1col = parentData.get(p1rev)[0]
-                    const p1row = maxRev - p1rev
-                    const p1RowElem = tableBody.rows[p1row]
-                    const p1x = p1col * columnWidth + halfColumnWidth
-                    const p1y = p1RowElem.offsetTop - firstRowHeight + (p1RowElem.clientHeight / 2)
-                    parentsByRow[row] = [[p0x,p0y],[p1x,p1y]]
-                } else {
-                    parentsByRow[row] = [[p0x,p0y]]
-                }
-            } else {
-                parentsByRow[row] = []
+                parents.push([p0x,p0y])
             }
+            if (p1rev >= 0 && parentData.has(p1rev)) {
+                const p1col = parentData.get(p1rev)[0]
+                const p1row = maxRev - p1rev
+                const p1RowElem = tableBody.rows[p1row]
+                const p1x = p1col * columnWidth + halfColumnWidth
+                const p1y = p1RowElem.offsetTop - firstRowHeight + (p1RowElem.clientHeight / 2)
+                parents.push([p1x,p1y])
+            }
+            parentsByRow[row] = parents
             maxCol = maxCol < col ? col : maxCol
         }
         svgHeight = tableBody.clientHeight
