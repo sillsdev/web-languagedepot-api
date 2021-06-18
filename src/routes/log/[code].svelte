@@ -11,27 +11,24 @@
     }
 
     function stripFlexBridgeInfo(desc) {
-        const re = /\[(FLEx Bridge:|LfMergeBridge:)[^\]]+\]/;
+        const re = /\[(FLEx Bridge:|LfMergeBridge:)[^\]]+\]/
         return desc.replace(re, '').trim()
     }
 </script>
 
 <script>
-    import HgLogGraph from '$lib/components/HgLogGraph.svelte';
+    import HgLogGraph from '$lib/components/HgLogGraph.svelte'
 
-    let tableElem
     let tableBody
 
-    $: { if (tableElem) { console.log('In root component, table elem is', tableElem)}}
-
-    export let log;
-    export let code;
+    export let log
+    export let code
 </script>
 
 <h2>Log for {code}</h2>
 
 {#if log}
-<table bind:this={tableElem}>
+<table>
     <thead>
         <tr>
             <th><!-- Empty header: SVG goes here --></th>
@@ -50,8 +47,8 @@
         <td id="log-graph" rowspan=0><HgLogGraph hglog={log} {tableBody} /></td>
         {/if}
         <td>{row.rev}:{row.shorthash}</td>
-        <td>x</td>
-        <td>y</td>
+        <td>x</td> <!-- Placeholder for radio buttons (add them once we're ready to render individual commit diffs) -->
+        <td>y</td> <!-- Placeholder for radio buttons second column -->
         <td>{row.date}</td>
         <td>{row.author}</td>
         <td>{stripFlexBridgeInfo(row.desc)}</td>

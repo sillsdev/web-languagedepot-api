@@ -6,16 +6,13 @@
     export let columnWidth = 20
     $: halfColumnWidth = columnWidth / 2
     $: linkRadius = halfColumnWidth
+    // TODO: Add <a href="..."> links to individual commits (once we're ready to render individual commit diffs)
     export let dotRadius = 3
     $: trackWidth = dotRadius / 2
     // TODO: Allow configurable colors
 
-    let svgElem: SVGSVGElement
-
-    let ready = false
     let svgHeight = 0
     let svgWidth = 0
-    let totalRowHeights = []
     let centersByRow = new Map<number, [number, number]>()
     let parentsByRow = new Map<number, [number, number][]>()
     let colorsByRow = new Map<number, string>()
@@ -84,7 +81,6 @@
         }
         svgHeight = tableBody.clientHeight
         svgWidth = (maxCol + 1) * columnWidth
-        ready = true
     }
 
     function curve([cx,cy],[px,py]) {
@@ -95,13 +91,12 @@
         // Although I find I prefer the version with C in it as the S version isn't quite equivalent
     }
 
-    $: { calculateCenters(parentData, tableBody); if (ready) { console.log('Parent data:', parentData); console.log('parentsByRow:', parentsByRow) } }
-    // TODO: Also bind to clientHeight and recalculate when it changes
-
+    $: { calculateCenters(parentData, tableBody) }
+    // TODO: Also bind to clientHeight and recalculate when it changes... but debounce that so that changes of a single pixel in devtools don't go into an infinite re-render loop
 </script>
 
-{#if ready}
-<svg bind:this={svgElem} height={svgHeight} width={svgWidth}>
+{#if tableBody?.rows}
+<svg height={svgHeight} width={svgWidth}>
 {#each tableBody.rows as row, i}
     <circle cx={centersByRow[i][0]} cy={centersByRow[i][1]} r={dotRadius} fill={colorsByRow[i]} stroke="none"></circle>
     {#each parentsByRow[i] as [px,py]}
