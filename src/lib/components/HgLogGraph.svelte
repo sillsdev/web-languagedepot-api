@@ -44,7 +44,7 @@
             }
             if (parents.length === 0) {
                 // Either revision 0, or parent is off the bottom of the chart; either way, SVG should show no parent
-                result.set(rev, [col, -1, col])
+                result.set(rev, [col, -1])
             } else if (parents.length === 1) {
                 const parent = parents[0]
                 let pcol
@@ -67,7 +67,7 @@
                     pcol = col
                     cols.set(parent, pcol)
                 }
-                result.set(rev, [col, parent, pcol])
+                result.set(rev, [col, parent])
             } else {
                 // Mercurial never has more than two parents
                 const parent0 = parents[0]
@@ -94,7 +94,7 @@
                     cols.set(parent0, pcol0)
                     cols.set(parent1, pcol1)
                 }
-                result.set(rev, [col, parent0, pcol0, parent1, pcol1])
+                result.set(rev, [col, parent0, parent1])
             }
         }
 
