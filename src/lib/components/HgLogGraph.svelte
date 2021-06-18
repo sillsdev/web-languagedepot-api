@@ -11,9 +11,23 @@
         }
 
         const result = new Map<number, any>()
-        // const availCols = new Set<number>()  // TODO: Implement and verify that graph still looks clean
-        const cols = new Map<number, number>()
+        const availCols = new Set<number>()
         let nextCol = 0
+        function nextAvailableCol() {
+            if (availCols.size) {
+                const cols = Array.from(availCols)
+                cols.sort()
+                const col = cols[0]
+                availCols.delete(col)
+                return col
+            } else {
+                // col = nextCol++ would be too error-prone
+                const col = nextCol
+                nextCol += 1
+                return col
+            }
+        }
+        const cols = new Map<number, number>()
 
         for (const commit of hglog) {
             // console.log(commit)
@@ -25,9 +39,7 @@
                 col = cols.get(rev)
             } else {
                 // First commit, or possibly new head not yet seen
-                // col = nextCol++ would be too error-prone
-                col = nextCol
-                nextCol += 1
+                col = nextAvailableCol()
                 cols.set(rev, col)
             }
             if (parents.length === 0) {
@@ -42,11 +54,12 @@
                         // Parent had multiple children, and an earlier child was further right. Parent should be as far left as possible
                         pcol = col
                         cols.set(parent, pcol)
-                        // If this was the rightmost column, it's safe to shift left again
-                        if (seenPcol === nextCol - 1) {
-                            nextCol = seenPcol
-                            // TODO: A cleverer algorithm could keep track of which columns are completed individually, with a Set<number, boolean>, and then mark completed columns for reuse
-                        }
+                        // Parent's "old" column is now available for reuse in the graph
+                        availCols.add(seenPcol)
+                    } else if (col > seenPcol) {
+                        // Parent had multiple children, and an earlier child was further left. This column is now available for reuse
+                        pcol = seenPcol
+                        availCols.add(col)
                     } else {
                         pcol = seenPcol
                     }
@@ -75,11 +88,9 @@
                     pcol1 = cols.get(parent1)
                     cols.set(parent0, pcol0)
                 } else {
-                    // Must put one parent in new column
-                    // TODO: Once we have a Set of unused columns, pick smallest one from the set and remove it, and only increment nextCol if set is empty
+                    // Must put one parent in new column. Reuse a previous column if possible so the graph doesn't get too wide
                     pcol0 = col
-                    pcol1 = nextCol
-                    nextCol += 1
+                    pcol1 = nextAvailableCol()
                     cols.set(parent0, pcol0)
                     cols.set(parent1, pcol1)
                 }
