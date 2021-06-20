@@ -72,7 +72,7 @@
         // Although I find I prefer the version with C in it as the S version isn't quite equivalent
     }
 
-    $: { calculateCenters(parentData) }
+    $: { if (tableBody) { calculateCenters(parentData) } }
     // TODO: Also bind to clientHeight and recalculate when it changes... but debounce that so that changes of a single pixel in devtools don't go into an infinite re-render loop
 </script>
 
