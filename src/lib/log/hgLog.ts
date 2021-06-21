@@ -1,3 +1,26 @@
+import { execFile as origExecFile } from 'child_process'
+import { promisify } from 'util'
+const execFile = promisify(origExecFile)
+
+const hgLogTemplate = `\\{"rev":{rev|json},"hash":{node|json},"shorthash":{node|short|json},"branch":{branch|json},"parents":{parents|json},"date":{date|isodate|json},"author":{author|json},"desc":{desc|json}},`
+// date format could also be rfc3339date for dates formatted like '2018-03-26T08:07:45+00:00', but we're using isodate so we can display it as a string without needing to parse it on the UI side
+
+export async function getHgLog(repoPath: string, limit?: string, rev?: string) {
+    let intLimit = limit ? parseInt(limit) : 1000;
+    if (!intLimit || intLimit <= 0 || intLimit > 1000) {
+        intLimit = 1000
+    }
+    let intRev = rev ? parseInt(rev) : NaN;
+    const args = ['log', '-C', repoPath, '--template', hgLogTemplate, '-l', intLimit.toString()]
+    if (!isNaN(intRev)) {
+        args.push('-r', `${intRev}:0`)
+    }
+    // No try-catch here; caller is expected to handle the exception
+    var hgLogJson = await execFile('hg', args)
+    // Trim final comma and turn into a list, even if only one result
+    var asList = hgLogJson.stdout ? `[${hgLogJson.stdout.slice(0,-1)}]\n` : '[]\n'
+    return asList
+}
 
 export function buildParentData(hglog: Record<string, any>[]): Map<number, number[]> {
     if (!hglog || hglog.length <= 0) {
