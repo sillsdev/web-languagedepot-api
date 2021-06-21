@@ -23,10 +23,7 @@ export async function get({params, query}) {
     }
     var rev = query.get('rev')
     rev = rev ? parseInt(rev) : NaN;
-    const args = ['log', '-C', path, '--template', template]
-    if (limit) {
-        args.push('-l', limit.toString())
-    }
+    const args = ['log', '-C', path, '--template', template, '-l', limit.toString()]
     if (!isNaN(rev)) {
         args.push('-r', `${rev}:0`)
     }

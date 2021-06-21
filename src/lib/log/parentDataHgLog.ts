@@ -40,56 +40,42 @@ export function buildParentData(hglog: Record<string, any>[]): Map<number, numbe
             result.set(rev, [col, -1])
         } else if (parents.length === 1) {
             const parent = parents[0]
-            let pcol
             if (cols.has(parent)) {
                 const seenPcol = cols.get(parent)
                 if (seenPcol > col) {
                     // Parent had multiple children, and an earlier child was further right. Parent should be as far left as possible
-                    pcol = col
-                    cols.set(parent, pcol)
+                    cols.set(parent, col)
                     // Parent's "old" column is now available for reuse in the graph
                     availCols.add(seenPcol)
                 } else if (col > seenPcol) {
                     // Parent had multiple children, and an earlier child was further left. This column is now available for reuse
-                    pcol = seenPcol
                     availCols.add(col)
-                } else {
-                    pcol = seenPcol
-                }
+                } // else do nothing
             } else {
-                pcol = col
-                cols.set(parent, pcol)
+                cols.set(parent, col)
             }
             result.set(rev, [col, parent])
         } else {
             // Mercurial never has more than two parents
             const parent0 = parents[0]
             const parent1 = parents[1]
-            let pcol0: number
-            let pcol1: number
             if (cols.has(parent0) && cols.has(parent1)) {
-                pcol0 = cols.get(parent0)
-                pcol1 = cols.get(parent1)
+                const pcol0 = cols.get(parent0)
+                const pcol1 = cols.get(parent1)
                 if (pcol0 !== col && pcol1 !== col) {
                     // This column is ending and is available for reuse
                     availCols.add(col)
                 }
             } else if (cols.has(parent0)) {
                 // Unseen parent gets our column
-                pcol0 = cols.get(parent0)
-                pcol1 = col
-                cols.set(parent1, pcol1)
+                cols.set(parent1, col)
             } else if (cols.has(parent1)) {
                 // Unseen parent gets our column
-                pcol0 = col
-                pcol1 = cols.get(parent1)
-                cols.set(parent0, pcol0)
+                cols.set(parent0, col)
             } else {
                 // Must put one parent in new column. Reuse a previous column if possible so the graph doesn't get too wide
-                pcol0 = col
-                pcol1 = nextAvailableCol()
-                cols.set(parent0, pcol0)
-                cols.set(parent1, pcol1)
+                cols.set(parent0, col)
+                cols.set(parent1, nextAvailableCol())
             }
             result.set(rev, [col, parent0, parent1])
         }
