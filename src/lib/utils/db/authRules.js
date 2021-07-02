@@ -3,7 +3,7 @@ import { authTokenRequired, missingRequiredParam, notAllowed } from '$lib/utils/
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { verifyBasicAuth, verifyJwtAuth } from './auth';
 
-export async function getMemberRoleInProject(db, { projectCode, username } = {}) {
+export async function getMemberRoleInProject(db, { projectCode = undefined, username = undefined } = {}) {
     if (!projectCode || !username) {
         return undefined;
     }
@@ -46,7 +46,7 @@ export function isAdmin(authUser) {
 }
 
 // Helpers for quick-and-easy auth
-export async function allowManagerOrAdmin(db, { params, headers } = {}) {
+export async function allowManagerOrAdmin(db, { params = undefined, headers = undefined } = {}) {
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode');
     }
@@ -66,7 +66,7 @@ export async function allowManagerOrAdmin(db, { params, headers } = {}) {
     return { status: 200, authUser };
 }
 
-export async function allowSameUserOrAdmin(db, { params, headers, allowBasicAuth } = {}) {
+export async function allowSameUserOrAdmin(db, { params = undefined, headers = undefined, allowBasicAuth = false } = {}) {
     if (!params || !params.username) {
         return missingRequiredParam('username');
     }

@@ -2,7 +2,7 @@ import { User, Membership, MemberRole, Email } from '$lib/db/models';
 import { cannotUpdateMissing } from '$lib/utils/commonErrors';
 import { atMostOne, onlyOne, catchSqlError, retryOnServerError } from '$lib/utils/commonSqlHandlers';
 
-export function allUsersQuery(db, { limit, offset } = {}) {
+export function allUsersQuery(db, { limit = undefined, offset = undefined } = {}) {
     let query = User.query(db);
     if (limit) {
         query = query.limit(limit);
