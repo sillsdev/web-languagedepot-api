@@ -3,6 +3,9 @@ import { dbs } from '$lib/db/dbsetup';
 import { missingRequiredParam } from '$lib/utils/commonErrors';
 import { catchSqlError } from '$lib/utils/commonSqlHandlers';
 
+// GET /api/v2/search/projects/{searchTerm} - search projects for text in project code, name, or description
+// Security: must be a site admin (searching for "a" could reveal nearly all projects, including some that could contain sensitive names)
+// TODO: Add security check
 export async function get({ params, query, path }) {
     const db = query.private ? dbs.private : dbs.public;
     if (!params.searchTerm) {

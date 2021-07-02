@@ -5,6 +5,8 @@ import { catchSqlError } from '$lib/utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$lib/utils/db/auth';
 import { isAdmin } from '$lib/utils/db/authRules';
 
+// GET /api/v2/search/users/{searchTerm} - search registered users for text in user's username, name, or email address
+// Security: anyone can search, but only admins get to see email addresses in the result
 export async function get({ params, query, path, headers }) {
     const db = query.private ? dbs.private : dbs.public;
     if (!params.searchTerm) {

@@ -4,7 +4,9 @@ import { missingRequiredParam } from '$lib/utils/commonErrors';
 import { onlyOne } from '$lib/utils/commonSqlHandlers';
 import { addUserWithRoleByProjectCode, removeUserFromProjectByProjectCode } from '$lib/utils/db/usersAndRoles';
 
-// GET /api/projects/{projectCode}/user/{username} - return user's role
+// GET /api/v2/projects/{projectCode}/user/{username} - return user's role
+// Security: must be user whose role is being looked up, a project manager on the project in question, or a site admin
+// TODO: Add security check
 export async function get({ params, query }) {
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
@@ -24,7 +26,7 @@ export async function get({ params, query }) {
     });
 }
 
-// TODO: HEAD /api/projects/{projectCode}/user/{username} - is user a member of the project?
+// TODO: HEAD /api/v2/projects/{projectCode}/user/{username} - is user a member of the project?
 // Possible return codes:
 // 200 if user is member of project (with any role)
 // 404 if he/she is not, or if user or project not found
@@ -32,7 +34,9 @@ export async function get({ params, query }) {
 //     return { status: 204, body: {} }
 // }
 
-// DELETE /api/projects/{projectCode}/user/{username} - remove user from project
+// DELETE /api/v2/projects/{projectCode}/user/{username} - remove user from project
+// Security: must be user being removed, a project manager on the project in question, or a site admin
+// TODO: Add security check
 export async function del({ params, query }) {
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
@@ -44,6 +48,11 @@ export async function del({ params, query }) {
     return removeUserFromProjectByProjectCode(db, params.projectCode, params.username);
 }
 
+// POST /api/v2/projects/{projectCode}/user/{username} - add user to project or update role
+// Role should be given in POST body; either a string or integer, or a JSON object with a `role`, `roleId`, or `roleName` property
+// If no role specified, defaults to Contributor
+// Security: must be user being removed, a project manager on the project in question, or a site admin
+// TODO: Add security check
 export async function post({ params, path, body, query }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);

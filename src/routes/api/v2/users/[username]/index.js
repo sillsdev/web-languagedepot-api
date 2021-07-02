@@ -4,6 +4,8 @@ import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { allowSameUserOrAdmin } from '$lib/utils/db/authRules';
 import { getOneUser, oneUserQuery, patchUser, deleteUser, createUser } from '$lib/utils/db/users';
 
+// GET /api/v2/users/{username} - get details about one user
+// Security: must be user in question or a site admin
 export async function get({ params, path, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
@@ -17,6 +19,8 @@ export async function get({ params, path, query, headers }) {
     }
 }
 
+// HEAD /api/v2/users/{username} - check whether username already exists (200 if it does, 404 if it does not)
+// Security: anonymous access allowed
 export async function head({ params, query }) {
     if (!params.username) {
         return { status: 400, body: {} };
@@ -31,6 +35,8 @@ export async function head({ params, query }) {
     }
 }
 
+// PUT /api/v2/users/{username} - update or create details about one user (if update, update should be complete user record)
+// Security: must be user in question or a site admin
 export async function put({ path, params, body, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
@@ -52,6 +58,8 @@ export async function put({ path, params, body, query, headers }) {
     }
 }
 
+// PATCH /api/v2/users/{username} - update details about one user (details can be partial, e.g. {password: "newPassword"})
+// Security: must be user in question or a site admin
 export async function patch({ path, params, body, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
@@ -73,6 +81,8 @@ export async function patch({ path, params, body, query, headers }) {
     }
 }
 
+// DELETE /api/v2/users/{username} - unregister (delete) user from site
+// Security: must be user in question or a site admin
 export async function del({ params, path, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);

@@ -4,6 +4,9 @@ import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { verifyJwtAuth } from '$lib/utils/db/auth';
 import { getAllProjects, countAllProjectsQuery, createOneProject } from '$lib/utils/db/projects';
 
+// GET /api/v2/projects - return list of all projects
+// Security: must be a site admin (list of all projects could contain sensitive names)
+// TODO: Add security check
 export function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     // URLSearchParams objects don't destructure well, so convert to a POJO
@@ -11,6 +14,9 @@ export function get({ query }) {
     return getAllProjects(db, queryParams);
 }
 
+// HEAD /api/v2/projects - return 200 if at least one project exists, 404 if zero projects
+// Security: must be a site admin (list of all projects could contain sensitive names)
+// TODO: Add security check
 export async function head({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     const queryParams = Object.fromEntries(query);
@@ -19,6 +25,8 @@ export async function head({ query }) {
     return { status, body: {} };
 }
 
+// POST /api/v2/projects - create project, or update project if it aleady exists.
+// Security: anyone may create a project, and they become the project's first manager. Updating is restricted to existing project managers or site admins.
 export async function post({ path, body, query, headers }) {
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);

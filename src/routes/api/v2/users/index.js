@@ -3,6 +3,9 @@ import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { getAllUsers, countAllUsersQuery, createUser } from '$lib/utils/db/users';
 
+// GET /api/v2/users - return list of all users
+// Security: must be a site admin (list of all users could contain sensitive names or email addresses)
+// TODO: Add security check
 export async function get({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     // URLSearchParams objects don't destructure well, so convert to a POJO
@@ -10,6 +13,9 @@ export async function get({ query }) {
     return getAllUsers(db, queryParams);
 }
 
+// HEAD /api/v2/users - return 200 if at least one user exists, 404 if zero users
+// Security: anonymous access allowed
+// TODO: Does this even make sense as an API call? Consider removing it.
 export async function head({ query }) {
     const db = query.private ? dbs.private : dbs.public;
     const queryParams = Object.fromEntries(query);
@@ -18,6 +24,9 @@ export async function head({ query }) {
     return { status, body: {} };
 }
 
+// POST /api/v2/users - create user, or update user if it aleady exists.
+// Security: anyone may create an account, but only that user (or a site admin) should be able to update the account details
+// TODO: Add security check (in createUser function) for "only same user or admin", because it's not there right now
 export async function post({ path, body, query }) {
     if (typeof body !== 'object') {
         return jsonRequired('POST', path);
