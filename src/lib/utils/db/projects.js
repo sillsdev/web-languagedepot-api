@@ -5,7 +5,7 @@ import { verifyJwtAuth } from './auth';
 import { allowManagerOrAdmin } from './authRules';
 import { addUserWithRole, removeUserFromProject } from './usersAndRoles';
 
-export function allProjectsQuery(db, { limit, offset } = {}) {
+export function allProjectsQuery(db, { limit = undefined, offset = undefined } = {}) {
     let query = Project.query(db);
     if (limit) {
         query = query.limit(limit);

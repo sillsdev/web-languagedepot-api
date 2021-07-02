@@ -2,11 +2,12 @@ import { dbs } from '$lib/db/dbsetup';
 import { Project } from '$lib/db/models';
 import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
-import { verifyJwtAuth } from '$lib/utils/db/auth';
 import { allowManagerOrAdmin } from '$lib/utils/db/authRules';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$lib/utils/db/projects';
 import { canonicalizeMembershipList, InvalidMemberships } from '$lib/utils/db/usersAndRoles';
 
+// GET /api/v2/projects/{projectCode} - JSON representation of a single project (requires manager or admin rights)
+// Security: must be a project manager on the project in question, or a site admin
 export async function get({ params, path, query, headers }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
@@ -20,6 +21,8 @@ export async function get({ params, path, query, headers }) {
     }
 }
 
+// HEAD /api/v2/projects/{projectCode} - check whether project exists. Returns 200 if exists, 404 if not found. Response has no body; only HTTP status code is meaningful.
+// Security: anonymous access allowed
 export async function head({ params, query }) {
     if (!params.projectCode) {
         return { status: 400, body: {} };
@@ -35,6 +38,8 @@ export async function head({ params, query }) {
     }
 }
 
+// PUT /api/v2/projects/{projectCode} - create project, or update project if it aleady exists.
+// Security: anyone may create a project, and they become the project's first manager. Updating is restricted to existing project managers or site admins.
 export async function put({ path, params, body, query, headers }) {
     if (typeof body !== 'object') {
         return jsonRequired('PUT', path);
@@ -54,6 +59,9 @@ export async function put({ path, params, body, query, headers }) {
     // Here we don't return Content-Location because the client already knows it
 }
 
+// PATCH /api/v2/projects/{projectCode} - update project membership, possibly in bulk
+// TODO: Document JSON "shapes" allowed for project membership (many possibilities)
+// Security: must be a project manager on the project in question, or a site admin
 export async function patch({ path, params, body, query, headers }) {
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
@@ -97,10 +105,18 @@ export async function patch({ path, params, body, query, headers }) {
     }
 }
 
-export async function del({ path, params, query }) {
+// DELETE /api/v2/projects/{projectCode} - delete project
+// TODO: Make this archive the project instead, and only allow actual deletion if query contains `?reallyDelete=true`
+// Security: must be a project manager on the project in question, or a site admin
+export async function del({ path, params, query, headers }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    return await deleteOneProject(db, params.projectCode);
+    const authResult = await allowManagerOrAdmin(db, { params, headers });
+    if (authResult.status === 200 && authResult.authUser) {
+        return await deleteOneProject(db, params.projectCode);
+    } else {
+        return authResult;
+    }
 }

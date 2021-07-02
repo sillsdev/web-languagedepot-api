@@ -87,7 +87,7 @@ async function removeUserFromProjectByProjectCode(db, projectCode, username) {
     return result;
 }
 
-function getProjectsForUser(db, { username, rolename } = {}) {
+function getProjectsForUser(db, { username = '', rolename = undefined } = {}) {
     return catchSqlError(async () => {
         let query = User.query(db)
             .withGraphJoined('memberships.[project, role]')

@@ -1,6 +1,6 @@
 {
 	"name": "node-ldapi",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "An API for Language Depot, written in node.js",
 	"main": "build/index.js",
 	"author": "Robin Munn <robin_munn@sil.org>",
