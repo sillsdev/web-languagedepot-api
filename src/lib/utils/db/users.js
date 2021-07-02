@@ -67,7 +67,7 @@ export async function patchUser(db, username, updateData) {
         return cannotUpdateMissing(username, 'user');
     },
     async (user) => {
-        // TODO: Check JWT - only same user or admin should be able to update one's account details
+        // No need to check JWT in this function, as it's checked in the caller
         const result = await retryOnServerError(User.query(trx).patchAndFetchById(user.id, updateData));
         return { status: 200, body: result };
     });
@@ -88,7 +88,7 @@ export async function deleteUser(db, username) {
         return { status: 204, body: {} };
     },
     async (user) => {
-        // TODO: Check JWT - only same user or admin should be able to update one's account details
+        // No need to check JWT in this function, as it's checked in the caller
         // Delete memberships and email addresses first so there's never any DB inconsistency
         const membershipsQuery = Membership.query(trx).where('user_id', user.id).select('id')
         await retryOnServerError(MemberRole.query(trx).whereIn('member_id', membershipsQuery).delete());
