@@ -6,7 +6,6 @@ import { allowManagerOrAdmin } from '$lib/utils/db/authRules';
 // POST /api/v2/projects/{projectCode}/user/{username}/withRole/{rolename} - add or update user's role in project
 // rolename parameter should be a string like "Contributor" or "Manager", but integer IDs are also allowed
 // Security: only project managers or admins allowed
-// TODO: Move security check earlier in function so we can reject fast if not allowed
 export async function post({ params, path, query, headers }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);

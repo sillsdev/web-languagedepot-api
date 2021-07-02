@@ -46,6 +46,22 @@ export function isAdmin(authUser) {
 }
 
 // Helpers for quick-and-easy auth
+export async function allowAdminOnly(db, { headers = undefined } = {}) {
+    let authUser = await verifyJwtAuth(db, headers);
+    if (!authUser) {
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
+    }
+    const allowed = isAdmin(authUser);
+    if (!allowed) {
+        return notAllowed();
+    }
+    return { status: 200, authUser };
+}
+
 export async function allowManagerOrAdmin(db, { params = undefined, headers = undefined } = {}) {
     if (!params || !params.projectCode) {
         return missingRequiredParam('projectCode');
@@ -64,6 +80,34 @@ export async function allowManagerOrAdmin(db, { params = undefined, headers = un
         return notAllowed();
     }
     return { status: 200, authUser };
+}
+
+export async function allowSameUserOrProjectManagerOrAdmin(db, { params = undefined, headers = undefined } = {}) {
+    if (!params || !params.username) {
+        return missingRequiredParam('username');
+    }
+    let authUser = await verifyJwtAuth(db, headers);
+    if (!authUser) {
+        if (authUser === undefined) {
+            return authTokenRequired();
+        } else {
+            return notAllowed();
+        }
+    }
+    const allowed = authUser.login === params.username || isAdmin(authUser);
+    if (allowed) {
+        return { status: 200, authUser };
+    } else {
+        if (!params || !params.projectCode) {
+            return missingRequiredParam('projectCode');
+        }
+        const isManager = await hasManagerRights(db, { projectCode: params.projectCode, authUser });
+        if (isManager) {
+            return { status: 200, authUser };
+        } else {
+            return notAllowed();
+        }
+    }
 }
 
 export async function allowSameUserOrAdmin(db, { params = undefined, headers = undefined, allowBasicAuth = false } = {}) {

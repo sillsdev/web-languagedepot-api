@@ -2,7 +2,6 @@ import { dbs } from '$lib/db/dbsetup';
 import { Project } from '$lib/db/models';
 import { missingRequiredParam, jsonRequired, cannotModifyPrimaryKey, inconsistentParams, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
-import { verifyJwtAuth } from '$lib/utils/db/auth';
 import { allowManagerOrAdmin } from '$lib/utils/db/authRules';
 import { getOneProject, createOneProject, patchOneProject, deleteOneProject } from '$lib/utils/db/projects';
 import { canonicalizeMembershipList, InvalidMemberships } from '$lib/utils/db/usersAndRoles';
@@ -63,7 +62,6 @@ export async function put({ path, params, body, query, headers }) {
 // PATCH /api/v2/projects/{projectCode} - update project membership, possibly in bulk
 // TODO: Document JSON "shapes" allowed for project membership (many possibilities)
 // Security: must be a project manager on the project in question, or a site admin
-// TODO: Move security check earlier in function so we can reject fast if not allowed
 export async function patch({ path, params, body, query, headers }) {
     if (typeof body !== 'object') {
         return jsonRequired('PATCH', path);
@@ -107,10 +105,18 @@ export async function patch({ path, params, body, query, headers }) {
     }
 }
 
-export async function del({ path, params, query }) {
+// DELETE /api/v2/projects/{projectCode} - delete project
+// TODO: Make this archive the project instead, and only allow actual deletion if query contains `?reallyDelete=true`
+// Security: must be a project manager on the project in question, or a site admin
+export async function del({ path, params, query, headers }) {
     if (!params.projectCode) {
         return missingRequiredParam('projectCode', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    return await deleteOneProject(db, params.projectCode);
+    const authResult = await allowManagerOrAdmin(db, { params, headers });
+    if (authResult.status === 200 && authResult.authUser) {
+        return await deleteOneProject(db, params.projectCode);
+    } else {
+        return authResult;
+    }
 }

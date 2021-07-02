@@ -36,26 +36,22 @@ export async function head({ params, query }) {
 }
 
 // PUT /api/v2/users/{username} - update or create details about one user (if update, update should be complete user record)
-// Security: must be user in question or a site admin
+// Security: anyone may create an account, but only that user (or a site admin) should be able to update the account details
 export async function put({ path, params, body, query, headers }) {
     if (!params.username) {
         return missingRequiredParam('username', path);
     }
     if (typeof body !== 'object') {
-        return jsonRequired('PATCH', path);
+        return jsonRequired('PUT', path);
     }
     const db = query.private ? dbs.private : dbs.public;
-    const authResult = await allowSameUserOrAdmin(db, { params, headers });
-    if (authResult.status === 200) {
-        const result = await createUser(db, params.username, body);
-        // Content-Location not strictly needed here, but add it for consistency
-        if (result && result.status && result.status >= 200 && result.status < 300) {
-            result.headers = { ...result.headers, 'Content-Location': `${path}` };
-        }
-        return result;
-    } else {
-        return authResult;
+    // Security check is done in createUser()
+    const result = await createUser(db, params.username, body, headers);
+    // Content-Location not strictly needed here, but add it for consistency
+    if (result && result.status && result.status >= 200 && result.status < 300) {
+        result.headers = { ...result.headers, 'Content-Location': `${path}` };
     }
+    return result;
 }
 
 // PATCH /api/v2/users/{username} - update details about one user (details can be partial, e.g. {password: "newPassword"})
@@ -70,7 +66,7 @@ export async function patch({ path, params, body, query, headers }) {
     const db = query.private ? dbs.private : dbs.public;
     const authResult = await allowSameUserOrAdmin(db, { params, headers });
     if (authResult.status === 200) {
-        const result = patchUser(db, params.username, body);
+        const result = await patchUser(db, params.username, body);
         // Content-Location not strictly needed here, but add it for consistency
         if (result && result.status && result.status >= 200 && result.status < 300) {
             result.headers = { ...result.headers, 'Content-Location': `${path}` };
