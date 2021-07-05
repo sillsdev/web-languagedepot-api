@@ -38,8 +38,8 @@ export async function verifyBasicAuth(db, headers) {
     }
 }
 
-const jwtAudience = process.env.JWT_AUDIENCE || 'https://admin.languagedepot.org/api/v2';
-const signKey = process.env.JWT_SIGNING_KEY || 'not-a-secret';
+const jwtAudience = process.env['JWT_AUDIENCE'] || 'https://admin.languagedepot.org/api/v2';
+const signKey = process.env['JWT_SIGNING_KEY'] || 'not-a-secret';
 export function makeJwt(username) {
     var token = jwt.sign({
         sub: username,
