@@ -1,6 +1,5 @@
 import { dbs } from '$lib/db/dbsetup';
 import { jsonRequired, missingRequiredParam, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
-import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { allowAdminOnly } from '$lib/utils/db/authRules';
 import { getAllProjects, countAllProjectsQuery, createOneProject } from '$lib/utils/db/projects';
 
@@ -15,21 +14,6 @@ export async function get({ query, headers }) {
         return getAllProjects(db, queryParams);
     } else {
         return authResult;
-    }
-}
-
-// HEAD /api/v2/projects - return 200 if at least one project exists, 404 if zero projects
-// Security: must be a site admin (list of all projects could contain sensitive names)
-export async function head({ query, headers }) {
-    const db = query.private ? dbs.private : dbs.public;
-    const authResult = await allowAdminOnly(db, { headers });
-    if (authResult.status === 200) {
-        const queryParams = Object.fromEntries(query);
-        const count = await retryOnServerError(countAllProjectsQuery(db, queryParams));
-        const status = count > 0 ? 200 : 404;
-        return { status, body: {} };
-    } else {
-        return { status: authResult.status, body: {} }
     }
 }
 

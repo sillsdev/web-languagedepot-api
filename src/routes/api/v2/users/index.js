@@ -1,6 +1,5 @@
 import { dbs } from '$lib/db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
-import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { allowAdminOnly } from '$lib/utils/db/authRules';
 import { getAllUsers, countAllUsersQuery, createUser } from '$lib/utils/db/users';
 
@@ -16,17 +15,6 @@ export async function get({ query, headers }) {
     } else {
         return authResult;
     }
-}
-
-// HEAD /api/v2/users - return 200 if at least one user exists, 404 if zero users
-// Security: anonymous access allowed
-// TODO: Does this even make sense as an API call? Consider removing it.
-export async function head({ query }) {
-    const db = query.private ? dbs.private : dbs.public;
-    const queryParams = Object.fromEntries(query);
-    const count = await retryOnServerError(countAllUsersQuery(db, queryParams));
-    const status = count > 0 ? 200 : 404;
-    return { status, body: {} };
 }
 
 // POST /api/v2/users - create user, or update user if it aleady exists.
