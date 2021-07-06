@@ -32,13 +32,15 @@ export async function get({ params, query, headers }) {
     }
 }
 
-// TODO: HEAD /api/v2/projects/{projectCode}/user/{username} - is user a member of the project?
+// HEAD /api/v2/projects/{projectCode}/user/{username} - is user a member of the project?
+// Security: must be user whose role is being looked up, a project manager on the project in question, or a site admin
 // Possible return codes:
 // 200 if user is member of project (with any role)
 // 404 if he/she is not, or if user or project not found
-// export async function head({ path }) {
-//     return { status: 204, body: {} }
-// }
+export async function head(request) {
+    const result = get(request)
+    return { ...result, body: {} }
+}
 
 // DELETE /api/v2/projects/{projectCode}/user/{username} - remove user from project
 // Security: must be user being removed, a project manager on the project in question, or a site admin
