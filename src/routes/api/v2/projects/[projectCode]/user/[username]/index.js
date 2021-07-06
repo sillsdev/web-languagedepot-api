@@ -78,7 +78,7 @@ export async function post({ params, path, body, query, headers }) {
         } else if (body && typeof body === "number") {
             roleName = body;
         } else if (body && typeof body === "object") {
-            roleName = body.role ? body.role : body.roleId ? body.roleId : body.roleName ? body.roleName : defaultRoleId;
+            roleName = body.role || body.roleId || body.roleName || defaultRoleId;
         } else {
             roleName = defaultRoleId;
         }
