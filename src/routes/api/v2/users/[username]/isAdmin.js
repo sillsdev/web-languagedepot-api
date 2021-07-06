@@ -21,10 +21,3 @@ export async function get({ query, params }) {
     //     return authResult;
     // }
 }
-
-// HEAD /api/v2/users/{username}/isAdmin - returns 404 if user not found, 200 if user exists, but does nothing to tell you whether user is actually an admin
-// TODO: Useless. Remove this.
-export async function head(req) {
-    const { status, headers } = await get(req);
-    return { status, headers, body: {} };
-}
