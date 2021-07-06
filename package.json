@@ -1,13 +1,13 @@
 {
 	"name": "node-ldapi",
-	"version": "0.0.4",
+	"version": "0.1.0",
 	"description": "An API for Language Depot, written in node.js",
 	"main": "build/index.js",
 	"author": "Robin Munn <robin_munn@sil.org>",
 	"license": "MIT",
 	"scripts": {
 		"dev": "svelte-kit dev",
-		"docker": "docker build -t sillsdev/web-languagedepot-api:$npm_package_version -t sillsdev/web-languagedepot-api:latest .",
+		"docker": "docker build -t sillsdev/web-languagedepot-api:$(cat ldapi-version.txt) -t sillsdev/web-languagedepot-api:latest .",
 		"test": "mocha",
 		"build": "svelte-kit build",
 		"start": "svelte-kit start",
