@@ -8,6 +8,7 @@ FROM node:14.15.4-alpine AS builder
 # MYSQL_USER=mysqlusername
 # MYSQL_PASSWORD=mysqlpassword
 
+RUN apk add dumb-init
 RUN npm i -g pnpm@6.6.2
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
@@ -18,6 +19,7 @@ COPY src ./src
 RUN pnpm run build
 
 FROM node:14.15.4-alpine
+COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=builder /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
 RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && \
     ln -s ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
@@ -28,4 +30,5 @@ RUN pnpm i --prod --frozen-lockfile
 COPY --from=builder app/build ./
 EXPOSE 3000
 USER node
-ENTRYPOINT ["node", "index.js"]
+ENTRYPOINT ["dumb-init"]
+CMD ["node", "index.js"]
