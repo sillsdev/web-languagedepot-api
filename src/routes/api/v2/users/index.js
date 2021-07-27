@@ -1,7 +1,8 @@
 import { dbs } from '$lib/db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
 import { allowAdminOnly } from '$lib/utils/db/authRules';
-import { getAllUsers, countAllUsersQuery, createUser } from '$lib/utils/db/users';
+import { createUser } from '$lib/utils/db/users';
+import { getAllUsers } from '$lib/utils/db/userQueries';
 
 // GET /api/v2/users - return list of all users
 // Security: must be a site admin (list of all users could contain sensitive names or email addresses)

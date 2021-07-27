@@ -1,38 +1,8 @@
 import { User, Membership, MemberRole, Email } from '$lib/db/models';
 import { cannotUpdateMissing } from '$lib/utils/commonErrors';
-import { atMostOne, onlyOne, catchSqlError, retryOnServerError } from '$lib/utils/commonSqlHandlers';
+import { atMostOne, retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { allowSameUserOrAdmin } from './authRules';
-
-export function allUsersQuery(db, { limit = undefined, offset = undefined } = {}) {
-    let query = User.query(db);
-    if (limit) {
-        query = query.limit(limit);
-    }
-    if (offset) {
-        query = query.offset(offset);
-    }
-    return query;
-}
-
-export function countAllUsersQuery(db, params) {
-    return allUsersQuery(db, params).resultSize();
-}
-
-export function getAllUsers(db, params) {
-    return catchSqlError(async () => {
-        const users = await retryOnServerError(allUsersQuery(db, params));
-        return { status: 200, body: users };
-    });
-}
-
-export function oneUserQuery(db, username) {
-    return User.query(db).where('login', username);
-}
-
-export function getOneUser(db, username) {
-    const query = oneUserQuery(db, username);
-    return onlyOne(query, 'username', 'username', user => ({ status: 200, body: user }));
-}
+import { oneUserQuery } from './userQueries';
 
 export async function createUser(db, username, newUser, headers) {
     const trx = await User.startTransaction(db);

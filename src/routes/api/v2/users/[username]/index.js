@@ -2,7 +2,8 @@ import { dbs } from '$lib/db/dbsetup';
 import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { allowSameUserOrAdmin } from '$lib/utils/db/authRules';
-import { getOneUser, oneUserQuery, patchUser, deleteUser, createUser } from '$lib/utils/db/users';
+import { patchUser, deleteUser, createUser } from '$lib/utils/db/users';
+import { getOneUser, oneUserQuery } from '$lib/utils/db/userQueries';
 
 // GET /api/v2/users/{username} - get details about one user
 // Security: must be user in question or a site admin

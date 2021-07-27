@@ -1,7 +1,7 @@
 import { dbs } from '$lib/db/dbsetup';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import { isAdmin } from '$lib/utils/db/authRules';
-import { oneUserQuery } from '$lib/utils/db/users';
+import { oneUserQuery } from '$lib/utils/db/userQueries';
 
 // GET /api/v2/users/{username}/isAdmin - check whether username in question is a site admin
 // Security: anonymous access allowed (used by Language Forge UI to check whether user should be shown LD admin pages)

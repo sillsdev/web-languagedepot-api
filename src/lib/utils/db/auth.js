@@ -1,4 +1,4 @@
-import { oneUserQuery } from './users';
+import { oneUserQuery } from './userQueries';
 import jwt from 'jsonwebtoken';
 import { verifyPassword } from './passwords';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
