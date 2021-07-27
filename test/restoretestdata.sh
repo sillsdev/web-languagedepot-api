@@ -23,7 +23,7 @@ else
     # Set defaults if not set
     : ${MYSQL_HOST=localhost}
     : ${MYSQL_DATABASE:=testldapi}
-    : ${MYSQL_PORT=5432}
+    : ${MYSQL_PORT=3306}
     echo "Will load test data into MySQL DB ${MYSQL_DATABASE} on ${MYSQL_HOST}:${MYSQL_PORT}"
     yesno || exit
     mysql -u "$MYSQL_USER" --password="$MYSQL_PASSWORD" -h "$MYSQL_HOST" -P "$MYSQL_PORT" $MYSQL_DATABASE < ${SCRIPT_PATH}/testlanguagedepot.sql
