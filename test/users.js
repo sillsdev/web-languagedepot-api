@@ -65,7 +65,7 @@ describe('/users API route', function() {
     })
 
     it('POST can update a user', async function() {
-        const postResult = await this.api.post('users', {json: {...this.testUser, firstname: 'new-name'}})
+        const postResult = await this.asAdmin.post('users', {json: {...this.testUser, firstname: 'new-name'}})
         const expected = {...this.testUser, firstname: 'new-name'}
         if (expected.password) {
             // API never returns passwords
@@ -82,7 +82,7 @@ describe('/users API route', function() {
     })
 
     it('POST can change a user\'s password', async function() {
-        const postResult = await this.api.post('users', {json: {...this.testUser, password: 'y'}})
+        const postResult = await this.asAdmin.post('users', {json: {...this.testUser, password: 'y'}})
         const expected = {...this.testUser}
         if (expected.password) {
             // API never returns passwords

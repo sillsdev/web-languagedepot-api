@@ -74,8 +74,7 @@ describe('/projects API route', function() {
     })
 
     it('GET should return an array', async function() {
-        // No authorization needed for the GET /projects endpoint
-        const result = await this.api('projects', {headers: {authorization: undefined}})
+        const result = await this.api('projects')
         expect(result.statusCode).to.equal(200)
         expect(result.body).to.be.an('array')
         expect(result.body).to.not.be.empty
