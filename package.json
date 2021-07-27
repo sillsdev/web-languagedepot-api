@@ -18,7 +18,7 @@
 		"require": "test/pretest.mjs"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "1.0.0-next.24",
+		"@sveltejs/adapter-node": "1.0.0-next.35",
 		"@typescript-eslint/eslint-plugin": "^4.22.0",
 		"@typescript-eslint/parser": "^4.22.0",
 		"chai": "^4.3.4",
@@ -33,7 +33,7 @@
 		"vite": "^2.3.6"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "1.0.0-next.112",
+		"@sveltejs/kit": "1.0.0-next.137",
 		"date-fns": "^2.22.1",
 		"dotenv": "^10.0.0",
 		"jsonwebtoken": "^8.5.1",
