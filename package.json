@@ -18,31 +18,31 @@
 		"require": "test/pretest.mjs"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "1.0.0-next.35",
-		"@typescript-eslint/eslint-plugin": "^4.22.0",
-		"@typescript-eslint/parser": "^4.22.0",
+		"@sveltejs/adapter-node": "1.0.0-next.55",
+		"@typescript-eslint/eslint-plugin": "^4.33.0",
+		"@typescript-eslint/parser": "^4.33.0",
 		"chai": "^4.3.4",
-		"eslint": "^7.24.0",
-		"eslint-config-prettier": "^8.2.0",
-		"eslint-plugin-svelte3": "^3.1.2",
+		"eslint": "^7.32.0",
+		"eslint-config-prettier": "^8.3.0",
+		"eslint-plugin-svelte3": "^3.2.1",
 		"got": "^11.8.2",
 		"prettier": "~2.2.1",
-		"prettier-plugin-svelte": "^2.2.0",
-		"svelte-preprocess": "^4.7.3",
-		"typescript": "^4.2.4",
-		"vite": "^2.3.6"
+		"prettier-plugin-svelte": "^2.4.0",
+		"svelte-preprocess": "^4.9.8",
+		"typescript": "^4.4.4",
+		"vite": "^2.6.13"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "1.0.0-next.137",
-		"date-fns": "^2.22.1",
+		"@sveltejs/kit": "1.0.0-next.192",
+		"date-fns": "^2.25.0",
 		"dotenv": "^10.0.0",
 		"jsonwebtoken": "^8.5.1",
-		"knex": "^0.21.19",
-		"mysql2": "^2.2.5",
-		"objection": "^2.2.15",
-		"pg": "^8.6.0",
-		"svelte": "^3.37.0",
-		"tslib": "^2.2.0"
+		"knex": "^0.21.21",
+		"mysql2": "^2.3.2",
+		"objection": "^2.2.17",
+		"pg": "^8.7.1",
+		"svelte": "^3.44.1",
+		"tslib": "^2.3.1"
 	},
 	"type": "module"
 }
