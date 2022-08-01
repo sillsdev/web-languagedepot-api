@@ -22,7 +22,7 @@
 	"devDependencies": {
 		"@playwright/test": "^1.22.2",
 		"@sveltejs/adapter-auto": "next",
-		"@sveltejs/kit": "next",
+		"@sveltejs/kit": "1.0.0-next.401",
 		"@types/cookie": "^0.5.1",
 		"@types/jsonwebtoken": "^8.5.8",
 		"@typescript-eslint/eslint-plugin": "^5.27.0",
