@@ -9,6 +9,7 @@
 	},
 	"license": "MIT",
 	"scripts": {
+		"docker": "docker build -t sillsdev/web-languagedepot-api:$(cat ldapi-version.txt) -t sillsdev/web-languagedepot-api:latest .",
 		"dev": "vite dev",
 		"build": "vite build",
 		"package": "svelte-kit package",
@@ -21,7 +22,7 @@
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.22.2",
-		"@sveltejs/adapter-auto": "next",
+		"@sveltejs/adapter-node": "next",
 		"@sveltejs/kit": "1.0.0-next.401",
 		"@types/cookie": "^0.5.1",
 		"@types/jsonwebtoken": "^8.5.8",
