@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { Project, defaultRoleId } from '$lib/db/models';
 import { dbs } from '$lib/db/dbsetup';
-import { missingRequiredParam, jsonError } from '$lib/utils/commonErrors';
+import { missingRequiredParam } from '$lib/utils/commonErrors';
 import { onlyOne } from '$lib/utils/commonSqlHandlers';
 import { addUserWithRoleByProjectCode, removeUserFromProjectByProjectCode } from '$lib/utils/db/usersAndRoles';
 import { allowSameUserOrProjectManagerOrAdmin } from '$lib/utils/db/authRules';
@@ -9,10 +9,10 @@ import { allowSameUserOrProjectManagerOrAdmin } from '$lib/utils/db/authRules';
 // GET /api/v2/projects/{projectCode}/user/{username} - return user's role
 // Security: must be user whose role is being looked up, a project manager on the project in question, or a site admin
 export const GET: RequestHandler = async ({ params, url, request: { headers } }) => {
-    if (!params || !params.projectCode) {
+    if (!params.projectCode) {
         return missingRequiredParam('projectCode', 'URL');
     }
-    if (!params || !params.username) {
+    if (!params.username) {
         return missingRequiredParam('username', 'URL');
     }
     const db = url.searchParams.get('private') ? dbs.private : dbs.public;
@@ -23,7 +23,6 @@ export const GET: RequestHandler = async ({ params, url, request: { headers } })
             .where('identifier', params.projectCode)
             .withGraphJoined('members.[user, role]')
             ;
-        const x = allowSameUserOrProjectManagerOrAdmin
         return onlyOne(dbQuery, 'projectCode', 'project code',
         async (project: any) => {
             const users = project.members.filter((member: any) => member.user.login === params.username && member.role && member.role.name);
@@ -47,10 +46,10 @@ export const HEAD: RequestHandler = async (event) => {
 // DELETE /api/v2/projects/{projectCode}/user/{username} - remove user from project
 // Security: must be user being removed, a project manager on the project in question, or a site admin
 export const DELETE: RequestHandler = async ({ params, url, request: { headers } }) => {
-    if (!params || !params.projectCode) {
+    if (!params.projectCode) {
         return missingRequiredParam('projectCode', url.pathname);
     }
-    if (!params || !params.username) {
+    if (!params.username) {
         return missingRequiredParam('username', url.pathname);
     }
     const db = url.searchParams.get('private') ? dbs.private : dbs.public;

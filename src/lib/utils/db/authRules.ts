@@ -1,4 +1,4 @@
-import { Project, managerRoleId, techSupportRoleId, User } from '$lib/db/models';
+import { Project, managerRoleId, techSupportRoleId } from '$lib/db/models';
 import { authTokenRequired, missingRequiredParam, notAllowed } from '$lib/utils/commonErrors';
 import { retryOnServerError } from '$lib/utils/commonSqlHandlers';
 import type { TransactionOrKnex } from 'objection';
@@ -80,7 +80,7 @@ export async function allowManagerOrAdmin(db: TransactionOrKnex, request: { para
             return notAllowed();
         }
     }
-    const projectCode = params ? params.projectCode : undefined;
+    const projectCode = params.projectCode;
     const allowed = isAdmin(authUser) || await hasManagerRights(db, { projectCode, authUser });
     if (!allowed) {
         return notAllowed();
@@ -90,7 +90,7 @@ export async function allowManagerOrAdmin(db: TransactionOrKnex, request: { para
 
 export async function allowSameUserOrProjectManagerOrAdmin(db: TransactionOrKnex, request: { params: Record<string, any>, headers: Headers }) {
     const { params, headers } = request;
-    if (!params || !params.username) {
+    if (!params.username) {
         return missingRequiredParam('username');
     }
     let authUser = await verifyJwtAuth(db, headers);
@@ -105,7 +105,7 @@ export async function allowSameUserOrProjectManagerOrAdmin(db: TransactionOrKnex
     if (allowed) {
         return { status: 200, authUser };
     } else {
-        if (!params || !params.projectCode) {
+        if (!params.projectCode) {
             return missingRequiredParam('projectCode');
         }
         const isManager = await hasManagerRights(db, { projectCode: params.projectCode, authUser });

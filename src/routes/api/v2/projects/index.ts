@@ -1,8 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { dbs } from '$lib/db/dbsetup';
-import { jsonRequired, missingRequiredParam, authTokenRequired, notAllowed } from '$lib/utils/commonErrors';
+import { jsonRequired, missingRequiredParam } from '$lib/utils/commonErrors';
 import { allowAdminOnly } from '$lib/utils/db/authRules';
-import { getAllProjects, countAllProjectsQuery, createOneProject } from '$lib/utils/db/projects';
+import { getAllProjects, createOneProject } from '$lib/utils/db/projects';
 
 // GET /api/v2/projects - return list of all projects
 // Security: must be a site admin (list of all projects could contain sensitive names)
