@@ -1,4 +1,4 @@
-FROM node:14.15.4-alpine AS builder
+FROM node:16.16.0-alpine AS builder
 
 # Should be built with `npm run docker`
 # Then run with `docker run --init --env-file=.env --network host docker.dallas.languagetechnology.org/node-ldapi:latest`
@@ -14,11 +14,11 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
 COPY static ./static
-COPY svelte.config.js tsconfig.json ./
+COPY svelte.config.js tsconfig.json vite.config.js ./
 COPY src ./src
 RUN pnpm run build
 
-FROM node:14.15.4-alpine
+FROM node:16.16.0-alpine
 COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=builder /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
 RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && \
