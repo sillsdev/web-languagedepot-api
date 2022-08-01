@@ -1,48 +1,52 @@
 {
 	"name": "node-ldapi",
-	"version": "0.1.0",
+	"version": "0.2.4",
 	"description": "An API for Language Depot, written in node.js",
 	"main": "build/index.js",
-	"author": "Robin Munn <robin_munn@sil.org>",
+	"author": {
+		"name": "Robin Munn",
+		"email": "robin_munn@sil.org"
+	},
 	"license": "MIT",
 	"scripts": {
-		"dev": "svelte-kit dev",
-		"docker": "docker build -t sillsdev/web-languagedepot-api:$(cat ldapi-version.txt) -t sillsdev/web-languagedepot-api:latest .",
-		"test": "mocha",
-		"build": "svelte-kit build",
-		"start": "svelte-kit start",
-		"lint": "prettier --check . && eslint --ignore-path .gitignore .",
-		"format": "prettier --write ."
-	},
-	"mocha": {
-		"require": "test/pretest.mjs"
+		"dev": "vite dev",
+		"build": "vite build",
+		"package": "svelte-kit package",
+		"preview": "vite preview",
+		"test": "playwright test",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "prettier --check --plugin-search-dir=. . && eslint .",
+		"format": "prettier --write --plugin-search-dir=. ."
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "1.0.0-next.55",
-		"@typescript-eslint/eslint-plugin": "^4.33.0",
-		"@typescript-eslint/parser": "^4.33.0",
-		"chai": "^4.3.4",
-		"eslint": "^7.32.0",
+		"@playwright/test": "^1.22.2",
+		"@sveltejs/adapter-auto": "next",
+		"@sveltejs/kit": "next",
+		"@types/cookie": "^0.5.1",
+		"@types/jsonwebtoken": "^8.5.8",
+		"@typescript-eslint/eslint-plugin": "^5.27.0",
+		"@typescript-eslint/parser": "^5.27.0",
+		"eslint": "^8.16.0",
 		"eslint-config-prettier": "^8.3.0",
-		"eslint-plugin-svelte3": "^3.2.1",
-		"got": "^11.8.2",
-		"prettier": "~2.2.1",
-		"prettier-plugin-svelte": "^2.4.0",
-		"svelte-preprocess": "^4.9.8",
-		"typescript": "^4.4.4",
-		"vite": "^2.6.13"
+		"eslint-plugin-svelte3": "^4.0.0",
+		"prettier": "^2.6.2",
+		"prettier-plugin-svelte": "^2.7.0",
+		"svelte": "^3.46.0",
+		"svelte-check": "^2.7.1",
+		"svelte-preprocess": "^4.10.6",
+		"tslib": "^2.3.1",
+		"typescript": "^4.7.4",
+		"vite": "^3.0.0"
 	},
+	"type": "module",
 	"dependencies": {
-		"@sveltejs/kit": "1.0.0-next.192",
-		"date-fns": "^2.25.0",
-		"dotenv": "^10.0.0",
+		"date-fns": "^2.29.1",
+		"dotenv": "^16.0.1",
 		"jsonwebtoken": "^8.5.1",
-		"knex": "^0.21.21",
-		"mysql2": "^2.3.2",
-		"objection": "^2.2.17",
-		"pg": "^8.7.1",
-		"svelte": "^3.44.1",
-		"tslib": "^2.3.1"
-	},
-	"type": "module"
+		"knex": "^2.2.0",
+		"mysql2": "^2.3.3",
+		"objection": "^3.0.1",
+		"pg": "^8.7.3"
+	}
 }
